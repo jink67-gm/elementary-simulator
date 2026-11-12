@@ -375,7 +375,7 @@ export class Morning implements StoryHooks {
       ['cafeteriaDoor', '급식실에서 고소한 냄새가 난다… 아직은 준비 중.'],
     ];
     for (const [id, msg] of locked)
-      add({ id, obj: m.objs[id], radius: 1.8, promptY: 1.6, prompt: () => (this.period === 'lunch' && id === 'cafeteriaDoor' ? null : '문 살펴보기'), onInteract: () => this.toast(msg) }, false);
+      add({ id, obj: m.objs[id], at: id === 'cafeteriaDoor' ? new THREE.Vector3(9, 0, 15.7) : undefined, radius: 1.8, promptY: 1.6, prompt: () => (this.period === 'lunch' && id === 'cafeteriaDoor' ? null : '문 살펴보기'), onInteract: () => this.toast(msg) }, false);
 
     // NPC 대화·건네주기
     for (const id of Object.keys(g.npcs) as MainNpcId[]) {

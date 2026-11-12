@@ -86,6 +86,8 @@ export class Dialogue {
       // 자동으로 넘어가기 (읽을 시간 확보)
       if (c.hold > (1.6 + len * 0.045) / this.speed) this.finish();
     }
-    if (this.current) this.textEl.textContent = c.line.text.slice(0, Math.floor(c.shown));
+    // finish()로 다음 줄로 넘어갔으면 이전 줄(c)이 아니라 새 줄을 그린다
+    const now = this.current;
+    if (now) this.textEl.textContent = now.line.text.slice(0, Math.floor(now.shown));
   }
 }

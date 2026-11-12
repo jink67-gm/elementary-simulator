@@ -336,6 +336,8 @@ export class Game {
 
     // 카메라
     this.tpc.update(dt, input, this.player.pos, !!this.player.seat, this.map.cameraBlockers);
+    // 카메라가 친구 머리 속에 들어가면 그 친구를 잠깐 숨긴다 (앉아 있을 때 뒷자리 친구 등)
+    for (const n of [...Object.values(this.npcs), ...this.fillers]) n.char.setHidden(n.headPos().distanceTo(this.camera.position) < 0.75);
     this.hud.showLockHint(!input.pointerLocked && !input.captured && !this.cutscene);
     this.hud.updateBubbles(this.camera, this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight);
 

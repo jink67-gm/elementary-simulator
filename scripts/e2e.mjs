@@ -66,9 +66,14 @@ async function act(id, key, expect, { stay = false, from } = {}) {
       const p = g.interactions.position(g.interactions.get(i));
       g.tpc.yaw = Math.atan2(-(p.x - g.player.pos.x), -(p.z - g.player.pos.z));
     }, id);
-  await sleep(250);
-  const s = await state();
-  const label = key === 'KeyE' ? s.focus?.e : s.focus?.f;
+  // 느린 소프트웨어 렌더링에서는 순간이동 후 포커스 계산이 한두 프레임 늦을 수 있다
+  let s, label;
+  for (let i = 0; i < 15; i++) {
+    await sleep(200);
+    s = await state();
+    label = key === 'KeyE' ? s.focus?.e : s.focus?.f;
+    if (label && (!expect || label.includes(expect))) break;
+  }
   if (!label) throw new Error(`${id}: ${key} 동작 없음 (focus=${JSON.stringify(s.focus)})`);
   if (expect && !label.includes(expect)) throw new Error(`${id}: 예상 「${expect}」, 실제 「${label}」`);
   await page.keyboard.press(key);

@@ -130,6 +130,11 @@ export class Character {
     }
   }
 
+  /** 카메라가 너무 가까울 때 몸을 숨긴다 (상호작용은 그대로) */
+  setHidden(h: boolean) {
+    this.body.visible = !h;
+  }
+
   setPose(p: Pose) {
     this.pose = p;
   }
