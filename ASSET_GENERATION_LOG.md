@@ -12,3 +12,6 @@ AI로 만든 에셋마다 한 줄씩 남긴다. 실제 실행한 것만 적는�
 |---|---|---|
 | 2026-11-12 | 헤드리스 Blender(bpy 5.3.0)로 메시+뼈대+자동 웨이트+키프레임 애니메이션 → GLB 내보내기 | 성공 (애니메이션 `RaiseHand` 포함 GLB 생성, gltf-transform로 확인). 크레딧 0 |
 | 2026-11-12 | Higgsfield 접속 확인 | 실패: 세션에 커넥터 없음, `higgsfield.ai` 네트워크 차단 |
+| 2026-11-12 | Higgsfield 커넥터 연결 확인, 잔액 10크레딧, 3D 모델별 견적 조회 (`docs/ASSET_PLAN.md`) | 성공. 생성은 아직 없음 (소모 0) |
+| 2026-11-12 | 환경 네트워크 허용: `upload.higgsfield.ai`, `d2ol7oe51mr4n9.cloudfront.net` (결과 GLB 내려받기·올리기) | 허용됨 |
+
