@@ -1,0 +1,31 @@
+{
+  "boy": {
+    "name": "남학생 (플레이어 기본)",
+    "concept": "assets/concept/boy.png",
+    "sex": "m",
+    "targets": {
+      "asian-male-child": 1.0
+    },
+    "height": 1.45,
+    "skin": 15319456,
+    "hair": 1775380,
+    "hair_volume": 0.016,
+    "iris": 4860954,
+    "clothes": {
+      "top": {
+        "color": 9080209,
+        "thickness": 0.011
+      },
+      "bottom": {
+        "color": 2833500,
+        "thickness": 0.007
+      },
+      "shoes": {
+        "color": 15921906,
+        "thickness": 0.012,
+        "rough": 0.6
+      }
+    },
+    "hair_style": "short"
+  }
+}

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Character, type Look } from '../world/Character';
+import { createAvatar, type Avatar, type Look } from '../world/Character';
 import { resolveCircle, separateCircles, type Aabb, type Circle } from '../world/Collision';
 import type { Input } from '../core/Input';
 import type { Seat } from '../world/SchoolMap';
@@ -9,7 +9,7 @@ import type { ItemId } from '../data/items';
 export const PLAYER_RADIUS = 0.3;
 
 export class Player {
-  char: Character;
+  char: Avatar;
   pos = new THREE.Vector3();
   yaw = 0; // 바라보는 방향 (0 = +Z)
   private vy = 0;
@@ -22,7 +22,7 @@ export class Player {
   spaceBusy = false;
 
   constructor(look: Look) {
-    this.char = new Character(look);
+    this.char = createAvatar(look);
   }
 
   get object() {

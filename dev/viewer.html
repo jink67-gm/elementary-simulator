@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>캐릭터 뷰어</title>
+<style>html,body{margin:0;height:100%;background:#cfd8dc;overflow:hidden}#info{position:fixed;left:8px;top:8px;font:14px sans-serif}</style></head>
+<body><div id="info"></div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+// 개발용 확인 페이지: ?model=boy&clip=Walk&t=0.25&views=front,side
+const q = new URLSearchParams(location.search);
+const model = q.get('model') || 'boy', clip = q.get('clip') || 'Idle', t = Number(q.get('t') || 0);
+const views = (q.get('views') || 'front,side,back').split(',');
+const W = innerWidth / views.length, H = innerHeight;
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight); renderer.setScissorTest(true);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.append(renderer.domElement);
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.5));
+const sun = new THREE.DirectionalLight(0xffffff, 2); sun.position.set(2, 4, 3); scene.add(sun);
+const grid = new THREE.GridHelper(4, 16, 0x888888, 0xaaaaaa); scene.add(grid);
+new GLTFLoader().load(`../models/characters/${model}.glb`, (g) => {
+  scene.add(g.scene);
+  const mixer = new THREE.AnimationMixer(g.scene);
+  const c = g.animations.find((a) => a.name === clip);
+  if (c) { const a = mixer.clipAction(c); a.play(); mixer.setTime(t * c.duration); }
+  const cams = { front: [0, 0.8, 3.2], side: [3.2, 0.8, 0], back: [0, 0.8, -3.2], face: [0, 1.32, 0.75] };
+  views.forEach((v, i) => {
+    const cam = new THREE.PerspectiveCamera(v === 'face' ? 30 : 32, W / H, 0.05, 50);
+    cam.position.set(...cams[v]); cam.lookAt(0, v === 'face' ? 1.3 : 0.75, 0);
+    renderer.setViewport(i * W, 0, W, H); renderer.setScissor(i * W, 0, W, H);
+    renderer.render(scene, cam);
+  });
+  document.getElementById('info').textContent = `${model} · ${clip} · t=${t} · clips: ${g.animations.map((a) => a.name).join(', ')}`;
+  window.__ready = true;
+}, undefined, (e) => { document.getElementById('info').textContent = '불러오기 실패: ' + e; window.__ready = true; });
+</script></body></html>

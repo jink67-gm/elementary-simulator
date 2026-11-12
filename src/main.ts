@@ -4,6 +4,10 @@ import { Morning } from './story/Morning';
 import { Menus } from './ui/Menus';
 import type { SaveData } from './core/SaveData';
 import { PERIODS, type PeriodId } from './core/SaveData';
+import { preloadCharacterModels, modelErrors } from './world/models';
+
+/** 게임에서 쓰는 3D 캐릭터 모델 (public/models/characters/*.glb) */
+const CHARACTER_MODELS = ['boy'];
 
 function fail(msg: string) {
   const l = document.getElementById('loading');
@@ -13,8 +17,12 @@ function fail(msg: string) {
   }
 }
 
-function boot() {
+async function boot() {
   const app = document.getElementById('app')!;
+  const loading = document.getElementById('loading');
+  await preloadCharacterModels(CHARACTER_MODELS, (d, n) => {
+    if (loading) loading.textContent = `학교 가는 중… 친구들 불러오는 중 (${d}/${n})`;
+  });
   let game: Game;
   try {
     game = new Game(app);
@@ -29,6 +37,7 @@ function boot() {
   story.onChapterEnd = (save) => setTimeout(() => menus.chapterEnd(save, story.recap()), 1200);
   game.onPauseRequest = () => menus.pause();
   menus.title();
+  for (const m of modelErrors) game.hud.toast(m, 'warn', 8000);
 
   // 자동 테스트·디버그용 (주소 끝에 ?debug)
   if (new URLSearchParams(location.search).has('debug')) {
@@ -77,4 +86,4 @@ function boot() {
   }
 }
 
-boot();
+void boot();

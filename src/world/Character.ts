@@ -1,6 +1,8 @@
 // 기본 도형으로 만든 블록형 캐릭터 + 간단한 절차적 애니메이션(걷기·앉기·손들기·환호).
 import * as THREE from 'three';
 import { mergeChildrenByColor } from './merge';
+import { getModel } from './models';
+import { HumanCharacter } from './HumanCharacter';
 
 const SKIN_MAT = new THREE.MeshLambertMaterial({ vertexColors: true });
 
@@ -12,10 +14,12 @@ export interface Look {
   hairStyle: 'short' | 'long' | 'pony' | 'buzz' | 'bob';
   height: number; // 1 = 어린이 기준(약 1.35m)
   glasses?: boolean;
+  /** public/models/characters/<model>.glb 가 있으면 그 3D 모델을 쓴다 */
+  model?: string;
 }
 
 export const PLAYER_LOOKS: Look[] = [
-  { skin: 0xf5cfa8, hair: 0x2b1d14, shirt: 0xff8a5b, pants: 0x34495e, hairStyle: 'short', height: 1 },
+  { skin: 0xf5cfa8, hair: 0x2b1d14, shirt: 0x8a8d91, pants: 0x2b3c5c, hairStyle: 'short', height: 1, model: 'boy' },
   { skin: 0xf2c69b, hair: 0x3a2618, shirt: 0x5ab0ff, pants: 0x2d3142, hairStyle: 'bob', height: 1 },
   { skin: 0xe8b98d, hair: 0x1a1a1a, shirt: 0x7bd389, pants: 0x4a4e69, hairStyle: 'pony', height: 1 },
   { skin: 0xf7d6b5, hair: 0x4a3222, shirt: 0xc39bff, pants: 0x22223b, hairStyle: 'buzz', height: 1 },
@@ -179,4 +183,22 @@ export class Character {
     this.head.rotation.y += (yaw - this.head.rotation.y) * k;
     this.head.rotation.x += (pitch - this.head.rotation.x) * k;
   }
+}
+
+/** 블록 캐릭터와 GLB 캐릭터가 함께 따르는 모양 */
+export interface Avatar {
+  root: THREE.Group;
+  hand: THREE.Group;
+  pose: Pose;
+  readonly scale: number;
+  setPose(p: Pose): void;
+  update(dt: number, speed01?: number): void;
+  lookAt(target: THREE.Vector3 | null): void;
+  setHidden(h: boolean): void;
+}
+
+/** 모델이 준비돼 있으면 GLB 캐릭터, 아니면(불러오기 실패 포함) 블록 캐릭터 */
+export function createAvatar(look: Look): Avatar {
+  const g = look.model ? getModel(look.model) : undefined;
+  return g ? new HumanCharacter(g) : new Character(look);
 }

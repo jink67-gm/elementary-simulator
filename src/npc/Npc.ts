@@ -1,6 +1,6 @@
 // NPC: idle / walk / sit / 손들기 / 환호. 격자 A*로 걸어간다.
 import * as THREE from 'three';
-import { Character, type Look } from '../world/Character';
+import { createAvatar, type Avatar, type Look } from '../world/Character';
 import type { NavGrid, Pt } from '../world/NavGrid';
 import type { Seat } from '../world/SchoolMap';
 
@@ -11,7 +11,7 @@ export interface NpcDef {
 }
 
 export class Npc {
-  char: Character;
+  char: Avatar;
   pos = new THREE.Vector3();
   yaw = 0;
   path: Pt[] = [];
@@ -26,7 +26,7 @@ export class Npc {
   private bobT = Math.random() * 10;
 
   constructor(public def: NpcDef, private nav: NavGrid) {
-    this.char = new Character(def.look);
+    this.char = createAvatar(def.look);
     this.char.root.userData.npc = this;
   }
 
