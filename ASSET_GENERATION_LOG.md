@@ -18,3 +18,5 @@ AI로 만든 에셋마다 한 줄씩 남긴다. 실제 실행한 것만 적는�
 | 2026-11-12 | MakeHuman(CC0) 인체를 코드로 가공한 캐릭터 11종 (tools/character/build_character.py) | 뼈대·동작은 정상 동작, 게임 안 걷기·앉기·손들기 확인. 사용자 평가: 얼굴·체형이 기괴함 → 게임 적용 보류, assets/source/procedural 에 보관 |
 | 2026-11-12 | 무료 자동 리깅 (tools/character/rig_mesh.py)로 sam_3_3d 결과에 뼈대·동작 추가 | 걷기는 동작, 앉기에서 팔 늘어짐 문제 있음 (수정 필요) |
 
+| 2026-11-12 | Quaternius UBC를 어린이 체형으로 가공 + 옷을 텍스처에 칠하기 (tools/character/build_ubc.py, 10종 + 조리사) | 게임 안 걷기·앉기 확인. 사용자 평가: 「니가 만든 에셋은 도저히 못 쓰겠다」(캐릭터) → 블록 캐릭터로 되돌림, 모델 파일 미배포 |
+| 2026-11-12 | Poly Haven CC0 소품 14종 받아 가공 (tools/assets/fetch_polyhaven.mjs) | 교실 책상·의자(InstancedMesh)·가구·급식실 식탁·의자·국통 적용, 게임 화면 확인. 사용자: 가구는 유지 |

@@ -16,6 +16,7 @@ import { openPoster, STICKERS } from '../minigames/Poster';
 import { openFolding, openInfo, openRps, openSpeech, SPEECH_CARDS } from '../minigames/SmallGames';
 import { panelsOpen } from '../ui/Panel';
 import { wa } from '../ui/dom';
+import { CutletEvent } from './Cutlet';
 
 const never = () => new Promise<never>(() => {});
 const SPAWN = { x: 9, z: -11.8 };
@@ -40,7 +41,7 @@ export class Morning implements StoryHooks {
   t = 0;
   private token = 0;
   private waiters: { cond: () => boolean; res: () => void; token: number }[] = [];
-  private save!: SaveData;
+  save!: SaveData;
   private ambientT = 0;
   private props: Record<string, THREE.Object3D> = {};
   private inter: Record<string, Interactable> = {};
@@ -52,9 +53,12 @@ export class Morning implements StoryHooks {
   private softFired = false;
   onChapterEnd: (save: SaveData) => void = () => {};
 
-  constructor(private g: Game) {
+  cutlet: CutletEvent;
+
+  constructor(public g: Game) {
     this.buildProps();
     this.registerWorld();
+    this.cutlet = new CutletEvent(this);
   }
 
   // ───────────────────────── 도우미 ─────────────────────────
@@ -64,49 +68,49 @@ export class Morning implements StoryHooks {
   get flags() {
     return this.save.flags;
   }
-  private f(k: string) {
+  f(k: string) {
     return !!this.save.flags[k];
   }
-  private set(k: string, v = true) {
+  set(k: string, v = true) {
     this.save.flags[k] = v;
   }
-  private n(id: MainNpcId): Npc {
+  n(id: MainNpcId): Npc {
     return this.g.npcs[id];
   }
-  private L(who: MainNpcId | 'me' | 'ai' | 'narr' | 'cook', text: string, act?: () => void): Line {
+  L(who: MainNpcId | 'me' | 'ai' | 'narr' | 'cook', text: string, act?: () => void): Line {
     const name = who === 'me' ? this.me : who === 'ai' ? 'AI 방송' : who === 'narr' ? '' : who === 'cook' ? '조리사 선생님' : this.n(who).name;
     return { who: name, text, act };
   }
   /** 교시가 바뀌면 이전 교시의 대기는 영원히 멈춘다(취소). */
-  private guard<T>(p: Promise<T>): Promise<T> {
+  guard<T>(p: Promise<T>): Promise<T> {
     const tk = this.token;
     return p.then((v) => (tk === this.token ? v : never()));
   }
-  private say(lines: Line[]) {
+  say(lines: Line[]) {
     return this.guard(this.g.say(lines));
   }
-  private until(cond: () => boolean): Promise<void> {
+  until(cond: () => boolean): Promise<void> {
     if (cond()) return Promise.resolve();
     return new Promise((res) => this.waiters.push({ cond, res, token: this.token }));
   }
   /** 게임 시간으로 기다리기. 교시가 바뀌면 영원히 깨어나지 않는다(이전 교시 대본이 다시 움직이지 않게). */
-  private sleep(sec: number): Promise<void> {
+  sleep(sec: number): Promise<void> {
     const end = this.t + sec;
     return this.until(() => this.t >= end);
   }
-  private bark(id: MainNpcId, text: string, ms?: number) {
+  bark(id: MainNpcId, text: string, ms?: number) {
     this.g.bark(this.n(id), text, ms);
   }
-  private toast(text: string, kind: 'info' | 'good' | 'warn' = 'info') {
+  toast(text: string, kind: 'info' | 'good' | 'warn' = 'info') {
     this.g.hud.toast(text, kind);
   }
   private get seated() {
     return !!this.g.player.seat;
   }
-  private get students(): Npc[] {
+  get students(): Npc[] {
     return [this.n('minjae'), this.n('seoa'), this.n('junho'), this.n('harin')];
   }
-  private achievement(text: string) {
+  achievement(text: string) {
     this.g.sfx.success();
     this.toast('★ ' + text, 'good');
   }
@@ -175,8 +179,16 @@ export class Morning implements StoryHooks {
     for (let i = 0; i < 5; i++) this.show('classArt' + i, after('lunch') || (p === 'art' && this.phase === 'cleanup'));
     if (this.f('groupDone') && after('art')) this.applyGroupPoster();
     else this.g.map.objs.groupPoster.visible = false;
-    this.g.map.objs.giantCutlet.visible = p === 'lunch';
-    this.g.map.setCafeteriaDoor(0);
+    this.g.map.objs.giantCutlet.visible = p === 'lunch' || p === 'cutlet';
+    if (p !== 'cutlet') {
+      this.g.map.setCafeteriaDoor(0);
+      this.g.map.cafeteriaDoor.collider.enabled = true;
+      this.g.map.setBroadcastDoor(0);
+      this.g.map.objs.cutterGantry.visible = false;
+      this.g.map.objs.cutterPanel.visible = false;
+      this.g.map.objs.cutletStack.visible = false;
+      this.g.nav.rebuild(this.g.map.colliders, 0.3);
+    }
     this.g.map.objs.lockerDoor.rotation.y = 0;
     this.g.ball.mesh.visible = false;
     if (p === 'break' || p === 'lunch') this.g.ball.place(9, 3);
@@ -396,7 +408,20 @@ export class Morning implements StoryHooks {
       );
     }
     g.fillers.forEach((npc, i) =>
-      add({ id: 'filler:' + i, obj: npc.char.root, radius: 1.6, promptY: 1.6, noGlow: true, prompt: () => `${npc.name}에게 말 걸기`, onInteract: () => this.fillerTalk(npc, i) }, false),
+      add(
+        {
+          id: 'filler:' + i,
+          obj: npc.char.root,
+          radius: 1.6,
+          promptY: 1.6,
+          noGlow: true,
+          prompt: () => `${npc.name}에게 말 걸기`,
+          onInteract: () => this.fillerTalk(npc, i),
+          usePrompt: (item) => (this.period === 'cutlet' ? this.cutlet.servePrompt(npc, item) : null),
+          onUse: () => this.period === 'cutlet' && this.cutlet.serve(npc),
+        },
+        false,
+      ),
     );
   }
 
@@ -415,7 +440,7 @@ export class Morning implements StoryHooks {
     this.g.tpc.override = null;
     this.period = p;
     this.save.period = p;
-    this.save.scene = p === 'arrival' || p === 'lunch' ? 'hallway' : 'classroom';
+    this.save.scene = p === 'cutlet' ? 'cafeteria' : p === 'arrival' || p === 'lunch' ? 'hallway' : 'classroom';
     this.phase = '';
     this.t = 0;
     this.softFired = false;
@@ -449,6 +474,7 @@ export class Morning implements StoryHooks {
       case 'group': return ['3교시 모둠 활동', '우리 학교를 더 재미있게 바꾸는 방법'];
       case 'art': return ['4교시 미술', '종이비행기 / 미니 포스터'];
       case 'lunch': return ['점심시간', '맛있게 먹어요 :)'];
+      case 'cutlet': return ['점심시간', '…돈가스가 왜 저래?'];
     }
   }
 
@@ -461,6 +487,7 @@ export class Morning implements StoryHooks {
       case 'group': return this.group();
       case 'art': return this.art();
       case 'lunch': return this.lunch();
+      case 'cutlet': return; // CutletEvent.begin()이 placeCast에서 시작
     }
   }
 
@@ -500,10 +527,12 @@ export class Morning implements StoryHooks {
       this.ambientT = 6 + Math.random() * 5;
       this.ambient();
     }
+    if (this.period === 'cutlet') this.cutlet.hint(this.t);
     if (this.period === 'break') this.g.hud.setTimer(Math.max(0, SCHEDULE.break.softLimitSec - this.t));
   }
 
   requiredItems(): ItemId[] {
+    if (this.period === 'cutlet') return this.cutlet.requiredItems();
     const out: ItemId[] = [];
     if (this.period === 'arrival') {
       if (!this.f('bagOnDesk')) out.push('bag');
@@ -514,6 +543,11 @@ export class Morning implements StoryHooks {
   }
 
   helpReturnToSeat() {
+    if (this.period === 'cutlet') {
+      this.g.player.teleport(9, 17.2, 0);
+      this.g.tpc.behind(this.g.player.yaw);
+      return;
+    }
     if (this.period === 'arrival' || this.period === 'lunch') {
       this.g.player.teleport(8.6, -4.6, -Math.PI / 2);
       this.g.tpc.behind(this.g.player.yaw);
@@ -521,6 +555,7 @@ export class Morning implements StoryHooks {
   }
 
   canPickup(id: ItemId, key: string): string | null {
+    if (this.period === 'cutlet') return this.cutlet.canPickup(id, key);
     if (key.startsWith('role') && this.phase !== 'pickRole') return '(모둠 친구들이 다 모이면 고르자)';
     if ((key === 'stack' || key === 'stack2') && this.f('pickedArt')) return '(재료는 하나만!)';
     void id;
@@ -528,12 +563,17 @@ export class Morning implements StoryHooks {
   }
 
   onPickup(id: ItemId, key: string) {
+    if (this.period === 'cutlet') return this.cutlet.onPickup(id, key);
     if (id === 'pencilCase') {
       this.set('foundPencil');
       this.toast('파란 필통을 주웠어요. 이름표에 「준호」라고 써 있다!');
     }
     if (key.startsWith('role')) void this.chooseRole(id);
     if (key === 'stack' || key === 'stack2') this.set('pickedArt');
+  }
+
+  onDropped(id: ItemId, key: string) {
+    if (this.period === 'cutlet') this.cutlet.onDropped(id, key);
   }
 
   onPlaneLanded(dist: number, hitWall: boolean) {
@@ -551,6 +591,7 @@ export class Morning implements StoryHooks {
 
   private async onSoftLimit() {
     const p = this.period;
+    if (p === 'cutlet') return this.cutlet.onSoftLimit();
     if (p === 'arrival') {
       await this.say([this.L('teacher', '자, 종 쳤어요~ 다들 자리에 앉자!')]);
       this.autoArrival();
@@ -577,6 +618,13 @@ export class Morning implements StoryHooks {
     const teacher = this.n('teacher');
     const seatOrWalk = (n: Npc, key: string) => (fromLoad || p === 'arrival' ? n.sitAt(seats[key]) : void n.walkToSeat(seats[key]));
     teacher.char.root.visible = true;
+    const cook = this.n('cook');
+    cook.char.root.visible = p === 'lunch' || p === 'cutlet';
+    cook.place(9.6, 26.45, Math.PI);
+    if (p === 'cutlet') {
+      this.cutlet.begin(fromLoad);
+      return;
+    }
     // 플레이어
     if (fromLoad) {
       if (p === 'arrival') {
@@ -1232,10 +1280,9 @@ export class Morning implements StoryHooks {
       this.L('cook', '이걸 어떻게 학생들한테 나눠 주니?!'),
       this.L('teacher', '어… 다들 침착하게! 일단 줄 서요!'),
     ]);
-    this.set('chapter1Done');
-    this.save.chapter = 2;
-    g.checkpoint();
-    this.onChapterEnd(this.save);
+    g.cutscene = false;
+    g.tpc.override = null;
+    this.enterPeriod('cutlet', false);
   }
 
   /** 1장 결과 요약 (엔딩 카드용) */
@@ -1256,6 +1303,7 @@ export class Morning implements StoryHooks {
     if (this.f('foundAIManual')) out.push('🔎 단서: 「소원은 문자 그대로 처리됩니다」');
     if (this.f('crafted')) out.push(`🎨 미술: ${this.f('artPlane') ? '종이비행기' : '미니 포스터'}${this.f('exhibited') ? ' (게시판 전시)' : ''}`);
     if (this.f('returnedGlue')) out.push('🤝 빌린 풀을 돌려줌');
+    out.push(...this.cutlet.recap());
     return out;
   }
 
@@ -1304,6 +1352,7 @@ export class Morning implements StoryHooks {
 
   // ───────────────────────── NPC 대화 ─────────────────────────
   private givePrompt(id: MainNpcId, item: ItemId): string | null {
+    if (this.period === 'cutlet') return this.cutlet.servePrompt(this.n(id), item);
     if (id === 'junho' && item === 'pencilCase') return '필통 돌려주기';
     if (id === 'seoa' && item === 'charger' && this.period === 'math' && !this.f('helpedDevice')) return '충전기 빌려주기';
     if (id === 'harin' && item === 'glue') return '풀 돌려주기';
@@ -1313,6 +1362,7 @@ export class Morning implements StoryHooks {
 
   private give(id: MainNpcId, item: ItemId) {
     const g = this.g;
+    if (this.period === 'cutlet') return this.cutlet.serve(this.n(id));
     if (id === 'junho' && item === 'pencilCase') {
       g.take('pencilCase');
       this.set('pencilReturned');
@@ -1333,6 +1383,7 @@ export class Morning implements StoryHooks {
   }
 
   private async talk(id: MainNpcId) {
+    if (this.cutlet.talk(id)) return;
     const n = this.n(id);
     const c = n.talkCount++;
     const p = this.period;
@@ -1423,6 +1474,7 @@ export class Morning implements StoryHooks {
   }
 
   private fillerTalk(npc: Npc, i: number) {
+    if (this.cutlet.fillerTalk(i)) return;
     const lines = ['안녕!', '숙제 보여 줄 수 있어? …농담이야.', '어제 그 영상 봤어? 고양이가 피아노 치는 거.', '배고파…', '오늘 급식 돈가스래!', '나 연필 깎으러 가야 돼.'];
     this.g.bark(npc, lines[(i + npc.talkCount++) % lines.length]);
   }

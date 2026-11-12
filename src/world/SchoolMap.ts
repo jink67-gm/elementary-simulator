@@ -1,9 +1,11 @@
-// 학교 맵: 6학년 3반 교실 + 중앙 복도 + 급식실 입구. 모든 모델은 기본 도형(외부 에셋 없음).
+// 학교 맵: 6학년 3반 교실 + 중앙 복도 + 급식실 입구.
+// 책상·의자·가구는 Poly Haven(CC0) 모델을 쓰고, 모델을 못 불러오면 기본 도형으로 대신한다.
 import * as THREE from 'three';
 import { aabb, type Aabb } from './Collision';
 import { CanvasTex, font, wrapText } from './canvasTex';
 import { mergeStatic } from './merge';
 import type { PosterTheme } from '../core/SaveData';
+import { hasProp, placeInstances, placeOne, type Fit, type Placement } from './props';
 
 export interface Seat {
   x: number;
@@ -14,6 +16,10 @@ export interface Seat {
 }
 
 const WALL_H = 3;
+/** 거대 돈가스 판 크기 (미터) */
+export const CUTLET_W = 5.2;
+export const CUTLET_D = 2.8;
+export const CUTLET_H = 0.2;
 const DESK_ROWS = [-3, -1.3, 0.4, 2.1];
 const PAIR_X = [-4.2, 0, 4.2];
 
@@ -41,11 +47,32 @@ export class SchoolMap {
   clockTex = new CanvasTex(256, 256);
   posterTex = new CanvasTex(512, 384);
   private matCache = new Map<number, THREE.MeshLambertMaterial>();
+  private crumbMat: THREE.MeshLambertMaterial | null = null;
+  private machineScreen!: CanvasTex;
+  broadcastDoor!: Aabb;
+
+  /** 소품 모델 여러 개 놓기. 모델이 없으면 false */
+  private props(id: string, places: Placement[], fit: Fit): boolean {
+    const g = placeInstances(id, places, fit);
+    if (!g) return false;
+    this.root.add(g);
+    return true;
+  }
+  /** 소품 모델 하나를 parent 안에 놓기. 모델이 없으면 false */
+  private prop(id: string, parent: THREE.Object3D, fit: Fit, x = 0, y = 0, z = 0, ry = 0): boolean {
+    const g = placeOne(id, fit);
+    if (!g) return false;
+    g.position.set(x, y, z);
+    g.rotation.y = ry;
+    parent.add(g);
+    return true;
+  }
 
   constructor() {
     this.buildClassroom();
     this.buildHallway();
     this.buildCafeteria();
+    this.buildBroadcastRoom();
     this.setBoard(['6학년 3반', '오늘도 무사히!']);
     this.setClock(8 * 60 + 40);
     this.optimize();
@@ -157,11 +184,13 @@ export class SchoolMap {
     const tdesk = new THREE.Group();
     tdesk.position.set(-4.6, 0, -4.7);
     this.root.add(tdesk);
-    this.box(1.5, 0.08, 0.75, 0xb98b5e, 0, 0.72, 0, { parent: tdesk });
-    this.box(0.5, 0.72, 0.7, 0xa57a50, -0.45, 0, 0, { parent: tdesk });
+    if (!this.prop('metal_office_desk', tdesk, { w: 1.5, h: 0.78, d: 0.75 }, 0, 0, 0, Math.PI)) {
+      this.box(1.5, 0.08, 0.75, 0xb98b5e, 0, 0.72, 0, { parent: tdesk });
+      this.box(0.5, 0.72, 0.7, 0xa57a50, -0.45, 0, 0, { parent: tdesk });
+    }
     const drawer = this.box(0.44, 0.18, 0.04, 0xd0a674, -0.45, 0.45, 0.37, { parent: tdesk, ownMat: true });
     this.objs.teacherDrawer = drawer;
-    this.box(0.25, 0.3, 0.02, 0x222222, 0.3, 0.8, -0.2, { parent: tdesk }); // 모니터
+    if (!this.prop('classic_laptop', tdesk, { w: 0.36 }, 0.3, 0.78, -0.05)) this.box(0.25, 0.3, 0.02, 0x222222, 0.3, 0.8, -0.2, { parent: tdesk }); // 모니터
     this.colliders.push(aabb(-4.6, -4.7, 1.5, 0.75));
     this.objs.teacherDesk = tdesk;
 
@@ -194,6 +223,8 @@ export class SchoolMap {
 
     // 학생 책상 24개 (짝꿍 두 명씩)
     const deskTop = this.mat(C.desk);
+    const modelDesks = hasProp('SchoolDesk_01') && hasProp('SchoolChair_01');
+    const deskPlaces: Placement[] = [];
     for (const rz of DESK_ROWS) {
       for (const px of PAIR_X) {
         for (const side of [-1, 1]) {
@@ -201,6 +232,9 @@ export class SchoolMap {
           const g = new THREE.Group();
           g.position.set(sx, 0, rz);
           this.root.add(g);
+          if (modelDesks) {
+            deskPlaces.push({ x: sx, z: rz });
+          } else {
           const top = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.05, 0.48), deskTop);
           top.position.y = 0.62;
           top.castShadow = top.receiveShadow = true;
@@ -210,12 +244,17 @@ export class SchoolMap {
           this.box(0.4, 0.04, 0.38, C.chair, 0, 0.3, 0.45, { parent: g });
           this.box(0.4, 0.38, 0.04, C.chair, 0, 0.34, 0.64, { parent: g });
           for (const [lx, lz] of [[-0.17, 0.3], [0.17, 0.3], [-0.17, 0.6], [0.17, 0.6]]) this.box(0.03, 0.3, 0.03, C.deskLeg, lx, 0, lz, { parent: g });
+          }
           const key = `${px}_${rz}_${side}`;
           this.seats[key] = { x: sx, z: rz + 0.45, yaw: Math.PI, deskX: sx, deskZ: rz };
           this.objs['desk_' + key] = g;
         }
         this.colliders.push(aabb(px, rz, 1.45, 0.5, 'desk'));
       }
+    }
+    if (modelDesks) {
+      this.props('SchoolDesk_01', deskPlaces, { w: 0.68, h: 0.66, d: 0.48 });
+      this.props('SchoolChair_01', deskPlaces.map((p) => ({ x: p.x, z: p.z + 0.5 })), { w: 0.4, h: 0.78, d: 0.42, backToPlusZ: true });
     }
     const S = (px: number, ri: number, side: number) => this.seats[`${px}_${DESK_ROWS[ri]}_${side}`];
     this.seats.player = S(0, 2, -1);
@@ -242,9 +281,10 @@ export class SchoolMap {
     const shelf = new THREE.Group();
     shelf.position.set(-6.7, 0, -0.6);
     this.root.add(shelf);
-    this.box(0.45, 1.1, 2.2, 0xa0784e, 0, 0, 0, { parent: shelf });
+    const shelfModel = this.prop('Shelf_01', shelf, { w: 1.1, h: 1.6, d: 0.4 }, 0.02, 0, -0.55, Math.PI / 2) && this.prop('Shelf_01', shelf, { w: 1.1, h: 1.6, d: 0.4 }, 0.02, 0, 0.55, Math.PI / 2);
+    if (!shelfModel) this.box(0.45, 1.1, 2.2, 0xa0784e, 0, 0, 0, { parent: shelf });
     const bookColors = [0xe76f51, 0x2a9d8f, 0xe9c46a, 0x264653, 0xf4a261, 0x8ab17d, 0x9d4edd];
-    for (let i = 0; i < 16; i++) this.box(0.3, 0.3, 0.09, bookColors[i % bookColors.length], 0.06, i < 8 ? 0.1 : 0.6, -0.95 + (i % 8) * 0.26, { parent: shelf, shadow: false });
+    if (!shelfModel) for (let i = 0; i < 16; i++) this.box(0.3, 0.3, 0.09, bookColors[i % bookColors.length], 0.06, i < 8 ? 0.1 : 0.6, -0.95 + (i % 8) * 0.26, { parent: shelf, shadow: false });
     this.colliders.push(aabb(-6.7, -0.6, 0.45, 2.2));
     this.objs.bookshelf = shelf;
 
@@ -297,7 +337,7 @@ export class SchoolMap {
     const cab = new THREE.Group();
     cab.position.set(-6.5, 0, 4.6);
     this.root.add(cab);
-    this.box(0.8, 1.0, 1.9, 0x7fb069, 0, 0, 0, { parent: cab });
+    if (!this.prop('painted_wooden_cabinet', cab, { w: 1.9, h: 1.0, d: 0.8 }, 0, 0, 0, Math.PI / 2)) this.box(0.8, 1.0, 1.9, 0x7fb069, 0, 0, 0, { parent: cab });
     const binColors = [0xe85d75, 0xf5d547, 0x58c4f6];
     ['binCut', 'binStick', 'binPaper'].forEach((name, i) => {
       const b = new THREE.Group();
@@ -313,8 +353,11 @@ export class SchoolMap {
     const trash = new THREE.Group();
     trash.position.set(6.4, 0, 3.2);
     this.root.add(trash);
-    this.box(0.45, 0.7, 0.45, 0x8d99ae, 0, 0, -0.3, { parent: trash });
-    this.box(0.45, 0.7, 0.45, 0x4ea8de, 0, 0, 0.3, { parent: trash, ownMat: true });
+    const trashModel = this.prop('metal_trash_can', trash, { w: 1.1, h: 0.75, d: 0.45 }, 0, 0, 0, Math.PI / 2);
+    if (!trashModel) this.box(0.45, 0.7, 0.45, 0x8d99ae, 0, 0, -0.3, { parent: trash });
+    this.prop('plastic_broom', this.root, { h: 1.1 }, 6.85, 0, 4.3, -Math.PI / 2);
+    this.prop('dustpan', this.root, { w: 0.3 }, 6.6, 0, 4.1, -Math.PI / 2);
+    if (!trashModel) this.box(0.45, 0.7, 0.45, 0x4ea8de, 0, 0, 0.3, { parent: trash, ownMat: true });
     this.colliders.push(aabb(6.4, 3.2, 0.5, 1.1));
     this.objs.trash = trash;
 
@@ -338,12 +381,13 @@ export class SchoolMap {
     stripe.position.set(9, 0.003, 0);
     this.root.add(stripe);
 
-    this.wallX(11.1, -16, 16);
+    this.wallX(11.1, -16, 3.9);
+    this.wallX(11.1, 5.1, 16);
     this.wallX(7.1, -16, -6.2);
     this.wallX(7.1, 7.2, 16);
     this.wallZ(-16.1, 7, 11);
-    this.wallZ(16.1, 4.8, 8);
-    this.wallZ(16.1, 10, 13.2);
+    this.wallZ(16.1, 2.9, 8);
+    this.wallZ(16.1, 10, 15.1);
     this.box(2, 0.8, 0.2, C.wall, 9, 2.2, 16.1);
 
     // 문 장식 (잠긴 문들)
@@ -427,71 +471,295 @@ export class SchoolMap {
     this.box(0.3, 0.2, 0.05, 0x4ea8de, 7.45, 0.85, 10.29, { shadow: false });
   }
 
+  /** 급식실 (x 2.9~15.1, z 16.1~27) + 조리 창고 + 배식대 + 거대 돈가스 식탁 + 친구들 식탁 */
   private buildCafeteria() {
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(8.2, 10), new THREE.MeshLambertMaterial({ color: 0xcfe1e8 }));
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(9, 0.001, 21);
-    this.root.add(floor);
-    this.wallX(4.9, 16, 26);
-    this.wallX(13.1, 16, 26);
-    this.wallZ(26.1, 4.8, 13.2);
-    // 배식대 (스테인리스)
-    this.box(6, 0.9, 0.8, 0xbfc5cc, 9, 0, 24.5, { collide: true });
-    for (let i = 0; i < 5; i++) this.box(0.6, 0.12, 0.5, 0x9aa3ad, 6.6 + i * 1.2, 0.9, 24.5);
-    for (const tx of [6.8, 11.2]) for (const tz of [18.5, 21]) this.box(1.8, 0.7, 0.9, 0xf2e8cf, tx, 0, tz, { collide: true });
-    // 거대 돈가스를 올려 둔 긴 식탁
-    this.box(5.6, 0.7, 3.4, 0xe9dcc0, 9, 0, 20.4, { collide: true });
-
-    // 거대 돈가스 (점심 전환 때 보인다)
-    const cutlet = new THREE.Group();
-    cutlet.position.set(9, 0.72, 20.4);
-    const crumbTex = new CanvasTex(256, 256);
-    crumbTex.draw((c, w, h) => {
-      c.fillStyle = '#c8803a';
-      c.fillRect(0, 0, w, h);
-      for (let i = 0; i < 900; i++) {
-        c.fillStyle = ['#e0a458', '#a8642a', '#f2c078', '#b87333'][i % 4];
-        c.fillRect(Math.random() * w, Math.random() * h, 3 + Math.random() * 5, 3 + Math.random() * 5);
-      }
+    const floorTex = new CanvasTex(256, 256);
+    floorTex.draw((c) => {
+      for (let y = 0; y < 4; y++)
+        for (let x = 0; x < 4; x++) {
+          c.fillStyle = (x + y) % 2 ? '#d7e8ee' : '#c6dde6';
+          c.fillRect(x * 64, y * 64, 64, 64);
+          c.strokeStyle = '#b3cbd4';
+          c.strokeRect(x * 64 + 0.5, y * 64 + 0.5, 63, 63);
+        }
     });
-    crumbTex.tex.wrapS = crumbTex.tex.wrapT = THREE.RepeatWrapping;
-    crumbTex.tex.repeat.set(3, 3);
-    const geo = new THREE.CylinderGeometry(1, 1, 0.55, 28);
-    geo.scale(3.3, 1, 2.1);
-    const meat = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ map: crumbTex.tex }));
-    meat.position.y = 0.3;
-    meat.castShadow = true;
-    cutlet.add(meat);
-    const plate = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.08, 28).scale(3.7, 1, 2.5), this.mat(0xf8f9fa));
+    floorTex.tex.wrapS = floorTex.tex.wrapT = THREE.RepeatWrapping;
+    floorTex.tex.repeat.set(6, 5.5);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(12.2, 11), new THREE.MeshLambertMaterial({ map: floorTex.tex }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(9, 0.001, 21.5);
+    floor.receiveShadow = true;
+    this.root.add(floor);
+    this.wallX(2.9, 16.1, 27);
+    this.wallX(15.1, 16.1, 27);
+    this.wallZ(27.1, 2.9, 15.1);
+
+    // 조리 창고 (서쪽 뒤)
+    this.wallZ(23.5, 2.9, 4.0);
+    this.wallX(5.6, 23.5, 27);
+    this.sign('조리 창고', 4.8, 2.3, 23.38, Math.PI, '#577590');
+    const shelf = new THREE.Group();
+    shelf.position.set(3.15, 0, 25.0);
+    this.root.add(shelf);
+    if (!this.prop('Shelf_01', shelf, { w: 1.6, h: 1.6, d: 0.45 }, 0, 0, 0, Math.PI / 2)) this.box(0.45, 1.6, 1.6, 0xa0a8b0, 0, 0, 0, { parent: shelf });
+    this.colliders.push(aabb(3.15, 25.0, 0.5, 1.6));
+    this.objs.storageShelf = shelf;
+    // 음식 크기 조절기 (구석 단말기)
+    const mach = new THREE.Group();
+    mach.position.set(3.7, 0, 26.6);
+    this.root.add(mach);
+    this.box(0.9, 1.35, 0.5, 0x8d99ae, 0, 0, 0, { parent: mach, ownMat: true });
+    const screen = new CanvasTex(256, 160);
+    screen.draw((c, w, h) => {
+      c.fillStyle = '#10261c';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#7cfc8a';
+      c.font = font(30, true);
+      c.textAlign = 'center';
+      c.fillText('크기 조절기', w / 2, 60);
+      c.font = font(40, true);
+      c.fillText('1000%', w / 2, 120);
+    });
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.375), screen.material());
+    scr.position.set(0, 1.05, -0.26);
+    scr.rotation.y = Math.PI;
+    mach.add(scr);
+    for (const [i, col] of [0xe63946, 0x1d71d2, 0xffc300].entries()) this.box(0.06, 0.4, 0.04, col, -0.2 + i * 0.2, 0.3, -0.27, { parent: mach, shadow: false });
+    this.colliders.push(aabb(3.7, 26.6, 0.9, 0.5));
+    this.objs.sizeMachine = mach;
+    this.machineScreen = screen;
+    // 접이식 테이블 더미 (축제용)
+    const fold = new THREE.Group();
+    fold.position.set(5.0, 0, 26.5);
+    this.root.add(fold);
+    for (let i = 0; i < 4; i++) {
+      const t = this.box(1.2, 0.05, 0.6, 0xe9e4d4, 0, 0.05 + i * 0.07, 0, { parent: fold, shadow: false });
+      t.rotation.y = 0.04 * (i % 2 ? 1 : -1);
+    }
+    this.colliders.push(aabb(5.0, 26.5, 1.2, 0.6));
+    this.objs.foldStack = fold;
+
+    // 배식대 + 국통
+    this.box(6, 0.9, 0.8, 0xbfc5cc, 9.6, 0, 25.6, { collide: true });
+    this.box(6, 0.05, 0.9, 0xdfe3e8, 9.6, 0.9, 25.6, { shadow: false });
+    this.box(6.2, 0.06, 0.06, 0x9aa3ad, 9.6, 1.3, 25.2, { shadow: false }); // 손잡이 봉
+    const pots = new THREE.Group();
+    this.root.add(pots);
+    for (let i = 0; i < 3; i++) if (!this.prop('pot_enamel_01', pots, { w: 0.6 }, 7.6 + i * 1.6, 0.95, 25.7)) this.box(0.5, 0.35, 0.5, 0xf2f2f2, 7.6 + i * 1.6, 0.95, 25.7, { parent: pots });
+    this.prop('brass_pan_01', this.root, { w: 0.5 }, 12.2, 0.95, 25.8, 0.4);
+    // 원래 크기로 돌아온 돈가스 더미 (크기 조절기 성공 시)
+    const stack = new THREE.Group();
+    stack.position.set(9.6, 0.95, 25.65);
+    const crumbMat = this.crumbMaterial();
+    for (let i = 0; i < 14; i++) {
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.035, 12).scale(1.3, 1, 0.9), crumbMat);
+      c.position.set(((i * 37) % 7) * 0.12 - 0.36, 0.02 + Math.floor(i / 7) * 0.04, ((i * 11) % 3) * 0.12 - 0.12);
+      c.rotation.y = i;
+      stack.add(c);
+    }
+    stack.visible = false;
+    this.root.add(stack);
+    this.objs.cutletStack = stack;
+    // 식판 수레 (배식대 동쪽)
+    const cart = new THREE.Group();
+    cart.position.set(13.9, 0, 25.6);
+    this.root.add(cart);
+    this.box(0.7, 0.75, 0.6, 0x9aa3ad, 0, 0, 0, { parent: cart });
+    for (let i = 0; i < 6; i++) this.box(0.42, 0.03, 0.32, 0xd7dde3, 0, 0.75 + i * 0.035, 0, { parent: cart, shadow: false });
+    this.colliders.push(aabb(13.9, 25.6, 0.7, 0.6));
+    this.objs.trayCart = cart;
+
+    // 거대 돈가스 식탁
+    this.box(5.6, 0.72, 3.4, 0xe9dcc0, 9, 0, 21.0, { collide: true });
+    const cutlet = new THREE.Group();
+    cutlet.position.set(9, 0.72, 21.0);
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.05, 3.25), this.mat(0xf8f9fa));
+    plate.position.y = 0.025;
+    plate.receiveShadow = true;
     cutlet.add(plate);
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(CUTLET_W, CUTLET_H, CUTLET_D), crumbMat);
+    slab.position.y = 0.05 + CUTLET_H / 2;
+    slab.castShadow = true;
+    slab.name = 'slab';
+    cutlet.add(slab);
     cutlet.visible = false;
     this.root.add(cutlet);
     this.objs.giantCutlet = cutlet;
+    // 안전 절단기 (식탁 위를 지나가는 노란 문틀 모양. 칼날은 덮개 안)
+    const gantry = new THREE.Group();
+    gantry.position.set(9, 0.72, 21.0);
+    const yel = 0xffc300;
+    this.box(0.12, 0.9, 0.12, yel, 0, 0, -1.75, { parent: gantry, ownMat: true });
+    this.box(0.12, 0.9, 0.12, yel, 0, 0, 1.75, { parent: gantry });
+    this.box(0.2, 0.14, 3.6, yel, 0, 0.9, 0, { parent: gantry });
+    this.box(0.3, 0.3, 0.4, 0x495057, 0, 0.62, 0, { parent: gantry });
+    gantry.visible = false;
+    this.root.add(gantry);
+    this.objs.cutterGantry = gantry;
+    const panel = new THREE.Group();
+    panel.position.set(12.25, 0, 22.3);
+    this.box(0.35, 1.0, 0.35, 0x495057, 0, 0, 0, { parent: panel });
+    this.box(0.5, 0.06, 0.4, 0xffc300, 0, 1.0, 0, { parent: panel, ownMat: true });
+    this.box(0.12, 0.04, 0.12, 0xe63946, 0.1, 1.06, 0, { parent: panel, shadow: false });
+    panel.visible = false;
+    this.root.add(panel);
+    this.objs.cutterPanel = panel;
 
-    // 급식실 문 (미닫이) — Phase 1에서는 열려도 들어갈 수 없다
+    // 친구들 식탁 두 개 + 의자 여섯
+    const tables: [number, number][] = [[4.9, 17.6], [13.1, 17.6]];
+    const tablesOk = this.props('dining_table', tables.map(([x, z]) => ({ x, z })), { w: 2.2, h: 0.74, d: 1.2 });
+    tables.forEach(([x, z], i) => {
+      if (!tablesOk) this.box(2.2, 0.74, 1.2, 0xf2e8cf, x, 0, z);
+      this.colliders.push(aabb(x, z, 2.2, 1.2));
+      const anchor = new THREE.Object3D();
+      anchor.position.set(x, 0.74, z);
+      this.root.add(anchor);
+      this.objs['dinerTable' + i] = anchor;
+    });
+    const diner: [number, number, number, number, number][] = [
+      // 의자 x, z, 바라보는 방향, 식판 x, z
+      [4.3, 18.75, Math.PI, 4.3, 17.95],
+      [5.5, 18.75, Math.PI, 5.5, 17.95],
+      [3.35, 17.6, Math.PI / 2, 3.95, 17.6],
+      [12.5, 18.75, Math.PI, 12.5, 17.95],
+      [13.7, 18.75, Math.PI, 13.7, 17.95],
+      [14.65, 17.6, -Math.PI / 2, 14.05, 17.6],
+    ];
+    diner.forEach(([x, z, yaw, tx, tz], i) => (this.seats['diner' + i] = { x, z, yaw, deskX: tx, deskZ: tz }));
+    const chairs: Placement[] = diner.map(([x, z, yaw]) => ({ x: x + Math.sin(yaw + Math.PI) * 0.05, z: z + Math.cos(yaw + Math.PI) * 0.05, ry: yaw - Math.PI }));
+    if (!this.props('plastic_monobloc_chair_01', chairs, { w: 0.46, h: 0.8, d: 0.46, backToPlusZ: true }))
+      for (const c of chairs) this.box(0.42, 0.42, 0.42, 0x4ea8de, c.x, 0, c.z, { shadow: false });
+
+    // 미끄럼 주의 (배식대 앞)
+    this.prop('WetFloorSign_01', this.root, { h: 0.6 }, 7.0, 0, 24.3, 0.5);
+
+    // 급식실 문 (미닫이)
     const doorMesh = this.box(2, 2.2, 0.08, 0xd9d9d9, 9, 0, 16.05, { ownMat: true });
     const window = this.box(1.2, 0.5, 0.09, 0x9ad0ec, 9, 1.4, 16.05, { ownMat: true, shadow: false });
     const g = new THREE.Group();
     this.root.remove(doorMesh, window);
     g.add(doorMesh, window);
     this.root.add(g);
-    const sign = new CanvasTex(256, 64);
-    sign.draw((c, w, h) => {
-      c.fillStyle = '#e76f51';
-      c.fillRect(0, 0, w, h);
-      c.fillStyle = '#fff';
-      c.font = font(34, true);
-      c.textAlign = 'center';
-      c.fillText('급식실', w / 2, 45);
-    });
-    const s = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.22), sign.material());
-    s.position.set(9, 2.45, 15.98);
-    s.rotation.y = Math.PI;
-    this.root.add(s);
+    this.sign('급식실', 9, 2.45, 15.98, Math.PI, '#e76f51');
     const collider = aabb(9, 16.1, 2, 0.3);
     this.colliders.push(collider);
     this.cafeteriaDoor = { mesh: g, collider, open: 0 };
     this.objs.cafeteriaDoor = g;
+  }
+
+  /** 방송실 (복도 동쪽, x 11.1~14.7, z 2.5~6.5). 사건 1 축제 경로에서 열린다 */
+  private buildBroadcastRoom() {
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(3.6, 4), new THREE.MeshLambertMaterial({ color: 0xcdbfa8 }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(12.9, 0.001, 4.5);
+    this.root.add(floor);
+    this.wallZ(2.5, 11.1, 14.8);
+    this.wallZ(6.5, 11.1, 14.8);
+    this.wallX(14.8, 2.5, 6.5);
+    // 마이크 책상
+    const desk = new THREE.Group();
+    desk.position.set(14.1, 0, 4.5);
+    this.root.add(desk);
+    if (!this.prop('metal_office_desk', desk, { w: 1.4, h: 0.76, d: 0.7 }, 0, 0, 0, Math.PI / 2)) this.box(0.7, 0.76, 1.4, 0x8d99ae, 0, 0, 0, { parent: desk });
+    this.prop('classic_laptop', desk, { w: 0.34 }, 0.05, 0.76, 0.4, -Math.PI / 2);
+    this.colliders.push(aabb(14.1, 4.5, 0.7, 1.4));
+    const mic = new THREE.Group();
+    mic.position.set(13.95, 0.76, 4.3);
+    this.root.add(mic);
+    this.box(0.14, 0.03, 0.14, 0x343a40, 0, 0, 0, { parent: mic, ownMat: true });
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.3, 8), this.mat(0x343a40));
+    stem.position.y = 0.15;
+    stem.rotation.z = 0.3;
+    mic.add(stem);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), this.mat(0x6c757d));
+    head.position.set(-0.05, 0.3, 0);
+    mic.add(head);
+    this.objs.mic = mic;
+    // ON AIR 등
+    const onAir = new CanvasTex(256, 80);
+    onAir.draw((c, w, h) => {
+      c.fillStyle = '#5c1a1a';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#ff6b6b';
+      c.font = font(44, true);
+      c.textAlign = 'center';
+      c.fillText('ON AIR', w / 2, 56);
+    });
+    const air = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.22), onAir.material());
+    air.position.set(14.68, 2.2, 4.5);
+    air.rotation.y = -Math.PI / 2;
+    this.root.add(air);
+    this.objs.onAir = air;
+    // 문틀 위 벽 + 문 충돌 (잠겨 있을 때)
+    this.box(0.2, 0.8, 1.2, C.wall, 11.1, 2.2, 4.5);
+    this.broadcastDoor = aabb(11.1, 4.5, 0.3, 1.2);
+    this.colliders.push(this.broadcastDoor);
+  }
+
+  private sign(text: string, x: number, y: number, z: number, ry: number, bg: string) {
+    const t = new CanvasTex(256, 64);
+    t.draw((c, w, h) => {
+      c.fillStyle = bg;
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#fff';
+      c.font = font(32, true);
+      c.textAlign = 'center';
+      c.fillText(text, w / 2, 44);
+    });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.22), t.material());
+    m.position.set(x, y, z);
+    m.rotation.y = ry;
+    this.root.add(m);
+    return m;
+  }
+
+  private crumbMaterial() {
+    if (this.crumbMat) return this.crumbMat;
+    const crumbTex = new CanvasTex(256, 256);
+    crumbTex.draw((c, w, h) => {
+      c.fillStyle = '#c8803a';
+      c.fillRect(0, 0, w, h);
+      let seed = 7;
+      const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+      for (let i = 0; i < 900; i++) {
+        c.fillStyle = ['#e0a458', '#a8642a', '#f2c078', '#b87333'][i % 4];
+        c.fillRect(rnd() * w, rnd() * h, 3 + rnd() * 5, 3 + rnd() * 5);
+      }
+    });
+    crumbTex.tex.wrapS = crumbTex.tex.wrapT = THREE.RepeatWrapping;
+    crumbTex.tex.repeat.set(2, 2);
+    this.crumbMat = new THREE.MeshLambertMaterial({ map: crumbTex.tex });
+    return this.crumbMat;
+  }
+
+  /** 미리 잘라 둔 돈가스 조각 모양 (판 크기 비율로) */
+  cutletPieceMesh(cols: number, half: boolean): THREE.Mesh {
+    const w = (cols / 12) * CUTLET_W - 0.04;
+    const d = (half ? CUTLET_D / 2 : CUTLET_D) - 0.04;
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, CUTLET_H, d), this.crumbMaterial());
+    m.castShadow = true;
+    return m;
+  }
+
+  /** 크기 조절기 화면 숫자 */
+  setMachineScreen(text: string, color = '#7cfc8a') {
+    this.machineScreen.draw((c, w, h) => {
+      c.fillStyle = '#10261c';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = color;
+      c.font = font(30, true);
+      c.textAlign = 'center';
+      c.fillText('크기 조절기', w / 2, 60);
+      c.font = font(40, true);
+      c.fillText(text, w / 2, 120);
+    });
+  }
+
+  /** 방송실 문 열림 0~1 */
+  setBroadcastDoor(t: number) {
+    const d = this.objs.doorBroadcast;
+    d.position.z = 4.5 + t * 1.25;
+    this.broadcastDoor.enabled = t < 0.5;
   }
 
   /** 문 열림 정도 0~1 (시각만; 충돌은 따로) */

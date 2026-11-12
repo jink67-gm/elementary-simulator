@@ -24,7 +24,11 @@ await new Promise((r) => setTimeout(r, 2500));
 
 const { chromium } = await loadPlaywright();
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+// 소프트웨어 렌더링(CI)에서는 아주 느리므로 작은 화면 + 「낮음」 품질로 시작한다
+const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
+await page.addInitScript(() => {
+  if (!localStorage.getItem('elementary-simulator.settings.v1')) localStorage.setItem('elementary-simulator.settings.v1', JSON.stringify({ quality: 'low' }));
+});
 const errors = [];
 page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 page.on('pageerror', (e) => errors.push(e.message));
@@ -55,11 +59,11 @@ async function waitPanel(open = true) {
   throw new Error(open ? '창이 안 열림' : '창이 안 닫힘');
 }
 /** 대상 앞으로 이동해서 키 누르기 (E/F). 포커스가 기대한 대상인지 확인 */
-async function act(id, key, expect, { stay = false, from } = {}) {
+async function act(id, key, expect, { stay = false, from, dist = 0.7 } = {}) {
   await noDialogue();
   if (id.startsWith('npc:')) await npcIdle(id.slice(4));
   for (let i = 0; i < 50 && !(await page.evaluate((x) => !!window.__sim.game.interactions.get(x), id)); i++) await sleep(100);
-  if (!stay) await page.evaluate(([i, f]) => window.__sim.goto(i, 0.7, f), [id, from]);
+  if (!stay) await page.evaluate(([i, f, d]) => window.__sim.goto(i, d, f), [id, from, dist]);
   else
     await page.evaluate((i) => {
       const g = window.__sim.game;
@@ -285,13 +289,154 @@ try {
     await page.evaluate(() => window.__sim.teleport(9, 11));
     await sleep(500);
     await page.evaluate(() => window.__sim.teleport(9, 12));
-    await page.waitForSelector('.recap', { timeout: 60000 }).catch(async () => {
-      // 대사 넘기기
-      for (let i = 0; i < 30 && !(await page.$('.recap')); i++) { await page.keyboard.press('Enter'); await sleep(400); }
+    await waitFor('사건 1 시작', (s) => s.period === 'cutlet', 90000);
+    await noDialogue();
+  });
+
+  // ───── 사건 1: 거대 돈가스 — 세 가지 해결 경로 ─────
+  const cutletSt = () =>
+    page.evaluate(() => {
+      const st = window.__sim.story.cutlet.st;
+      return { carried: st.carried, pieces: [...st.pieceArea.entries()], trays: st.trays, cut: st.cut };
     });
+  /** 게이지 바늘이 초록 칸일 때까지 Space */
+  async function gaugeHit(done) {
+    for (let i = 0; i < 80; i++) {
+      if (await done()) return;
+      await page.keyboard.press('Space');
+      await sleep(260);
+    }
+    throw new Error('게이지 성공 못 함');
+  }
+  async function waitRecap(sol) {
+    await waitFor('해결', (s) => s.cafeteria === sol, 90000);
+    for (let i = 0; i < 60 && !(await page.$('.recap')); i++) {
+      if ((await state()).dialogue) await page.keyboard.press('Enter');
+      await sleep(400);
+    }
     await page.waitForSelector('.recap', { timeout: 5000 });
-    const items = await page.locator('.recap li').allTextContents();
-    log(items.join(' | '));
+    log((await page.locator('.recap li').allTextContents()).join(' | '));
+  }
+  async function restartCutlet() {
+    await page.evaluate(() => {
+      const g = window.__sim.game;
+      g.running = true;
+      g.hud.show(true);
+      const scr = document.querySelector('.screen');
+      if (scr) scr.parentNode.removeChild(scr);
+      g.save.cafeteriaSolution = null;
+      window.__sim.skipTo('cutlet');
+    });
+    await sleep(800);
+    await noDialogue();
+  }
+
+  await step('사건1_A_잘라서_나누기', async () => {
+    await act('npc:cook', 'KeyE', '조리사');
+    await noDialogue();
+    await act('cutletTable', 'KeyE', '살펴보기', { dist: 2.4, from: [0, -1] });
+    await noDialogue();
+    await act('item:cut_unit', 'KeyE', '절단기');
+    await selectItem('cutterUnit');
+    await act('cutletTable', 'KeyF', '레일', { dist: 2.4, from: [0, -1] });
+    await noDialogue();
+    await act('cutterPanel', 'KeyE', '패널');
+    await waitPanel(true);
+    // 가운데 가로로 반 → 4칸, 8칸 자리 세로로 → 크기 4 조각 6개
+    await page.keyboard.press('KeyH');
+    await gaugeHit(() => page.$('.cut-line-h.done'));
+    await page.keyboard.press('KeyA');
+    await page.keyboard.press('KeyA');
+    await gaugeHit(async () => (await page.$$('.cut-line.done')).length >= 1);
+    for (let i = 0; i < 4; i++) await page.keyboard.press('KeyD');
+    await gaugeHit(async () => (await page.$$('.cut-line.done')).length >= 2);
+    await page.keyboard.press('Enter');
+    await waitPanel(false);
+    await noDialogue();
+    let cs = await cutletSt();
+    if (cs.pieces.length !== 6 || !cs.pieces.every(([, a]) => a === 4)) throw new Error('조각 이상: ' + JSON.stringify(cs.pieces));
+    await act('trayCart', 'KeyE', '식판');
+    await selectItem('trayStack');
+    await act('dinerTable0', 'KeyF', '식판', { dist: 1.6, from: [0, 1] });
+    await act('dinerTable1', 'KeyF', '식판', { dist: 1.6, from: [0, 1] });
+    const diners = [['npc:minjae', [0, 1]], ['npc:seoa', [0, 1]], ['filler:0', [-1, 0]], ['npc:junho', [0, 1]], ['npc:harin', [0, 1]], ['filler:1', [1, 0]]];
+    for (const [who, from] of diners) {
+      cs = await cutletSt();
+      const [key] = cs.pieces[0];
+      const z = await page.evaluate((k) => window.__sim.game.items.get(k).obj.position.z, key);
+      await act('item:' + key, 'KeyE', '조각', { dist: 1.3, from: [0, z < 21 ? -1 : 1] });
+      await selectItem('cutletPiece');
+      await act(who, 'KeyF', '식판에 담기', { from, dist: 0.8 });
+    }
+    await waitRecap('cut_and_share');
+    if (!(await state()).flags.sharedFairly) throw new Error('공평 배식 플래그 없음');
+  });
+
+  await step('사건1_B_크기_조절기', async () => {
+    await restartCutlet();
+    await act('sizeMachine', 'KeyE', '조절기', { from: [1, -1], dist: 1.0 });
+    await waitPanel(true);
+    // 일부러 틀리게 꽂기 → 안 켜짐
+    for (const k of ['1', 'a', '2', 'c', '3', 'b']) {
+      await page.keyboard.press(k);
+      await sleep(120);
+    }
+    await sleep(900);
+    if (await page.$('.machine-screen')) throw new Error('틀린 전선인데 켜짐');
+    for (const k of ['1', 'c', '2', 'a', '3', 'b']) {
+      await page.keyboard.press(k);
+      await sleep(120);
+    }
+    await page.waitForSelector('.machine-screen', { timeout: 5000 });
+    await page.keyboard.press('2');
+    await sleep(150);
+    await page.keyboard.press('2'); // 1000 ÷5 ÷5 = 40% → 너무 작음
+    await sleep(300);
+    if ((await page.locator('.machine-value').textContent()) !== '40%') throw new Error('기계 계산 이상');
+    await page.keyboard.press('KeyR');
+    await sleep(150);
+    await page.keyboard.press('1');
+    await sleep(150);
+    await page.keyboard.press('2'); // ÷2 ÷5 = 100%
+    await waitPanel(false);
+    await waitRecap('shrink_machine');
+  });
+
+  await step('사건1_C_축제', async () => {
+    await restartCutlet();
+    await act('mic', 'KeyE', '마이크', { from: [-1, 0], dist: 0.9 });
+    await noDialogue();
+    await act('npc:cook', 'KeyE', '조리사');
+    await noDialogue();
+    if (!(await state()).flags.cookAgreedFestival) throw new Error('조리사 허락 없음');
+    for (let i = 0; i < 3; i++) {
+      await act('foldStack', 'KeyE', '테이블', { from: [0, -1], dist: 1.0 });
+      await selectItem('foldTable');
+      await act('festSpot' + i, 'KeyF', '펼치기', { from: [-1, 0], dist: 0.8 });
+    }
+    for (const [id, name] of [['minjae', '민재'], ['seoa', '서아'], ['junho', '준호']]) {
+      await act('npc:' + id, 'KeyE', name, { from: [0, 1], dist: 0.8 });
+      await noDialogue();
+    }
+    await act('mic', 'KeyE', '축제', { from: [-1, 0], dist: 0.9 });
+    await waitPanel(true);
+    for (const k of ['3', '1', '2']) {
+      await page.keyboard.press(k);
+      await sleep(150);
+    }
+    await waitPanel(false);
+    await waitRecap('festival');
+    if (!(await state()).flags.festivalAnnouncedWell) throw new Error('방송 순서 플래그 없음');
+  });
+
+  await step('사건1_새로고침_이어하기', async () => {
+    await page.reload();
+    await page.waitForFunction(() => window.__sim, null, { timeout: 120000 });
+    await page.getByText(/이어하기/).click();
+    await sleep(1500);
+    const s = await state();
+    if (s.period !== 'cutlet' || s.cafeteria !== 'festival') throw new Error('이어하기 상태 이상: ' + JSON.stringify(s));
+    await noDialogue();
   });
 
   await step('다른_역할_자료조사', async () => {
@@ -382,11 +527,15 @@ try {
     if (!s.seated) throw new Error('자리로 돌아가기 안 됨');
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: '설정' }).click();
-    await page.locator('select').first().selectOption('low');
+    await page.locator('select').first().selectOption('mid');
     await page.getByRole('button', { name: '확인' }).click();
     await page.getByRole('button', { name: '계속하기' }).click();
     const q = await page.evaluate(() => window.__sim.game.settings.quality);
-    if (q !== 'low') throw new Error('설정 반영 안 됨');
+    if (q !== 'mid') throw new Error('설정 반영 안 됨');
+    await page.evaluate(() => {
+      window.__sim.game.settings.quality = 'low';
+      window.__sim.game.applySettings();
+    });
   });
 
   await step('아무것도_안_해도_진행', async () => {

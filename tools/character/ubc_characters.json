@@ -1,0 +1,136 @@
+{
+  "boy": {
+    "sex": "m",
+    "height": 1.45,
+    "skin": "light",
+    "hair": "Hair_SimpleParted",
+    "hair_color": 1775380,
+    "clothes": {
+      "top": 9080209,
+      "bottom": 3428478,
+      "shoes": 15921906
+    },
+    "name": "남학생 (플레이어)"
+  },
+  "girl": {
+    "sex": "f",
+    "height": 1.43,
+    "skin": "light",
+    "hair": "Hair_Long",
+    "hair_color": 1775380,
+    "clothes": {
+      "top": 11067599,
+      "bottom": 2503247,
+      "shoes": 15921906
+    },
+    "name": "여학생 (플레이어)"
+  },
+  "minjae": {
+    "sex": "m",
+    "height": 1.45,
+    "skin": "light",
+    "hair": "Hair_SimpleParted",
+    "hair_color": 2234900,
+    "clothes": {
+      "top": 11740719,
+      "bottom": 2763310,
+      "shoes": 15921906
+    },
+    "name": "민재"
+  },
+  "seoa": {
+    "sex": "f",
+    "height": 1.42,
+    "skin": "light",
+    "hair": "Hair_Long",
+    "hair_color": 1775380,
+    "clothes": {
+      "top": 15655880,
+      "bottom": 6965910,
+      "shoes": 15921906
+    },
+    "name": "서아"
+  },
+  "junho": {
+    "sex": "m",
+    "height": 1.48,
+    "skin": "light",
+    "hair": "Hair_Buzzed",
+    "hair_color": 1775380,
+    "clothes": {
+      "top": 2375840,
+      "bottom": 2375840,
+      "shoes": 15921906
+    },
+    "name": "준호"
+  },
+  "harin": {
+    "sex": "f",
+    "height": 1.43,
+    "skin": "light",
+    "hair": "Hair_Buns",
+    "hair_color": 3810840,
+    "clothes": {
+      "top": 16106818,
+      "bottom": 4156229,
+      "shoes": 15921906
+    },
+    "name": "하린"
+  },
+  "teacher": {
+    "name": "담임 선생님",
+    "sex": "f",
+    "age": "adult",
+    "height": 1.62,
+    "skin": "light",
+    "hair": "Hair_Long",
+    "hair_color": 2759186,
+    "hem": 0.06,
+    "clothes": {
+      "top": 10469274,
+      "bottom": 14205856,
+      "shoes": 7035466
+    }
+  },
+  "kid_m": {
+    "sex": "m",
+    "height": 1.43,
+    "skin": "light",
+    "hair": "Hair_Buzzed",
+    "hair_color": 1775380,
+    "clothes": {
+      "top": 5420936,
+      "bottom": 3426654,
+      "shoes": 15921906
+    },
+    "name": "반 친구 남"
+  },
+  "kid_f": {
+    "sex": "f",
+    "height": 1.41,
+    "skin": "light",
+    "hair": "Hair_Buns",
+    "hair_color": 1775380,
+    "clothes": {
+      "top": 15895218,
+      "bottom": 2961730,
+      "shoes": 15921906
+    },
+    "name": "반 친구 여"
+  },
+  "cook": {
+    "sex": "m",
+    "age": "adult",
+    "height": 1.68,
+    "skin": "light",
+    "hair": "Hair_Buzzed",
+    "hair_color": 2759956,
+    "hem": 0.06,
+    "clothes": {
+      "top": 16053488,
+      "bottom": 5989488,
+      "shoes": 2829619
+    },
+    "name": "조리사 선생님"
+  }
+}

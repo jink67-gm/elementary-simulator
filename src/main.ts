@@ -5,9 +5,11 @@ import { Menus } from './ui/Menus';
 import type { SaveData } from './core/SaveData';
 import { PERIODS, type PeriodId } from './core/SaveData';
 import { preloadCharacterModels, modelErrors } from './world/models';
+import { preloadProps, propErrors } from './world/props';
 
 /** 게임에서 쓰는 3D 캐릭터 모델 (public/models/characters/*.glb) */
-const CHARACTER_MODELS: string[] = []; // 품질이 확정된 모델만 넣는다 (지금은 블록 캐릭터 사용)
+// 3D 인물 모델은 쓰지 않는다(사용자 결정: 블록 캐릭터로 게임 플레이 우선). 다시 쓰려면 id 목록을 넣는다.
+const CHARACTER_MODELS: string[] = [];
 
 function fail(msg: string) {
   const l = document.getElementById('loading');
@@ -20,9 +22,12 @@ function fail(msg: string) {
 async function boot() {
   const app = document.getElementById('app')!;
   const loading = document.getElementById('loading');
-  await preloadCharacterModels(CHARACTER_MODELS, (d, n) => {
-    if (loading) loading.textContent = `학교 가는 중… 친구들 불러오는 중 (${d}/${n})`;
-  });
+  await Promise.all([
+    preloadCharacterModels(CHARACTER_MODELS, (d, n) => {
+      if (loading) loading.textContent = `학교 가는 중… 친구들 불러오는 중 (${d}/${n})`;
+    }),
+    preloadProps(),
+  ]);
   let game: Game;
   try {
     game = new Game(app);
@@ -37,7 +42,7 @@ async function boot() {
   story.onChapterEnd = (save) => setTimeout(() => menus.chapterEnd(save, story.recap()), 1200);
   game.onPauseRequest = () => menus.pause();
   menus.title();
-  for (const m of modelErrors) game.hud.toast(m, 'warn', 8000);
+  for (const m of [...modelErrors, ...propErrors]) game.hud.toast(m, 'warn', 8000);
 
   // 자동 테스트·디버그용 (주소 끝에 ?debug)
   if (new URLSearchParams(location.search).has('debug')) {
@@ -58,6 +63,7 @@ async function boot() {
         dialogue: game.dialogue.currentText,
         wish: game.save?.playerWish,
         role: game.save?.groupRole,
+        cafeteria: game.save?.cafeteriaSolution,
         fps: game.fps,
       }),
       /** 상호작용 대상 앞으로 순간이동 (실제 E/F 입력은 키보드로) */

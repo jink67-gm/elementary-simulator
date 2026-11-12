@@ -54,12 +54,12 @@ export class Menus {
     box.append(
       el('div', { class: 'title-small' }, '초등학생 시뮬레이터'),
       el('h1', { class: 'title-main' }, '오늘도 무사히 하교하기'),
-      el('div', { class: 'title-sub' }, '1장 · 평범한 월요일 오전'),
+      el('div', { class: 'title-sub' }, '1장 · 평범한 월요일 오전 + 사건 1 거대 돈가스'),
     );
     const btns = el('div', { class: 'title-btns' });
     if (saved) {
       btns.append(
-        button(`이어하기 — ${saved.avatar.nickname} · ${saved.chapter >= 2 ? '1장 끝' : SCHEDULE[saved.period].label}`, () => {
+        button(`이어하기 — ${saved.avatar.nickname} · ${saved.cafeteriaSolution ? '사건 1 끝 · 다시 해 보기' : SCHEDULE[saved.period].label}`, () => {
           this.setScreen(null);
           this.onStart(saved);
         }, 'btn primary big'),
@@ -286,17 +286,17 @@ export class Menus {
     g.input.releaseLock();
     const box = el('div', { class: 'title-box chapter' });
     box.append(
-      el('div', { class: 'title-small' }, '1장 완료'),
-      el('h1', { class: 'title-main' }, '오전 생존 성공!'),
+      el('div', { class: 'title-small' }, save.cafeteriaSolution ? '1장 + 사건 1 완료' : '1장 완료'),
+      el('h1', { class: 'title-main' }, save.cafeteriaSolution ? '점심 사수 성공!' : '오전 생존 성공!'),
       el('div', { class: 'title-sub' }, `${save.avatar.nickname}의 오전 기록`),
     );
     const list = el('ul', { class: 'recap' });
     recap.forEach((r) => list.append(el('li', {}, r)));
     box.append(
       list,
-      el('div', { class: 'next-box' }, el('b', {}, '다음 이야기 — 사건 1: 급식실의 전설적인 거대 돈가스'), el('div', {}, '오전에 한 행동이 친구들의 말과 해결 방법에 이어져요. (다음 업데이트에서 계속)')),
+      el('div', { class: 'next-box' }, el('b', {}, save.cafeteriaSolution ? '다음 이야기 — 사건 2: 자동 청소 로봇의 역습' : '다음 이야기 — 사건 1: 급식실의 전설적인 거대 돈가스'), el('div', {}, save.cafeteriaSolution ? '점심을 해결한 방법이 청소 로봇 사건에 이어져요. (다음 업데이트에서 계속)' : '오전에 한 행동이 친구들의 말과 해결 방법에 이어져요. (다음 업데이트에서 계속)')),
       el('div', { class: 'title-btns' },
-        button('저장 파일 내보내기', () => downloadText(`초등학생시뮬레이터_${save.avatar.nickname}_1장.json`, SaveManager.exportJson(save)), 'btn'),
+        button('저장 파일 내보내기', () => downloadText(`초등학생시뮬레이터_${save.avatar.nickname}_${save.cafeteriaSolution ? '사건1' : '1장'}.json`, SaveManager.exportJson(save)), 'btn'),
         button('처음 화면으로', () => this.title(), 'btn primary big'),
       ),
     );

@@ -11,7 +11,7 @@ export type GroupRole = 'speaker' | 'maker' | 'researcher' | 'organizer';
 export type PosterTheme = 'food' | 'rest' | 'play' | 'friends';
 
 /** 오전 일과 순서. 저장은 각 교시가 시작될 때 체크포인트로 남는다. */
-export const PERIODS = ['arrival', 'korean', 'break', 'math', 'group', 'art', 'lunch'] as const;
+export const PERIODS = ['arrival', 'korean', 'break', 'math', 'group', 'art', 'lunch', 'cutlet'] as const;
 export type PeriodId = (typeof PERIODS)[number];
 
 export interface Avatar {
@@ -66,6 +66,7 @@ export function newSave(avatar: Avatar): SaveData {
 const WISHES: Wish[] = ['lunch', 'break', 'sport', 'clean'];
 const ROLES: GroupRole[] = ['speaker', 'maker', 'researcher', 'organizer'];
 const THEMES: PosterTheme[] = ['food', 'rest', 'play', 'friends'];
+const SOLUTIONS: Exclude<CafeteriaSolution, null>[] = ['cut_and_share', 'shrink_machine', 'festival', 'mixed'];
 
 function oneOf<T>(v: unknown, list: readonly T[]): T | null {
   return list.includes(v as T) ? (v as T) : null;
@@ -110,7 +111,7 @@ export function parseSave(raw: unknown): SaveData {
     playerWish: oneOf(r.playerWish, WISHES),
     groupRole: oneOf(r.groupRole, ROLES),
     schoolPosterTheme: oneOf(r.schoolPosterTheme, THEMES),
-    cafeteriaSolution: null,
+    cafeteriaSolution: oneOf(r.cafeteriaSolution, SOLUTIONS),
     quizScore: typeof r.quizScore === 'number' ? r.quizScore : 0,
     flags,
     stats,

@@ -31,6 +31,8 @@ export interface StoryHooks {
   onPlaneLanded(dist: number, hitWall: boolean): void;
   requiredItems(): ItemId[];
   helpReturnToSeat(): void;
+  /** 들고 있던 물건을 바닥에 내려놓았을 때 (key = 새 월드 아이템 키) */
+  onDropped?(id: ItemId, key: string): void;
 }
 
 interface WorldItem {
@@ -47,7 +49,7 @@ export class Game {
   camera = new THREE.PerspectiveCamera(60, 1, 0.05, 120);
   tpc = new ThirdPersonCamera(this.camera);
   map = new SchoolMap();
-  nav = new NavGrid(-7.5, -16.5, 13.5, 26.5, 0.3);
+  nav = new NavGrid(-7.5, -16.5, 15.5, 27.5, 0.3);
   input: Input;
   sfx = new Sfx();
   saves = new SaveManager();
@@ -446,7 +448,9 @@ export class Game {
     if (!id) return;
     const f = this.player.forward();
     this.inventory.remove(id);
-    this.spawnItem(`drop${this.dropCount++}`, id, this.player.pos.x + f.x * 0.6, 0, this.player.pos.z + f.z * 0.6, this.player.yaw);
+    const key = `drop${this.dropCount++}`;
+    this.spawnItem(key, id, this.player.pos.x + f.x * 0.6, 0, this.player.pos.z + f.z * 0.6, this.player.yaw);
+    this.story.onDropped?.(id, key);
     this.sfx.place();
   }
 

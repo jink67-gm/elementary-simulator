@@ -30,6 +30,11 @@ export const ITEMS = {
   drawingPaper: { name: '미니 도화지', desc: '책상에서 F를 눌러 꾸며요. 풀이 필요해!', color: 0xfffaf0, shape: 'flat', size: [0.2, 0.005, 0.28] },
   glue: { name: '하린이 풀', desc: '빌린 풀. 다 쓰면 돌려주자.', color: 0xffe066, shape: 'cylinder', size: [0.03, 0.1, 0.03] },
   miniPoster: { name: '내 미니 포스터', desc: '교실 뒤 게시판에 전시할 수 있어요.', color: 0xffd6a5, shape: 'flat', size: [0.2, 0.01, 0.28] },
+  cutterUnit: { name: '안전 절단기', desc: '레일을 식탁에 걸면 버튼으로 자르는 급식실 기계. 거대 돈가스 식탁에서 F.', color: 0xffc300, shape: 'box', size: [0.4, 0.18, 0.25] },
+  ladle: { name: '국자', desc: '국 뜨는 국자. 돈가스는… 못 자를 것 같다.', color: 0xc0c7cf, shape: 'flat', size: [0.08, 0.04, 0.34] },
+  trayStack: { name: '식판 여섯 개', desc: '친구들 식탁에서 F를 누르면 식판을 놓아요.', color: 0xd7dde3, shape: 'flat', size: [0.36, 0.1, 0.28] },
+  cutletPiece: { name: '돈가스 조각', desc: '친구에게 가서 F를 누르면 식판에 담아요. 크면 절단기 패널에서 반으로!', color: 0xc8803a, shape: 'box', size: [0.3, 0.06, 0.3] },
+  foldTable: { name: '접이식 테이블', desc: '복도의 X 표시에서 F를 누르면 펼쳐요.', color: 0xe9e4d4, shape: 'flat', size: [0.5, 0.06, 0.3] },
   scraps: { name: '종이 조각', desc: '분리수거함 종이칸에 버리자.', color: 0xdddddd, shape: 'box', size: [0.12, 0.05, 0.12] },
 } satisfies Record<string, ItemDef>;
 

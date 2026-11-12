@@ -216,3 +216,35 @@ button { font-family: inherit; }
 .hud.cine::before { top: 0; }
 .hud.cine::after { bottom: 0; }
 @keyframes bars { from { height: 0; } }
+
+/* ───────── 사건 1: 급식실 ───────── */
+.cook-line { text-align: center; font-weight: bold; color: var(--ink); background: #fff3e6; border-radius: 12px; padding: 8px 12px; margin-bottom: 10px; }
+.cutlet-board { position: relative; height: 150px; margin: 8px 6px; border-radius: 26px; background: #c8803a repeating-linear-gradient(45deg, #c8803a 0 6px, #d39248 6px 12px); box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.15), 0 4px 0 #f1ece0; overflow: hidden; }
+.cut-piece { position: absolute; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 15px; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); box-sizing: border-box; border: 2px solid rgba(255, 255, 255, 0.0); }
+.cut-piece.big { background: rgba(230, 57, 70, 0.28); }
+.cut-piece.good { background: rgba(79, 191, 127, 0.25); }
+.cut-piece.small { background: rgba(255, 195, 0, 0.25); }
+.cut-line { position: absolute; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: #fffaf0; pointer-events: none; }
+.cut-line-h { position: absolute; left: 0; right: 0; top: 50%; height: 4px; margin-top: -2px; background: #fffaf0; pointer-events: none; }
+.cut-line.guide, .cut-line-h.guide { background: repeating-linear-gradient(0deg, #243447 0 8px, transparent 8px 14px); }
+.cut-line-h.guide { background: repeating-linear-gradient(90deg, #243447 0 8px, transparent 8px 14px); }
+.cut-hit { position: absolute; top: 0; bottom: 0; cursor: crosshair; }
+.gauge-label { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 6px; }
+.gauge { position: relative; height: 26px; margin: 4px 40px; border-radius: 13px; background: #f1ece0; border: 2px solid var(--line); overflow: hidden; }
+.gauge-zone { position: absolute; top: 0; bottom: 0; background: var(--mint); opacity: 0.75; }
+.gauge-needle { position: absolute; top: -2px; bottom: -2px; width: 6px; margin-left: -3px; background: var(--ink); border-radius: 3px; }
+.cutlet-mini { position: relative; height: 70px; width: 60%; margin: 8px auto; border-radius: 18px; background: #c8803a repeating-linear-gradient(45deg, #c8803a 0 6px, #d39248 6px 12px); }
+.cut-line-v-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; margin-left: -2px; background: repeating-linear-gradient(0deg, #243447 0 8px, transparent 8px 14px); }
+.machine-wrap { display: flex; gap: 14px; align-items: stretch; flex-wrap: wrap; }
+.machine-sticker { flex: 0 0 170px; background: #fff7c2; border: 2px dashed #e0b800; border-radius: 10px; padding: 10px; font-size: 14px; line-height: 1.7; transform: rotate(-1.5deg); }
+.machine-area { flex: 1 1 300px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.machine-area:has(.wire-col) { flex-direction: row; }
+.wire-col { display: flex; flex-direction: column; gap: 8px; }
+.wire-arrow { font-size: 26px; color: var(--ink-soft); }
+.btn.wire.red { border-color: #e63946; }
+.btn.wire.blue { border-color: #1d71d2; }
+.btn.wire.yellow { border-color: #e0b800; }
+.btn.wire.held { background: #fff3e6; transform: translateY(-2px); }
+.machine-screen { background: #10261c; color: #7cfc8a; border-radius: 12px; padding: 10px 24px; text-align: center; min-width: 240px; font-family: monospace; }
+.machine-value { font-size: 38px; font-weight: bold; }
+.machine-hist { font-size: 14px; opacity: 0.85; }

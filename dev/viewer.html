@@ -18,10 +18,21 @@ const scene = new THREE.Scene();
 scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.5));
 const sun = new THREE.DirectionalLight(0xffffff, 2); sun.position.set(2, 4, 3); scene.add(sun);
 const grid = new THREE.GridHelper(4, 16, 0x888888, 0xaaaaaa); scene.add(grid);
-new GLTFLoader().load((q.get("src") || `../models/characters/${model}.glb`), (g) => {
+new GLTFLoader().load((q.get("src") || `../models/characters/${model}.glb`), async (g) => {
   scene.add(g.scene);
   const mixer = new THREE.AnimationMixer(g.scene);
-  const c = g.animations.find((a) => a.name === clip);
+  let anims = g.animations;
+  if (q.get('ual')) {
+    const u = await new GLTFLoader().loadAsync('../models/_local/ual1.glb');
+    // 회전만 쓰고, 골반 위치는 키 비율만큼 줄인다 (뼈 길이가 바뀌었으므로)
+    const k = Number(q.get('k') || 0.78);
+    anims = u.animations.map((c) => new THREE.AnimationClip(c.name, c.duration, c.tracks.filter((tr) => tr.name.endsWith('.quaternion') || tr.name === 'pelvis.position').map((tr) => {
+      const t2 = tr.clone();
+      if (tr.name === 'pelvis.position') for (let i = 0; i < t2.values.length; i++) t2.values[i] *= k;
+      return t2;
+    })));
+  }
+  const c = anims.find((a) => a.name === clip);
   if (c) { const a = mixer.clipAction(c); a.play(); mixer.setTime(t * c.duration); }
   const cams = { front: [0, 0.8, 3.2], side: [3.2, 0.8, 0], back: [0, 0.8, -3.2], face: [0, 1.32, 0.75] };
   views.forEach((v, i) => {

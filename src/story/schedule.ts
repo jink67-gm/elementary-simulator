@@ -22,7 +22,9 @@ export const SCHEDULE: Record<PeriodId, PeriodInfo> = {
   math: { id: 'math', label: '2교시 수학', start: hm(9, 50), end: hm(10, 30), expectedSec: 180, softLimitSec: 300 },
   group: { id: 'group', label: '3교시 모둠 활동', start: hm(10, 40), end: hm(11, 20), expectedSec: 180, softLimitSec: 300 },
   art: { id: 'art', label: '4교시 미술', start: hm(11, 30), end: hm(12, 10), expectedSec: 150, softLimitSec: 260 },
-  lunch: { id: 'lunch', label: '점심시간', start: hm(12, 10), end: hm(13, 0), expectedSec: 600, softLimitSec: 9999 },
+  lunch: { id: 'lunch', label: '점심시간', start: hm(12, 10), end: hm(12, 20), expectedSec: 90, softLimitSec: 9999 },
+  // 사건 1: 거대 돈가스. 오래 막히면 단계별 힌트, 10분이 넘으면 어른들이 도와 마무리한다
+  cutlet: { id: 'cutlet', label: '점심시간 · 사건 1', start: hm(12, 20), end: hm(13, 0), expectedSec: 480, softLimitSec: 600 },
 };
 
 export function nextPeriod(p: PeriodId): PeriodId | null {

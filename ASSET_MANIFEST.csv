@@ -1,6 +1,6 @@
 에셋ID,에셋이름,사용장면,유형,우선순위,제작방식,제작도구,사용AI모델,원본출처URL,라이선스,파일경로,제작완료,게임적용,테스트결과
-A01-01,남학생 기본 캐릭터,플레이어(전체),A,P1,AI 생성,"Higgsfield (이미지→3D, 리깅) + 헤드리스 Blender 정리",미정 (image_to_3d 예정),,,,미제작,,
-A01-02,여학생 기본 캐릭터,플레이어(전체),A,P1,AI 생성,"Higgsfield (이미지→3D, 리깅) + 헤드리스 Blender 정리",미정 (image_to_3d 예정),,,,미제작,,
+A01-01,남학생 기본 캐릭터,플레이어(전체),A,P1,AI 생성,"Higgsfield (이미지→3D, 리깅) + 헤드리스 Blender 정리",미정 (image_to_3d 예정),,,,보류,,Quaternius 가공본 사용자 거부 → 블록 캐릭터 사용 (2026-11-12)
+A01-02,여학생 기본 캐릭터,플레이어(전체),A,P1,AI 생성,"Higgsfield (이미지→3D, 리깅) + 헤드리스 Blender 정리",미정 (image_to_3d 예정),,,,보류,,Quaternius 가공본 사용자 거부 → 블록 캐릭터 사용 (2026-11-12)
 A02-01,민재 (맨투맨),오전 생활·사건 전체,A,P1,AI 생성,"Higgsfield (이미지→3D, 리깅) + 헤드리스 Blender 정리",미정 (image_to_3d 예정),,,,미제작,,
 A02-02,서아 (일상복),오전 생활·사건 전체,A,P1,AI 생성,"Higgsfield (이미지→3D, 리깅) + 헤드리스 Blender 정리",미정 (image_to_3d 예정),,,,미제작,,
 A02-03,준호 (체육복),오전 생활·사건 전체,A,P1,AI 생성,"Higgsfield (이미지→3D, 리깅) + 헤드리스 Blender 정리",미정 (image_to_3d 예정),,,,미제작,,
@@ -45,20 +45,20 @@ B-09,나무와 화단,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 
 B-10,학교 안내 게시판,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-11,복도 출입문,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-12,교실 벽·바닥·천장 모듈,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
-B-13,학생 책상,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
-B-14,학생 의자,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
-B-15,교사용 책상,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
+B-13,학생 책상,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,https://polyhaven.com/a/SchoolDesk_01,CC0,public/models/props/SchoolDesk_01.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
+B-14,학생 의자,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,https://polyhaven.com/a/SchoolChair_01,CC0,public/models/props/SchoolChair_01.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
+B-15,교사용 책상,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,https://polyhaven.com/a/metal_office_desk,CC0,public/models/props/metal_office_desk.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
 B-16,교사용 의자,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
 B-17,전자칠판,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
 B-18,칠판·게시판,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-19,교실 사물함,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
-B-20,책장,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
+B-20,책장,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,https://polyhaven.com/a/Shelf_01,CC0,public/models/props/Shelf_01.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
 B-21,창문,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
 B-22,교실 출입문,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
 B-23,벽시계,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
 B-24,선풍기·냉난방기,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
-B-25,쓰레기통,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
-B-26,청소도구 보관함,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
+B-25,쓰레기통,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,https://polyhaven.com/a/metal_trash_can,CC0,public/models/props/metal_trash_can.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
+B-26,청소도구 보관함,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,https://polyhaven.com/a/plastic_broom,CC0,public/models/props/plastic_broom.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
 B-27,복도 벽·바닥·천장 모듈,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
 B-28,교실 문과 문패,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
 B-29,복도 게시판,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
@@ -69,15 +69,15 @@ B-33,방송 스피커,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 B
 B-34,복도 시계,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-35,정수기,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
 B-36,급식실 공간 모듈,학교 공간,C,P3,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
-B-37,급식 테이블,학교 공간,B,P3,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
-B-38,급식 의자,학교 공간,B,P3,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
+B-37,급식 테이블,학교 공간,B,P3,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,https://polyhaven.com/a/dining_table,CC0,public/models/props/dining_table.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
+B-38,급식 의자,학교 공간,B,P3,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,https://polyhaven.com/a/plastic_monobloc_chair_01,CC0,public/models/props/plastic_monobloc_chair_01.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
 B-39,배식대,학교 공간,C,P3,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-40,식판 보관대,학교 공간,C,P3,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
-B-41,배식 용기,학교 공간,B,P3,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
+B-41,배식 용기,학교 공간,B,P3,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,https://polyhaven.com/a/pot_enamel_01,CC0,public/models/props/pot_enamel_01.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
 B-42,조리대,학교 공간,C,P3,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-43,대형 도마,학교 공간,C,P3,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-44,급식실 냉장고,학교 공간,B,P3,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
-B-45,조리실 선반,학교 공간,B,P3,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
+B-45,조리실 선반,학교 공간,B,P3,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,https://polyhaven.com/a/Shelf_01,CC0,public/models/props/Shelf_01.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
 B-46,조리 도구 창고,학교 공간,C,P3,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-47,조리실 출입문,학교 공간,C,P3,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-48,체육관,학교 공간,C,P4,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,

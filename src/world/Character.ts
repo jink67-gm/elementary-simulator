@@ -19,11 +19,11 @@ export interface Look {
 }
 
 export const PLAYER_LOOKS: Look[] = [
-  { skin: 0xf5cfa8, hair: 0x2b1d14, shirt: 0x8a8d91, pants: 0x2b3c5c, hairStyle: 'short', height: 1 },
-  { skin: 0xf2c69b, hair: 0x3a2618, shirt: 0x5ab0ff, pants: 0x2d3142, hairStyle: 'bob', height: 1 },
-  { skin: 0xe8b98d, hair: 0x1a1a1a, shirt: 0x7bd389, pants: 0x4a4e69, hairStyle: 'pony', height: 1 },
-  { skin: 0xf7d6b5, hair: 0x4a3222, shirt: 0xc39bff, pants: 0x22223b, hairStyle: 'buzz', height: 1 },
-];
+  { skin: 0xf0cbaa, hair: 0x1b1714, shirt: 0x8a8d91, pants: 0x34507e, hairStyle: 'short', height: 1, model: 'boy' },
+  { skin: 0xf0cbaa, hair: 0x1b1714, shirt: 0xa8e0cf, pants: 0x26324f, hairStyle: 'long', height: 1, model: 'girl' },
+  { skin: 0xf0cbaa, hair: 0x1b1714, shirt: 0x52b788, pants: 0x34495e, hairStyle: 'buzz', height: 1, model: 'kid_m' },
+  { skin: 0xf0cbaa, hair: 0x1b1714, shirt: 0xf28ab2, pants: 0x2d3142, hairStyle: 'pony', height: 1, model: 'kid_f' },
+]
 
 export type Pose = 'stand' | 'walk' | 'sit' | 'raise' | 'cheer' | 'run';
 
@@ -200,5 +200,5 @@ export interface Avatar {
 /** 모델이 준비돼 있으면 GLB 캐릭터, 아니면(불러오기 실패 포함) 블록 캐릭터 */
 export function createAvatar(look: Look): Avatar {
   const g = look.model ? getModel(look.model) : undefined;
-  return g ? new HumanCharacter(g) : new Character(look);
+  return g ? new HumanCharacter(g, look.model!) : new Character(look);
 }
