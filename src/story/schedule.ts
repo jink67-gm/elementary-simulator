@@ -27,6 +27,8 @@ export const SCHEDULE: Record<PeriodId, PeriodInfo> = {
   cutlet: { id: 'cutlet', label: '점심시간 · 사건 1', start: hm(12, 20), end: hm(13, 0), expectedSec: 480, softLimitSec: 600 },
   robot: { id: 'robot', label: '청소 시간 · 사건 2', start: hm(13, 0), end: hm(13, 20), expectedSec: 300, softLimitSec: 480 },
   dodgeball: { id: 'dodgeball', label: '5교시 체육 · 사건 3', start: hm(13, 20), end: hm(14, 0), expectedSec: 240, softLimitSec: 480 },
+  // 시간이 멈춘 쉬는 시간: 화면 시계는 14:00 근처에서 멈춘다
+  hallway: { id: 'hallway', label: '쉬는 시간 · 사건 4', start: hm(14, 0), end: hm(14, 1), expectedSec: 9999, softLimitSec: 480 },
 };
 
 export function nextPeriod(p: PeriodId): PeriodId | null {

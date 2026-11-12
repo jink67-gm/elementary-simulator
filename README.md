@@ -1,7 +1,7 @@
 # 초등학생 시뮬레이터: 오늘도 무사히 하교하기
 
 평범한 월요일 오전을 보내다가, AI 학교생활 도우미가 소원을 **문자 그대로** 이뤄 주면서 학교가 엉망이 되는 3인칭 3D 브라우저 게임.
-지금 버전은 **1장(Phase 0~1): 등교 → 1교시 국어 → 쉬는 시간 → 2교시 수학 → 3교시 모둠 → 4교시 미술 → 급식실 거대 돈가스 등장**까지예요.
+지금 버전은 **오전 수업(1장) → 사건 1 거대 돈가스 → 사건 2 청소 로봇 → 사건 3 거대 피구공 → 사건 4 끝나지 않는 쉬는 시간**까지예요. 최종 사건(AI 학교생활 도우미)과 엔딩은 다음 단계예요.
 
 - 기획서: [`GAME_DESIGN.md`](GAME_DESIGN.md) · 개발 규칙: [`CLAUDE.md`](CLAUDE.md) · 에셋 출처: [`assets/SOURCES.md`](assets/SOURCES.md)
 - 1인 플레이, 브라우저에만 저장. 로그인·방 만들기·실명 입력 없음 → 학교 컴퓨터 8대에서 각자 바로 실행.
@@ -51,10 +51,19 @@ npm run dev        # http://localhost:5173/elementary-simulator/
 | 2교시 수학 | 충전함에서 태블릿 → 책상에 놓고 켜기, 서아 3% 배터리: 선생님 서랍 충전기 찾아 주기 또는 같이 보기, 퀴즈 3문제(4~6학년 설정), AI 소원 설문 | `helpedDevice` `quizScore` `playerWish` |
 | 3교시 모둠 | 역할 카드 집기 → 발표(문장 카드 배열) / 제작(포스터 스티커 끌어 놓기) / 자료(게시판·전자칠판·학급 문고 조사, AI 설명서 단서) / 정리(재료 6개를 바구니에 분류) | `groupRole` `schoolPosterTheme` `foundAIManual` |
 | 4교시 미술 | 색종이 → 종이비행기 접기(화살표) 또는 도화지 → 하린에게 풀 빌려 미니 포스터, 게시판 전시, 풀 돌려주기, 친구들 초고속 정리, 종이 조각 분리수거 | `artPlane/artPoster` `exhibited` `returnedGlue` |
-| 점심 | 급식실 앞 AI 방송 → 문이 열리고 거대 돈가스 등장 → 1장 기록 요약 | `chapter1Done` |
+| 점심 | 급식실 앞 AI 방송 → 문이 열리고 거대 돈가스 등장 | `chapter1Done` |
+
+## 오후 사건 (각각 세 가지 해결 방법, 선택지 버튼 없음)
+
+| 사건 | 해결 방법 (실제 행동) | 남는 기록 · 앞 사건과의 연결 |
+|---|---|---|
+| 1 거대 돈가스 (급식실) | ① 창고의 안전 절단기를 식탁에 걸고 패널에서 절단선 + 압력 게이지로 자르기 → 식판 깔고 친구 6명에게 배식 ② 창고 구석 크기 조절기: 스티커 보고 전선 꽂기 → ÷2·÷5·−100으로 정확히 100% ③ 방송실 마이크 → 조리사 허락 → 복도에 테이블 3개 → 친구 3명 초대 → 안내 방송 순서 맞추기 | `cafeteriaSolution` `sharedFairly` `fixedMachine` `festivalHeld` `cutletCrumbs` |
+| 2 청소 로봇 (교실) | ① 제어 패드로 로봇 직접 조종(WASD·Space 집게) → 수거함에서 집어 분실물 보관함 칸에 분류 ② 청소 금지 고깔 3개 + 저장 → 로봇이 스스로 돌려놓음 ③ 서아·준호·하린에게 비상정지 코드 한 자리씩 → 로봇 정지 → 주인에게 직접 돌려주기 | `results.robot` `robotReprogrammed` `itemsRestored` `messLevel` · 공평 배식이면 친구가 도움, 축제를 열었으면 포스터도 수거됨 |
+| 3 거대 피구공 (체육관) | ① 받침대·경사판·패드 조립 → 각도·힘 맞춰 뜀틀 피해 공 창고로 (3번 실패하면 예상 경로 표시) ② 크기 조절 리모컨으로 100% → 공 수레에 (사건 1에서 기계를 고쳤을 때만) ③ 안전한 규칙 카드 3장 → 친구들과 몸으로 밀어 골 2개 | `results.dodgeball` `ballResolvedByPhysics` `newSportInvented` |
+| 4 끝나지 않는 쉬는 시간 (복도) | 무한 복도에서 시계가 엉터리인 문 6개를 열어 오전의 기억(내가 한 행동) 보고 카드 모으기 → 방송 테이프 단서 → 시간표 복원판에 순서대로 (틀리면 복도 처음으로) | `results.hallway` `timeRestored` `foundBroadcastLog` · 자료 담당·AI 설명서면 힌트 추가 |
 
 진행 막힘 방지: 교시마다 시간 제한이 지나면 선생님·친구가 정리해 주고 다음으로 넘어가요. 메뉴의 「자리로 돌아가기」「필요한 물건 다시 챙기기」로 길을 잃거나 물건을 떨어뜨려도 복구돼요.
-저장: 교시가 시작될 때마다 자동 저장(localStorage). 새로고침하면 「이어하기」로 그 교시 처음부터. 메뉴에서 JSON 내보내기 → 다른 컴퓨터 타이틀에서 불러오기.
+저장: 교시·사건이 시작될 때마다 자동 저장(localStorage). 새로고침하면 「이어하기」로 그 교시(사건) 처음부터. 오래 막히면 선생님·친구가 도와 마무리해요(기록에 남음). 메뉴에서 JSON 내보내기 → 다른 컴퓨터 타이틀에서 불러오기.
 
 ## 파일 구조
 
@@ -66,14 +75,13 @@ src/
   player/                 Player, ThirdPersonCamera, Inventory(4칸)
   npc/Npc.ts              걷기·앉기·손들기, 취소 가능한 이동
   interact/Interaction.ts E/F 대상 고르기(거리 + 바라보는 방향)
-  story/                  Morning(1장 진행·대사·플래그), schedule(시간표·시계)
-  minigames/              Textbook, Tablet(퀴즈·설문), Poster, SmallGames(가위바위보·문장 카드·접기)
+  story/                  Morning(진행·대사·플래그), Cutlet·Robot·Dodgeball·Hallway(오후 사건), *Logic.ts(사건 규칙, 순수 로직), schedule
+  minigames/              Textbook, Tablet, Poster, SmallGames, Cafeteria(절단기·조절기·방송), RobotPanels, Gym(발사대·규칙), Timetable
   ui/                     Hud, Dialogue, Panel, Menus
-tests/logic.test.ts       저장·소지품·충돌·길찾기·쪽수·퀴즈·시간표 단위 테스트
-scripts/e2e.mjs           브라우저 자동 플레이 테스트
+tests/                    단위 테스트 (오전 로직 + 사건 1~4 규칙)
+scripts/e2e.mjs           브라우저 자동 플레이 테스트 (E2E_ONLY=사건2 처럼 일부만 가능)
 ```
 
-## 다음 단계 (Phase 2)
-- 사건 1 「거대 돈가스」: 급식실 내부, 안전 절단 패널 + 프리컷 조각, 식판 배식 6명, 음식 크기 조절기(논리 퍼즐), 돈가스 축제 경로.
-- 오전 기록 반영: `helpedFriend`면 준호가 돕기, `foundAIManual`이면 조절기 힌트, `playerWish`에 따라 AI 방송 변화 등.
-- 임시 도형을 Kenney CC0 모델로 교체할지 결정 (출처는 `assets/SOURCES.md`에 기록).
+## 다음 단계 (Phase 4)
+- 최종 사건 「AI 학교생활 도우미」: 컴퓨터 3대에서 오전 포스터·급식 결과·소원 기록 모으기 → 「진짜 원했던 것」과 「AI의 해석」 짝짓기 → 세 가지 개선 기준 설정.
+- 엔딩 3종(평범한 학교 / 조금 나아진 학교 / 전설의 학교), 저사양 설정 점검, 사운드·접근성 다듬기.

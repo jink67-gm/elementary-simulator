@@ -580,17 +580,14 @@ try {
     await noDialogue();
   }
   async function waitDodge(sol) {
-    await waitFor('사건 3 해결 ' + sol, (s) => s.results?.dodgeball === sol, 150000);
-    for (let i = 0; i < 60 && !(await page.$('.recap')); i++) {
-      if ((await state()).dialogue) await page.keyboard.press('Enter');
-      await sleep(400);
-    }
-    await page.waitForSelector('.recap', { timeout: 5000 });
-    log((await page.locator('.recap li').allTextContents()).slice(-3).join(' | '));
+    await waitFor('사건 3 해결 ' + sol, (s) => s.results?.dodgeball === sol && s.period === 'hallway', 150000);
+    await noDialogue();
+    log('사건 3 → ' + sol + ', 사건 4로 넘어감');
   }
 
   await step('사건3_A_발사_실험', async () => {
     await restartDodge();
+    if ((await state()).inventory.includes('sizeRemote')) throw new Error('기계를 안 고쳤는데 리모컨이 생김');
     for (const part of ['standPart', 'rampPart', 'padPart']) {
       await act('gymParts', 'KeyE', '꺼내기', { from: [-1, 0], dist: 1.0 });
       await selectItem(part);
@@ -671,6 +668,72 @@ try {
     }
     await waitDodge('sport');
     if (!(await state()).flags.newSportInvented) throw new Error('newSportInvented 없음');
+  });
+
+  // ───── 사건 4: 끝나지 않는 쉬는 시간 ─────
+  await step('사건4_무한_복도', async () => {
+    await page.evaluate(() => {
+      const g = window.__sim.game;
+      g.running = true;
+      g.hud.show(true);
+      const scr = document.querySelector('.screen');
+      if (scr) scr.parentNode.removeChild(scr);
+      window.__sim.skipTo('hallway');
+    });
+    await sleep(800);
+    await noDialogue();
+    const hs = () => page.evaluate(() => { const st = window.__sim.story.hallway.st; return { cards: st.cards.size, tapes: st.tapes.size, loops: st.loops, tries: st.tries }; });
+    // 방송 테이프 하나
+    await act('tape0', 'KeyE', '테이프', { from: [-1, 0], dist: 0.8 });
+    await waitPanel(true);
+    await page.keyboard.press('Enter');
+    await waitPanel(false);
+    // 카드 없이 복원판 → 안내만
+    await act('timeBoard', 'KeyE', '복원판', { from: [1, 0], dist: 0.6 });
+    if (await panelOpen()) throw new Error('카드 없이 복원판이 열림');
+    // 시간 문 여섯 개
+    for (const id of ['group', 'lunch', 'korean', 'art', 'math', 'break']) {
+      await act('timeDoor_' + id, 'KeyE', '문', { from: [0, 1], dist: 0.6 });
+      await waitPanel(true);
+      await page.keyboard.press('Enter');
+      await waitPanel(false);
+    }
+    if ((await hs()).cards !== 6) throw new Error('카드 6장이 안 모임');
+    // 무한 복도: 북쪽 끝까지 걸어가면 남쪽 끝으로
+    await page.evaluate(() => {
+      const g = window.__sim.game;
+      g.player.teleport(9, 14.2, 0);
+      g.tpc.yaw = Math.PI;
+    });
+    await page.keyboard.down('KeyW');
+    for (let i = 0; i < 40 && (await hs()).loops < 1; i++) await sleep(150);
+    await page.keyboard.up('KeyW');
+    if ((await hs()).loops < 1) throw new Error('무한 복도 안 됨');
+    const z = (await state()).pos[1];
+    if (z > 0) throw new Error('반대쪽 끝으로 안 옮겨짐: ' + z);
+    // 1차: 문 순서 그대로(틀림) → 복도 처음으로
+    await act('timeBoard', 'KeyE', '복원판', { from: [1, 0], dist: 0.6 });
+    await waitPanel(true);
+    for (const k of ['1', '2', '3', '4', '5', '6']) await page.keyboard.press(k);
+    await page.keyboard.press('Enter');
+    await waitPanel(false);
+    await noDialogue();
+    if ((await hs()).tries !== 1) throw new Error('틀린 시도 기록 안 됨');
+    // 2차: 국어(3) 쉬는(6) 수학(5) 모둠(1) 미술(4) 점심(2)
+    await act('timeBoard', 'KeyE', '복원판', { from: [1, 0], dist: 0.6 });
+    await waitPanel(true);
+    for (const k of ['3', '6', '5', '1', '4', '2']) await page.keyboard.press(k);
+    await page.keyboard.press('Enter');
+    await waitPanel(false);
+    await waitFor('시간 복원', (s) => s.flags.timeRestored, 60000);
+    for (let i = 0; i < 60 && !(await page.$('.recap')); i++) {
+      if ((await state()).dialogue) await page.keyboard.press('Enter');
+      await sleep(400);
+    }
+    await page.waitForSelector('.recap', { timeout: 5000 });
+    const title = await page.locator('.title-main').textContent();
+    if (!title.includes('시간을 되찾았다')) throw new Error('끝 화면 제목 이상: ' + title);
+    log((await page.locator('.recap li').allTextContents()).slice(-3).join(' | '));
   });
 
   await step('다른_역할_자료조사', async () => {

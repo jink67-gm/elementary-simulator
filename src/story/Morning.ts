@@ -19,6 +19,7 @@ import { wa } from '../ui/dom';
 import { CutletEvent } from './Cutlet';
 import { RobotEvent } from './Robot';
 import { DodgeEvent } from './Dodgeball';
+import { HallwayEvent } from './Hallway';
 import type { StoryEvent } from './StoryEvent';
 
 const never = () => new Promise<never>(() => {});
@@ -59,12 +60,14 @@ export class Morning implements StoryHooks {
   cutlet: CutletEvent;
   robot: RobotEvent;
   dodge: DodgeEvent;
+  hallway: HallwayEvent;
 
   /** 지금 교시가 점심 이후 사건이면 그 사건 */
   ev(): StoryEvent | null {
     if (this.period === 'cutlet') return this.cutlet;
     if (this.period === 'robot') return this.robot;
     if (this.period === 'dodgeball') return this.dodge;
+    if (this.period === 'hallway') return this.hallway;
     return null;
   }
 
@@ -85,6 +88,7 @@ export class Morning implements StoryHooks {
     this.cutlet = new CutletEvent(this);
     this.robot = new RobotEvent(this);
     this.dodge = new DodgeEvent(this);
+    this.hallway = new HallwayEvent(this);
   }
 
   // ───────────────────────── 도우미 ─────────────────────────
@@ -206,6 +210,7 @@ export class Morning implements StoryHooks {
     if (this.f('groupDone') && after('art')) this.applyGroupPoster();
     else this.g.map.objs.groupPoster.visible = false;
     this.g.map.objs.giantCutlet.visible = p === 'lunch' || p === 'cutlet';
+    if (p !== 'hallway') this.hallway.leave();
     if (p !== 'dodgeball') {
       this.dodge.leave();
       this.g.map.setGymDoor(0);
@@ -513,6 +518,7 @@ export class Morning implements StoryHooks {
       case 'cutlet': return ['점심시간', '…돈가스가 왜 저래?'];
       case 'robot': return ['청소 시간', '각자 자리 주변 정리하기'];
       case 'dodgeball': return ['5교시 체육', '체육관에서 피구!'];
+      case 'hallway': return ['쉬는 시간', '??:??'];
     }
   }
 
@@ -528,6 +534,7 @@ export class Morning implements StoryHooks {
       case 'cutlet':
       case 'robot':
       case 'dodgeball':
+      case 'hallway':
         return; // 사건은 placeCast에서 begin()으로 시작
     }
   }
@@ -1352,7 +1359,7 @@ export class Morning implements StoryHooks {
     if (this.f('foundAIManual')) out.push('🔎 단서: 「소원은 문자 그대로 처리됩니다」');
     if (this.f('crafted')) out.push(`🎨 미술: ${this.f('artPlane') ? '종이비행기' : '미니 포스터'}${this.f('exhibited') ? ' (게시판 전시)' : ''}`);
     if (this.f('returnedGlue')) out.push('🤝 빌린 풀을 돌려줌');
-    out.push(...this.cutlet.recap(), ...this.robot.recap(), ...this.dodge.recap());
+    out.push(...this.cutlet.recap(), ...this.robot.recap(), ...this.dodge.recap(), ...this.hallway.recap());
     return out;
   }
 

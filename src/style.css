@@ -251,3 +251,5 @@ button { font-family: inherit; }
 .keypad { display: grid; grid-template-columns: repeat(5, 56px); gap: 8px; justify-content: center; }
 .gym-wrap { display: flex; justify-content: center; }
 .gym-map { max-width: 100%; height: auto; border-radius: 12px; border: 3px solid var(--line); }
+.slots.six { grid-template-columns: repeat(6, 1fr); }
+.slots.six .slot-card { min-height: 90px; font-size: 13px; }

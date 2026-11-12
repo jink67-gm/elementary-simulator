@@ -285,12 +285,13 @@ export class Menus {
     g.hud.show(false);
     g.input.releaseLock();
     // 어디까지 해결했는지에 따라 제목과 다음 이야기 안내
-    const stage = save.results.dodgeball ? 3 : save.results.robot ? 2 : save.cafeteriaSolution ? 1 : 0;
+    const stage = save.results.hallway ? 4 : save.results.dodgeball ? 3 : save.results.robot ? 2 : save.cafeteriaSolution ? 1 : 0;
     const TITLES = [
       ['1장 완료', '오전 생존 성공!', '사건 1: 급식실의 전설적인 거대 돈가스', '오전에 한 행동이 친구들의 말과 해결 방법에 이어져요.'],
       ['사건 1 완료', '점심 사수 성공!', '사건 2: 자동 청소 로봇의 역습', '점심을 해결한 방법이 청소 로봇 사건에 이어져요.'],
       ['사건 2 완료', '청소 시간 생존!', '사건 3: 초대형 피구공 대회', '앞에서 고친 기계·친구들의 도움이 체육관에서 쓰여요.'],
       ['사건 3 완료', '체육관 평화 회복!', '사건 4: 끝나지 않는 쉬는 시간', '오전 시간표 기록이 열쇠가 돼요.'],
+      ['사건 4 완료', '시간을 되찾았다!', '최종 사건: AI 학교생활 도우미', '오전 포스터와 친구들의 기록으로 AI의 잘못된 결론을 고쳐요.'],
     ][stage];
     const box = el('div', { class: 'title-box chapter' });
     box.append(
