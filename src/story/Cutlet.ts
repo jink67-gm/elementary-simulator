@@ -288,6 +288,11 @@ export class CutletEvent {
     const g = this.g;
     const map = g.map;
     this.st = fresh();
+    // 다시 하기: 지난번 사건 결과는 지우고 새로 판정
+    for (const k of ['sharedFairly', 'leftovers', 'fixedMachine', 'festivalHeld', 'festivalIdea', 'cookAgreedFestival', 'festivalAnnouncedWell', 'cutletResolved', 'adultsHelpedLunch']) delete g.save.flags[k];
+    delete g.save.stats.cutletCrumbs;
+    delete g.save.stats.leftoverPieces;
+    g.save.cafeteriaSolution = null;
     this.dressCook();
     // 지난번 사건에서 남은 것 치우기
     for (const k of [...g.items.keys()]) if (/^(piece|cut_|tray_|fold_|ladle_)/.test(k)) g.removeItem(k);

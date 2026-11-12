@@ -92,21 +92,22 @@ export function openCutter(ctx: UiCtx, lowSpec = false): Promise<CutResult | nul
       const g = el('div', { class: guideH ? 'cut-line-h guide' : 'cut-line guide' });
       if (!guideH) g.style.left = `${(guide / CUTLET_COLS) * 100}%`;
       board.append(g);
-      // 마우스로 고르기
-      for (let i = 1; i < CUTLET_COLS; i++) {
-        const hit = el('div', { class: 'cut-hit' });
-        hit.style.left = `${((i - 0.5) / CUTLET_COLS) * 100}%`;
-        hit.style.width = `${(1 / CUTLET_COLS) * 100}%`;
-        hit.addEventListener('mouseenter', () => {
-          guideH = false;
-          guide = i;
-          render();
-        });
-        hit.addEventListener('click', () => void doCut());
-        board.append(hit);
-      }
       hint.textContent = planHint(pieces);
     };
+
+    // 마우스로 고르기: 실제로 움직였을 때만 (커서가 가만히 있을 때 다시 그려도 가로선 선택이 풀리지 않게)
+    board.addEventListener('pointermove', (e) => {
+      if (!e.movementX && !e.movementY) return;
+      const r = board.getBoundingClientRect();
+      const i = Math.max(1, Math.min(CUTLET_COLS - 1, Math.round(((e.clientX - r.left) / r.width) * CUTLET_COLS)));
+      if (guideH || i !== guide) {
+        guideH = false;
+        guide = i;
+        render();
+      }
+    });
+    board.addEventListener('click', () => void doCut());
+    board.style.cursor = 'crosshair';
 
     const doCut = async () => {
       if (busy) return;
@@ -214,6 +215,7 @@ export function openMachine(ctx: UiCtx, onTooSmall: () => void): Promise<boolean
     const conn: Partial<Record<Wire, Port>> = {};
     let heldWire: Wire | null = null;
     let value = MACHINE_START;
+    let dialOn = false;
     const history: string[] = [];
     const sticker = el('div', { class: 'machine-sticker' },
       el('b', {}, '사용 설명 스티커'),
@@ -252,7 +254,7 @@ export function openMachine(ctx: UiCtx, onTooSmall: () => void): Promise<boolean
       heldWire = null;
       ctx.sfx.place();
       renderWires();
-      if (WIRES.every((w) => conn[w])) {
+      if (WIRES.every((w) => conn[w]) && !dialOn) {
         if (wiresCorrect(conn)) {
           ctx.sfx.chime();
           msg.textContent = '띠링! 화면이 켜졌다: 「돈가스 크기 1000%」';
@@ -266,6 +268,7 @@ export function openMachine(ctx: UiCtx, onTooSmall: () => void): Promise<boolean
     };
 
     const renderDial = () => {
+      dialOn = true;
       area.innerHTML = '';
       const screen = el('div', { class: 'machine-screen' }, el('div', { class: 'machine-value' }, `${value}%`), el('div', { class: 'machine-hist' }, history.join(' → ') || '목표: 100%'));
       const ops = el('div', { class: 'row center' });
@@ -282,7 +285,7 @@ export function openMachine(ctx: UiCtx, onTooSmall: () => void): Promise<boolean
       renderDial();
     };
     const apply = async (op: MachineOp) => {
-      if (ok || !WIRES.every((w) => conn[w] === WIRE_RULE[w])) return;
+      if (ok || !dialOn) return;
       value = machineApply(value, op);
       history.push(MACHINE_OPS[op].label);
       ctx.sfx.blip();
@@ -305,7 +308,7 @@ export function openMachine(ctx: UiCtx, onTooSmall: () => void): Promise<boolean
     p.body.append(el('div', { class: 'machine-wrap' }, sticker, area), msg, keys);
     p.onKey((e) => {
       if (e.repeat) return;
-      const onDial = WIRES.every((w) => conn[w] === WIRE_RULE[w]);
+      const onDial = dialOn;
       const n = Number(e.key);
       if (!onDial) {
         if (n >= 1 && n <= 3) (heldWire = WIRES[n - 1]), renderWires();

@@ -97,7 +97,10 @@ async function selectItem(item) {
   await page.keyboard.press(`Digit${idx + 1}`);
   await sleep(80);
 }
+// E2E_ONLY=사건1 처럼 주면 그 이름이 들어간 단계만 (타이틀은 항상) 실행
+const ONLY = process.env.E2E_ONLY;
 async function step(name, fn) {
+  if (ONLY && !name.includes(ONLY) && !name.startsWith('타이틀')) return;
   console.log('▶', name);
   try {
     await fn();
@@ -332,6 +335,7 @@ try {
   }
 
   await step('사건1_A_잘라서_나누기', async () => {
+    if (ONLY) await restartCutlet();
     await act('npc:cook', 'KeyE', '조리사');
     await noDialogue();
     await act('cutletTable', 'KeyE', '살펴보기', { dist: 2.4, from: [0, -1] });
@@ -355,6 +359,9 @@ try {
     await noDialogue();
     let cs = await cutletSt();
     if (cs.pieces.length !== 6 || !cs.pieces.every(([, a]) => a === 4)) throw new Error('조각 이상: ' + JSON.stringify(cs.pieces));
+    await page.evaluate(() => window.__sim.teleport(9, 18.6));
+    await sleep(600);
+    await page.screenshot({ path: `${OUT}/사건1_A_자른_조각.png` });
     await act('trayCart', 'KeyE', '식판');
     await selectItem('trayStack');
     await act('dinerTable0', 'KeyF', '식판', { dist: 1.6, from: [0, 1] });
@@ -418,6 +425,9 @@ try {
       await act('npc:' + id, 'KeyE', name, { from: [0, 1], dist: 0.8 });
       await noDialogue();
     }
+    await page.evaluate(() => window.__sim.teleport(8.6, 9.0));
+    await sleep(600);
+    await page.screenshot({ path: `${OUT}/사건1_C_축제_준비.png` });
     await act('mic', 'KeyE', '축제', { from: [-1, 0], dist: 0.9 });
     await waitPanel(true);
     for (const k of ['3', '1', '2']) {
@@ -432,10 +442,13 @@ try {
   await step('사건1_새로고침_이어하기', async () => {
     await page.reload();
     await page.waitForFunction(() => window.__sim, null, { timeout: 120000 });
+    // 저장에는 축제 결과가 남아 있고, 이어하기는 「사건 1 끝 · 다시 해 보기」로 사건을 처음부터 다시 연다
+    const label = await page.getByText(/이어하기/).textContent();
+    if (!label.includes('사건 1 끝')) throw new Error('이어하기 버튼 이름 이상: ' + label);
     await page.getByText(/이어하기/).click();
     await sleep(1500);
     const s = await state();
-    if (s.period !== 'cutlet' || s.cafeteria !== 'festival') throw new Error('이어하기 상태 이상: ' + JSON.stringify(s));
+    if (s.period !== 'cutlet' || s.cafeteria !== null || !s.flags.chapter1Done) throw new Error('다시 하기 상태 이상: ' + JSON.stringify(s));
     await noDialogue();
   });
 
