@@ -7,7 +7,7 @@ import { PERIODS, type PeriodId } from './core/SaveData';
 import { preloadCharacterModels, modelErrors } from './world/models';
 
 /** 게임에서 쓰는 3D 캐릭터 모델 (public/models/characters/*.glb) */
-const CHARACTER_MODELS = ['boy'];
+const CHARACTER_MODELS: string[] = []; // 품질이 확정된 모델만 넣는다 (지금은 블록 캐릭터 사용)
 
 function fail(msg: string) {
   const l = document.getElementById('loading');

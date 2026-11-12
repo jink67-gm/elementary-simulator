@@ -7,18 +7,18 @@
       "asian-male-child": 1.0
     },
     "height": 1.45,
-    "skin": 15319456,
+    "skin": 15780778,
     "hair": 1775380,
-    "hair_volume": 0.016,
+    "hair_volume": 0.02,
     "iris": 4860954,
     "clothes": {
       "top": {
         "color": 9080209,
-        "thickness": 0.011
+        "thickness": 0.014
       },
       "bottom": {
         "color": 2833500,
-        "thickness": 0.007
+        "thickness": 0.01
       },
       "shoes": {
         "color": 15921906,
@@ -27,5 +27,297 @@
       }
     },
     "hair_style": "short"
+  },
+  "girl": {
+    "sex": "f",
+    "targets": {
+      "asian-female-child": 1.0
+    },
+    "height": 1.43,
+    "skin": 15780264,
+    "hair": 1775380,
+    "iris": 4860954,
+    "name": "여학생 (플레이어 기본)",
+    "concept": "assets/concept/girl.png",
+    "hair_style": "bob",
+    "ponytail": true,
+    "hair_volume": 0.014,
+    "clothes": {
+      "top": {
+        "color": 11067599,
+        "thickness": 0.012
+      },
+      "bottom": {
+        "color": 2503247,
+        "thickness": 0.007
+      },
+      "shoes": {
+        "color": 15921906,
+        "thickness": 0.012,
+        "rough": 0.6
+      }
+    }
+  },
+  "minjae": {
+    "sex": "m",
+    "targets": {
+      "asian-male-child": 1.0
+    },
+    "height": 1.45,
+    "skin": 15319456,
+    "hair": 1775380,
+    "iris": 4860954,
+    "name": "민재",
+    "concept": "assets/concept/classmates.png",
+    "hair_style": "spiky",
+    "hair_volume": 0.016,
+    "seed": 3,
+    "lip": 13073008,
+    "clothes": {
+      "top": {
+        "color": 11740719,
+        "thickness": 0.011
+      },
+      "bottom": {
+        "color": 2302758,
+        "thickness": 0.008
+      },
+      "shoes": {
+        "color": 15921906,
+        "thickness": 0.012,
+        "rough": 0.6
+      }
+    }
+  },
+  "seoa": {
+    "sex": "f",
+    "targets": {
+      "asian-female-child": 1.0
+    },
+    "height": 1.42,
+    "skin": 15978674,
+    "hair": 1775380,
+    "iris": 4860954,
+    "name": "서아",
+    "concept": "assets/concept/classmates.png",
+    "hair_style": "long",
+    "hair_volume": 0.012,
+    "glasses": true,
+    "clothes": {
+      "top": {
+        "color": 15655880,
+        "thickness": 0.013
+      },
+      "bottom": {
+        "color": 2829107,
+        "thickness": 0.004
+      },
+      "skirt": {
+        "color": 8016552,
+        "thickness": 0.012
+      },
+      "shoes": {
+        "color": 15921906,
+        "thickness": 0.012,
+        "rough": 0.6
+      }
+    }
+  },
+  "junho": {
+    "sex": "m",
+    "targets": {
+      "asian-male-child": 1.0
+    },
+    "height": 1.48,
+    "skin": 14461828,
+    "hair": 1775380,
+    "iris": 4860954,
+    "name": "준호",
+    "concept": "assets/concept/classmates.png",
+    "hair_style": "buzz",
+    "clothes": {
+      "top": {
+        "color": 2375840,
+        "thickness": 0.011
+      },
+      "bottom": {
+        "color": 2375840,
+        "thickness": 0.009
+      },
+      "shoes": {
+        "color": 15921906,
+        "thickness": 0.014,
+        "rough": 0.6
+      }
+    }
+  },
+  "harin": {
+    "sex": "f",
+    "targets": {
+      "asian-female-child": 1.0
+    },
+    "height": 1.43,
+    "skin": 15319456,
+    "hair": 3810840,
+    "iris": 4860954,
+    "name": "하린",
+    "hair_style": "bob",
+    "ponytail": true,
+    "hair_volume": 0.013,
+    "seed": 5,
+    "clothes": {
+      "top": {
+        "color": 16106818,
+        "thickness": 0.012
+      },
+      "bottom": {
+        "color": 4156229,
+        "thickness": 0.007
+      },
+      "shoes": {
+        "color": 15921906,
+        "thickness": 0.012,
+        "rough": 0.6
+      }
+    }
+  },
+  "teacher": {
+    "name": "담임 선생님",
+    "concept": "assets/concept/teacher.png",
+    "sex": "f",
+    "targets": {
+      "asian-female-young": 1.0
+    },
+    "height": 1.62,
+    "skin": 15714214,
+    "hair": 2759186,
+    "hair_style": "bob",
+    "hair_volume": 0.016,
+    "glasses": true,
+    "iris": 3875862,
+    "clothes": {
+      "top": {
+        "color": 10469274,
+        "thickness": 0.013
+      },
+      "bottom": {
+        "color": 14205856,
+        "thickness": 0.009
+      },
+      "shoes": {
+        "color": 7035466,
+        "thickness": 0.01,
+        "rough": 0.6
+      }
+    },
+    "age": "adult"
+  },
+  "kid_m1": {
+    "sex": "m",
+    "targets": {
+      "asian-male-child": 1.0
+    },
+    "height": 1.43,
+    "skin": 14857356,
+    "hair": 1775380,
+    "iris": 4860954,
+    "name": "반 친구 남1",
+    "hair_style": "short",
+    "seed": 11,
+    "clothes": {
+      "top": {
+        "color": 5420936,
+        "thickness": 0.011
+      },
+      "bottom": {
+        "color": 3426654,
+        "thickness": 0.007
+      },
+      "shoes": {
+        "color": 15921906,
+        "thickness": 0.012
+      }
+    }
+  },
+  "kid_m2": {
+    "sex": "m",
+    "targets": {
+      "asian-male-child": 1.0
+    },
+    "height": 1.47,
+    "skin": 15319456,
+    "hair": 1775380,
+    "iris": 4860954,
+    "name": "반 친구 남2",
+    "hair_style": "spiky",
+    "seed": 12,
+    "clothes": {
+      "top": {
+        "color": 2051705,
+        "thickness": 0.011
+      },
+      "bottom": {
+        "color": 4869737,
+        "thickness": 0.007
+      },
+      "shoes": {
+        "color": 15921906,
+        "thickness": 0.012
+      }
+    }
+  },
+  "kid_f1": {
+    "sex": "f",
+    "targets": {
+      "asian-female-child": 1.0
+    },
+    "height": 1.43,
+    "skin": 16109749,
+    "hair": 1775380,
+    "iris": 4860954,
+    "name": "반 친구 여1",
+    "hair_style": "long",
+    "seed": 13,
+    "clothes": {
+      "top": {
+        "color": 15895218,
+        "thickness": 0.012
+      },
+      "bottom": {
+        "color": 2961730,
+        "thickness": 0.007
+      },
+      "shoes": {
+        "color": 15921906,
+        "thickness": 0.012
+      }
+    }
+  },
+  "kid_f2": {
+    "sex": "f",
+    "targets": {
+      "asian-female-child": 1.0
+    },
+    "height": 1.4,
+    "skin": 15319456,
+    "hair": 1775380,
+    "iris": 4860954,
+    "name": "반 친구 여2",
+    "hair_style": "bob",
+    "seed": 14,
+    "clothes": {
+      "top": {
+        "color": 8177406,
+        "thickness": 0.012
+      },
+      "bottom": {
+        "color": 2236987,
+        "thickness": 0.007
+      },
+      "shoes": {
+        "color": 15921906,
+        "thickness": 0.012
+      }
+    }
   }
 }
