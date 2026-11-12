@@ -1,5 +1,6 @@
 // 타이틀 · 캐릭터 고르기 · 알람 · 일시정지 · 설정 · 1장 끝 화면
 import { el, button } from './dom';
+import { ENDING_TITLES, type Ending } from '../story/finalLogic';
 import { Panel } from './Panel';
 import type { Game } from '../core/Game';
 import { newSave, type SaveData } from '../core/SaveData';
@@ -59,7 +60,7 @@ export class Menus {
     const btns = el('div', { class: 'title-btns' });
     if (saved) {
       btns.append(
-        button(`이어하기 — ${saved.avatar.nickname} · ${saved.flags.storyEnd ? '끝까지 함 · 마지막 사건 다시' : SCHEDULE[saved.period].label}`, () => {
+        button(`이어하기 — ${saved.avatar.nickname} · ${saved.results.ending ? `엔딩 ${saved.results.ending} 봄 · 최종 사건 다시` : SCHEDULE[saved.period].label}`, () => {
           this.setScreen(null);
           this.onStart(saved);
         }, 'btn primary big'),
@@ -276,6 +277,36 @@ export class Menus {
         el('div', { class: 'info-line' }, '자세한 목록: 저장소의 assets/SOURCES.md'),
       ),
     );
+  }
+
+  /** 엔딩 화면: 엔딩 제목, 학교가 어떻게 바뀌었는지, 하루 기록 */
+  ending(save: SaveData, ending: Ending, epi: string[], recap: string[]) {
+    const g = this.g;
+    g.running = false;
+    g.cutscene = false;
+    g.hud.show(false);
+    g.input.releaseLock();
+    const [title, sub] = ENDING_TITLES[ending];
+    const box = el('div', { class: 'title-box chapter' });
+    const epiBox = el('div', { class: 'ending-epilogue' });
+    epi.forEach((l) => epiBox.append(el('div', {}, l)));
+    const list = el('ul', { class: 'recap' });
+    recap.forEach((r) => list.append(el('li', {}, r)));
+    box.append(
+      el('div', { class: 'title-small' }, '초등학생 시뮬레이터 · 끝'),
+      el('h1', { class: 'title-main' }, title),
+      el('div', { class: 'title-sub' }, sub),
+      epiBox,
+      el('div', { class: 'title-sub' }, `${save.avatar.nickname}의 하루 기록`),
+      list,
+      el('div', { class: 'next-box' }, el('b', {}, ending === 'C' ? '전설의 학교 달성!' : '다른 엔딩도 있어요'), el('div', {}, ending === 'A' ? '제어 패널에서 개선 기준을 정하면 학교가 조금 나아질지도?' : ending === 'B' ? '하루 동안 친구를 더 많이 도우면… 「고마움 노트」를 확인해 보세요.' : '오늘 하루 정말 무사히 하교했다!')),
+      el('div', { class: 'title-btns' },
+        button('저장 파일 내보내기', () => downloadText(`초등학생시뮬레이터_${save.avatar.nickname}_엔딩${ending}.json`, SaveManager.exportJson(save)), 'btn'),
+        button('만든 재료·라이선스', () => this.credits(), 'btn ghost'),
+        button('처음 화면으로', () => this.title(), 'btn primary big'),
+      ),
+    );
+    this.setScreen(el('div', { class: 'screen title-screen' }, box));
   }
 
   chapterEnd(save: SaveData, recap: string[]) {

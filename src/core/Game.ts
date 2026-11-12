@@ -366,6 +366,12 @@ export class Game {
     this.tpc.update(dt, input, this.remote ? this.remote.target() : this.player.pos, !!this.player.seat && !this.remote, this.map.cameraBlockers);
     // 카메라가 친구 머리 속에 들어가면 그 친구를 잠깐 숨긴다 (앉아 있을 때 뒷자리 친구 등)
     for (const n of [...Object.values(this.npcs), ...this.fillers]) n.char.setHidden(n.headPos().distanceTo(this.camera.position) < 0.75);
+    // 좁은 방에서 카메라가 내 머리에 붙으면 내 캐릭터도 잠깐 숨긴다 (원격 조종 중 제외)
+    if (!this.remote) {
+      const head = this.player.pos.clone();
+      head.y += 1.2 * this.player.char.scale;
+      this.player.char.setHidden(head.distanceTo(this.camera.position) < 0.9);
+    } else this.player.char.setHidden(false);
     this.hud.showLockHint(!input.pointerLocked && !input.captured && !this.cutscene);
     this.hud.updateBubbles(this.camera, this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight);
 

@@ -20,6 +20,8 @@ import { CutletEvent } from './Cutlet';
 import { RobotEvent } from './Robot';
 import { DodgeEvent } from './Dodgeball';
 import { HallwayEvent } from './Hallway';
+import { FinalEvent } from './Final';
+import type { Ending } from './finalLogic';
 import type { StoryEvent } from './StoryEvent';
 
 const never = () => new Promise<never>(() => {});
@@ -61,6 +63,9 @@ export class Morning implements StoryHooks {
   robot: RobotEvent;
   dodge: DodgeEvent;
   hallway: HallwayEvent;
+  final: FinalEvent;
+  /** 최종 사건 엔딩 (main.ts가 엔딩 화면을 연다) */
+  onEnding: (save: SaveData, ending: Ending, epilogue: string[]) => void = () => {};
 
   /** 지금 교시가 점심 이후 사건이면 그 사건 */
   ev(): StoryEvent | null {
@@ -68,6 +73,7 @@ export class Morning implements StoryHooks {
     if (this.period === 'robot') return this.robot;
     if (this.period === 'dodgeball') return this.dodge;
     if (this.period === 'hallway') return this.hallway;
+    if (this.period === 'final') return this.final;
     return null;
   }
 
@@ -89,6 +95,7 @@ export class Morning implements StoryHooks {
     this.robot = new RobotEvent(this);
     this.dodge = new DodgeEvent(this);
     this.hallway = new HallwayEvent(this);
+    this.final = new FinalEvent(this);
   }
 
   // ───────────────────────── 도우미 ─────────────────────────
@@ -211,6 +218,7 @@ export class Morning implements StoryHooks {
     else this.g.map.objs.groupPoster.visible = false;
     this.g.map.objs.giantCutlet.visible = p === 'lunch' || p === 'cutlet';
     if (p !== 'hallway') this.hallway.leave();
+    if (p !== 'final') this.final.leave();
     if (p !== 'dodgeball') {
       this.dodge.leave();
       this.g.map.setGymDoor(0);
@@ -519,6 +527,7 @@ export class Morning implements StoryHooks {
       case 'robot': return ['청소 시간', '각자 자리 주변 정리하기'];
       case 'dodgeball': return ['5교시 체육', '체육관에서 피구!'];
       case 'hallway': return ['쉬는 시간', '??:??'];
+      case 'final': return ['방과 후', 'AI: 학교 삭제 준비 중…'];
     }
   }
 
@@ -535,6 +544,7 @@ export class Morning implements StoryHooks {
       case 'robot':
       case 'dodgeball':
       case 'hallway':
+      case 'final':
         return; // 사건은 placeCast에서 begin()으로 시작
     }
   }
@@ -1359,7 +1369,7 @@ export class Morning implements StoryHooks {
     if (this.f('foundAIManual')) out.push('🔎 단서: 「소원은 문자 그대로 처리됩니다」');
     if (this.f('crafted')) out.push(`🎨 미술: ${this.f('artPlane') ? '종이비행기' : '미니 포스터'}${this.f('exhibited') ? ' (게시판 전시)' : ''}`);
     if (this.f('returnedGlue')) out.push('🤝 빌린 풀을 돌려줌');
-    out.push(...this.cutlet.recap(), ...this.robot.recap(), ...this.dodge.recap(), ...this.hallway.recap());
+    out.push(...this.cutlet.recap(), ...this.robot.recap(), ...this.dodge.recap(), ...this.hallway.recap(), ...this.final.recap());
     return out;
   }
 

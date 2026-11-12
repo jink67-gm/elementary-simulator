@@ -11,7 +11,7 @@ export type GroupRole = 'speaker' | 'maker' | 'researcher' | 'organizer';
 export type PosterTheme = 'food' | 'rest' | 'play' | 'friends';
 
 /** 오전 일과 순서. 저장은 각 교시가 시작될 때 체크포인트로 남는다. */
-export const PERIODS = ['arrival', 'korean', 'break', 'math', 'group', 'art', 'lunch', 'cutlet', 'robot', 'dodgeball', 'hallway'] as const;
+export const PERIODS = ['arrival', 'korean', 'break', 'math', 'group', 'art', 'lunch', 'cutlet', 'robot', 'dodgeball', 'hallway', 'final'] as const;
 export type PeriodId = (typeof PERIODS)[number];
 
 export interface Avatar {

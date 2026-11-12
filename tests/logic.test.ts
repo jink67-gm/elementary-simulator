@@ -153,7 +153,8 @@ describe('시간표', () => {
     expect(nextPeriod('cutlet')).toBe('robot');
     expect(nextPeriod('robot')).toBe('dodgeball');
     expect(nextPeriod('dodgeball')).toBe('hallway');
-    expect(nextPeriod('hallway')).toBeNull();
+    expect(nextPeriod('hallway')).toBe('final');
+    expect(nextPeriod('final')).toBeNull();
   });
   it('시계는 종 치기 1분 전에서 기다린다', () => {
     expect(clockMinutes('korean', 0)).toBe(SCHEDULE.korean.start);

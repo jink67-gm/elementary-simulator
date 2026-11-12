@@ -40,6 +40,7 @@ async function boot() {
   const story = new Morning(game);
   const menus = new Menus(game, (save: SaveData) => game.begin(save, story));
   story.onChapterEnd = (save) => setTimeout(() => menus.chapterEnd(save, story.recap()), 1200);
+  story.onEnding = (save, ending, epi) => setTimeout(() => menus.ending(save, ending, epi, story.recap()), 1200);
   game.onPauseRequest = () => menus.pause();
   menus.title();
   for (const m of [...modelErrors, ...propErrors]) game.hud.toast(m, 'warn', 8000);

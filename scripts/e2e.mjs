@@ -725,15 +725,118 @@ try {
     for (const k of ['3', '6', '5', '1', '4', '2']) await page.keyboard.press(k);
     await page.keyboard.press('Enter');
     await waitPanel(false);
-    await waitFor('시간 복원', (s) => s.flags.timeRestored, 60000);
-    for (let i = 0; i < 60 && !(await page.$('.recap')); i++) {
+    await waitFor('시간 복원 → 최종 사건', (s) => s.flags.timeRestored && s.period === 'final', 90000);
+    await noDialogue();
+    log('사건 4 해결 → 최종 사건으로 넘어감');
+  });
+
+  // ───── 최종 사건 + 엔딩 3종 ─────
+  async function restartFinal(flags) {
+    await page.evaluate((fl) => {
+      const g = window.__sim.game;
+      g.running = true;
+      g.hud.show(true);
+      const scr = document.querySelector('.screen');
+      if (scr) scr.parentNode.removeChild(scr);
+      for (const k of ['pencilReturned', 'helpedDevice', 'returnedGlue', 'sharedFairly', 'festivalHeld', 'foundBroadcastLog']) delete g.save.flags[k];
+      for (const k of fl) g.save.flags[k] = true;
+      window.__sim.skipTo('final');
+    }, flags);
+    await sleep(800);
+    await noDialogue();
+  }
+  async function collectRecords() {
+    for (const [id, from] of [['teacherLaptop', [0, 1]], ['kiosk', [-1, 0]], ['broadcastLaptop', [-1, 0]]]) {
+      await act(id, 'KeyE', '컴퓨터', { from, dist: 0.5 });
+      await waitPanel(true);
+      await page.keyboard.press('Enter');
+      await waitPanel(false);
+    }
+  }
+  async function fixMatch(wrongFirst) {
+    if (wrongFirst) {
+      await act('aiConsole', 'KeyE', '해석', { from: [0, -1], dist: 0.4 });
+      await waitPanel(true);
+      for (const k of ['1', 'B', '2', 'B', '3', 'B', '4', 'B']) await page.keyboard.press(k);
+      await page.keyboard.press('Enter');
+      await waitPanel(false);
+      await noDialogue();
+      if ((await state()).flags.aiCorrected) throw new Error('틀린 짝인데 통과');
+    }
+    await act('aiConsole', 'KeyE', '해석', { from: [0, -1], dist: 0.4 });
+    await waitPanel(true);
+    for (const k of ['1', 'C', '2', 'E', '3', 'D', '4', 'A']) await page.keyboard.press(k);
+    await page.keyboard.press('Enter');
+    await waitPanel(false);
+    await noDialogue();
+    if (!(await state()).flags.aiCorrected) throw new Error('짝짓기 통과 못 함');
+  }
+  async function setCriteria(wrongFirst) {
+    if (wrongFirst) {
+      await act('aiConsole', 'KeyE', '기준', { from: [0, -1], dist: 0.4 });
+      await waitPanel(true);
+      await page.keyboard.press('Enter'); // 학교 삭제 계획 그대로 → AI가 되묻는다
+      await waitPanel(false);
+      await noDialogue();
+    }
+    await act('aiConsole', 'KeyE', '기준', { from: [0, -1], dist: 0.4 });
+    await waitPanel(true);
+    for (const k of ['1', '2', '2', '3']) await page.keyboard.press(k); // 공간 유지 · 15분 · 안전하고 즐거운 수업
+    await page.keyboard.press('Enter');
+    await waitPanel(false);
+  }
+  async function waitEnding(letter, must) {
+    for (let i = 0; i < 60 && !(await page.$('.ending-epilogue')); i++) {
       if ((await state()).dialogue) await page.keyboard.press('Enter');
       await sleep(400);
     }
-    await page.waitForSelector('.recap', { timeout: 5000 });
+    await page.waitForSelector('.ending-epilogue', { timeout: 5000 });
     const title = await page.locator('.title-main').textContent();
-    if (!title.includes('시간을 되찾았다')) throw new Error('끝 화면 제목 이상: ' + title);
-    log((await page.locator('.recap li').allTextContents()).slice(-3).join(' | '));
+    const epi = await page.locator('.ending-epilogue').textContent();
+    if (!title.includes('엔딩 ' + letter)) throw new Error('엔딩 이상: ' + title);
+    if (!epi.includes(must)) throw new Error(`엔딩 ${letter} 뒤 이야기에 「${must}」 없음: ${epi}`);
+    log(title + ' — ' + epi.slice(0, 60) + '…');
+  }
+
+  await step('최종_엔딩B_조금_나아진_학교', async () => {
+    await restartFinal(['pencilReturned']);
+    await act('aiConsole', 'KeyE', '패널', { from: [0, -1], dist: 0.4 });
+    if (await panelOpen()) throw new Error('기록 없이 패널이 열림');
+    await collectRecords();
+    await fixMatch(true);
+    await setCriteria(true);
+    await waitEnding('B', '15분');
+  });
+
+  await step('최종_엔딩C_전설의_학교', async () => {
+    await restartFinal(['pencilReturned', 'helpedDevice', 'returnedGlue', 'sharedFairly', 'foundBroadcastLog']);
+    await collectRecords();
+    await fixMatch(false);
+    await setCriteria(false);
+    await waitEnding('C', '비밀 놀이 공간');
+  });
+
+  await step('최종_엔딩A_평범한_학교', async () => {
+    await restartFinal([]);
+    await collectRecords();
+    await fixMatch(false);
+    await act('resetButton', 'KeyE', '초기화', { from: [-1, 0], dist: 0.6 });
+    await noDialogue();
+    if ((await state()).results?.ending) throw new Error('한 번 눌렀는데 바로 초기화됨');
+    await act('resetButton', 'KeyE', '정말', { from: [-1, 0], dist: 0.6 });
+    await waitEnding('A', '08:25');
+  });
+
+  await step('엔딩_후_이어하기', async () => {
+    await page.reload();
+    await page.waitForFunction(() => window.__sim, null, { timeout: 120000 });
+    const label = await page.getByText(/이어하기/).textContent();
+    if (!label.includes('엔딩 A')) throw new Error('이어하기 버튼 이름 이상: ' + label);
+    await page.getByText(/이어하기/).click();
+    await sleep(1500);
+    const s = await state();
+    if (s.period !== 'final' || s.results?.ending) throw new Error('최종 사건 다시 하기 상태 이상: ' + JSON.stringify(s));
+    await noDialogue();
   });
 
   await step('다른_역할_자료조사', async () => {
