@@ -64,6 +64,7 @@ async function boot() {
         wish: game.save?.playerWish,
         role: game.save?.groupRole,
         cafeteria: game.save?.cafeteriaSolution,
+        results: game.save?.results,
         fps: game.fps,
       }),
       /** 상호작용 대상 앞으로 순간이동 (실제 E/F 입력은 키보드로) */

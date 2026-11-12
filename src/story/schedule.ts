@@ -25,6 +25,8 @@ export const SCHEDULE: Record<PeriodId, PeriodInfo> = {
   lunch: { id: 'lunch', label: '점심시간', start: hm(12, 10), end: hm(12, 20), expectedSec: 90, softLimitSec: 9999 },
   // 사건 1: 거대 돈가스. 오래 막히면 단계별 힌트, 10분이 넘으면 어른들이 도와 마무리한다
   cutlet: { id: 'cutlet', label: '점심시간 · 사건 1', start: hm(12, 20), end: hm(13, 0), expectedSec: 480, softLimitSec: 600 },
+  robot: { id: 'robot', label: '청소 시간 · 사건 2', start: hm(13, 0), end: hm(13, 20), expectedSec: 300, softLimitSec: 480 },
+  dodgeball: { id: 'dodgeball', label: '5교시 체육 · 사건 3', start: hm(13, 20), end: hm(14, 0), expectedSec: 240, softLimitSec: 480 },
 };
 
 export function nextPeriod(p: PeriodId): PeriodId | null {

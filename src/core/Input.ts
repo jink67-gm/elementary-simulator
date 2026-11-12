@@ -42,6 +42,8 @@ export class Input {
     });
     canvas.addEventListener('mousedown', (e) => {
       if (e.button === 2 || !this.pointerLocked) this.dragging = true;
+      // 마우스가 잠겨 있을 때 왼쪽 클릭 = 행동 (원격 조종 집게 등)
+      if (e.button === 0 && this.pointerLocked && !this.blockKeys()) this.pressedSet.add('MouseLeft');
     });
     window.addEventListener('mouseup', () => (this.dragging = false));
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());

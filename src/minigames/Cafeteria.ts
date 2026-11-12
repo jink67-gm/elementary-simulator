@@ -208,10 +208,10 @@ const WIRE_NAMES: Record<Wire, string> = { red: '빨강', blue: '파랑', yellow
 const PORT_NAMES: Record<Port, string> = { power: '전원', size: '크기', ground: '접지' };
 
 /** 음식 크기 조절기. 100%로 맞추면 true */
-export function openMachine(ctx: UiCtx, onTooSmall: () => void): Promise<boolean> {
+export function openMachine(ctx: UiCtx, onTooSmall: () => void, opts: { title?: string; skipWires?: boolean } = {}): Promise<boolean> {
   return new Promise((resolve) => {
     let ok = false;
-    const p = new Panel(ctx.layer, { title: '음식 크기 조절기 (시범 운영 중)', wide: true, onClose: () => resolve(ok) });
+    const p = new Panel(ctx.layer, { title: opts.title ?? '음식 크기 조절기 (시범 운영 중)', wide: true, onClose: () => resolve(ok) });
     const conn: Partial<Record<Wire, Port>> = {};
     let heldWire: Wire | null = null;
     let value = MACHINE_START;
@@ -319,7 +319,11 @@ export function openMachine(ctx: UiCtx, onTooSmall: () => void): Promise<boolean
         if (e.code === 'KeyR') reset();
       }
     });
-    renderWires();
+    if (opts.skipWires) {
+      for (const w of WIRES) conn[w] = WIRE_RULE[w];
+      msg.textContent = '전선은 아까 고쳐 둔 그대로! 100%로 맞춰 보자.';
+      renderDial();
+    } else renderWires();
     void PORTS;
   });
 }

@@ -59,7 +59,7 @@ export class Menus {
     const btns = el('div', { class: 'title-btns' });
     if (saved) {
       btns.append(
-        button(`이어하기 — ${saved.avatar.nickname} · ${saved.cafeteriaSolution ? '사건 1 끝 · 다시 해 보기' : SCHEDULE[saved.period].label}`, () => {
+        button(`이어하기 — ${saved.avatar.nickname} · ${saved.flags.storyEnd ? '끝까지 함 · 마지막 사건 다시' : SCHEDULE[saved.period].label}`, () => {
           this.setScreen(null);
           this.onStart(saved);
         }, 'btn primary big'),
@@ -284,19 +284,27 @@ export class Menus {
     g.cutscene = false;
     g.hud.show(false);
     g.input.releaseLock();
+    // 어디까지 해결했는지에 따라 제목과 다음 이야기 안내
+    const stage = save.results.dodgeball ? 3 : save.results.robot ? 2 : save.cafeteriaSolution ? 1 : 0;
+    const TITLES = [
+      ['1장 완료', '오전 생존 성공!', '사건 1: 급식실의 전설적인 거대 돈가스', '오전에 한 행동이 친구들의 말과 해결 방법에 이어져요.'],
+      ['사건 1 완료', '점심 사수 성공!', '사건 2: 자동 청소 로봇의 역습', '점심을 해결한 방법이 청소 로봇 사건에 이어져요.'],
+      ['사건 2 완료', '청소 시간 생존!', '사건 3: 초대형 피구공 대회', '앞에서 고친 기계·친구들의 도움이 체육관에서 쓰여요.'],
+      ['사건 3 완료', '체육관 평화 회복!', '사건 4: 끝나지 않는 쉬는 시간', '오전 시간표 기록이 열쇠가 돼요.'],
+    ][stage];
     const box = el('div', { class: 'title-box chapter' });
     box.append(
-      el('div', { class: 'title-small' }, save.cafeteriaSolution ? '1장 + 사건 1 완료' : '1장 완료'),
-      el('h1', { class: 'title-main' }, save.cafeteriaSolution ? '점심 사수 성공!' : '오전 생존 성공!'),
-      el('div', { class: 'title-sub' }, `${save.avatar.nickname}의 오전 기록`),
+      el('div', { class: 'title-small' }, TITLES[0]),
+      el('h1', { class: 'title-main' }, TITLES[1]),
+      el('div', { class: 'title-sub' }, `${save.avatar.nickname}의 하루 기록`),
     );
     const list = el('ul', { class: 'recap' });
     recap.forEach((r) => list.append(el('li', {}, r)));
     box.append(
       list,
-      el('div', { class: 'next-box' }, el('b', {}, save.cafeteriaSolution ? '다음 이야기 — 사건 2: 자동 청소 로봇의 역습' : '다음 이야기 — 사건 1: 급식실의 전설적인 거대 돈가스'), el('div', {}, save.cafeteriaSolution ? '점심을 해결한 방법이 청소 로봇 사건에 이어져요. (다음 업데이트에서 계속)' : '오전에 한 행동이 친구들의 말과 해결 방법에 이어져요. (다음 업데이트에서 계속)')),
+      el('div', { class: 'next-box' }, el('b', {}, '다음 이야기 — ' + TITLES[2]), el('div', {}, TITLES[3] + ' (다음 업데이트에서 계속)')),
       el('div', { class: 'title-btns' },
-        button('저장 파일 내보내기', () => downloadText(`초등학생시뮬레이터_${save.avatar.nickname}_${save.cafeteriaSolution ? '사건1' : '1장'}.json`, SaveManager.exportJson(save)), 'btn'),
+        button('저장 파일 내보내기', () => downloadText(`초등학생시뮬레이터_${save.avatar.nickname}_${TITLES[0].replace(/\s/g, '')}.json`, SaveManager.exportJson(save)), 'btn'),
         button('처음 화면으로', () => this.title(), 'btn primary big'),
       ),
     );

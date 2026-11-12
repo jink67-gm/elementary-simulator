@@ -146,11 +146,13 @@ describe('수학 퀴즈', () => {
 });
 
 describe('시간표', () => {
-  it('순서대로 이어지고 사건 1(돈가스)에서 끝', () => {
+  it('순서대로 이어지고 마지막 사건에서 끝', () => {
     expect(nextPeriod('arrival')).toBe('korean');
     expect(nextPeriod('art')).toBe('lunch');
     expect(nextPeriod('lunch')).toBe('cutlet');
-    expect(nextPeriod('cutlet')).toBeNull();
+    expect(nextPeriod('cutlet')).toBe('robot');
+    expect(nextPeriod('robot')).toBe('dodgeball');
+    expect(nextPeriod('dodgeball')).toBeNull();
   });
   it('시계는 종 치기 1분 전에서 기다린다', () => {
     expect(clockMinutes('korean', 0)).toBe(SCHEDULE.korean.start);

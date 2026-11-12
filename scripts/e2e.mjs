@@ -312,13 +312,9 @@ try {
     throw new Error('게이지 성공 못 함');
   }
   async function waitRecap(sol) {
-    await waitFor('해결', (s) => s.cafeteria === sol, 90000);
-    for (let i = 0; i < 60 && !(await page.$('.recap')); i++) {
-      if ((await state()).dialogue) await page.keyboard.press('Enter');
-      await sleep(400);
-    }
-    await page.waitForSelector('.recap', { timeout: 5000 });
-    log((await page.locator('.recap li').allTextContents()).join(' | '));
+    await waitFor('해결', (s) => s.cafeteria === sol && s.period === 'robot', 120000);
+    await noDialogue();
+    log('사건 1 → ' + sol + ', 사건 2로 넘어감');
   }
   async function restartCutlet() {
     await page.evaluate(() => {
@@ -440,16 +436,241 @@ try {
   });
 
   await step('사건1_새로고침_이어하기', async () => {
+    // 축제로 끝난 뒤 사건 2(청소 로봇)로 넘어가 체크포인트가 남았다 → 새로고침해도 사건 2부터
     await page.reload();
     await page.waitForFunction(() => window.__sim, null, { timeout: 120000 });
-    // 저장에는 축제 결과가 남아 있고, 이어하기는 「사건 1 끝 · 다시 해 보기」로 사건을 처음부터 다시 연다
     const label = await page.getByText(/이어하기/).textContent();
-    if (!label.includes('사건 1 끝')) throw new Error('이어하기 버튼 이름 이상: ' + label);
+    if (!label.includes('사건 2')) throw new Error('이어하기 버튼 이름 이상: ' + label);
     await page.getByText(/이어하기/).click();
     await sleep(1500);
     const s = await state();
-    if (s.period !== 'cutlet' || s.cafeteria !== null || !s.flags.chapter1Done) throw new Error('다시 하기 상태 이상: ' + JSON.stringify(s));
+    if (s.period !== 'robot' || s.cafeteria !== 'festival') throw new Error('이어하기 상태 이상: ' + JSON.stringify(s));
     await noDialogue();
+  });
+
+  // ───── 사건 2: 청소 로봇 — 세 가지 경로 ─────
+  const robotSt = () =>
+    page.evaluate(() => {
+      const st = window.__sim.story.robot.st;
+      const r = window.__sim.game.robot;
+      return { bin: st.bin.map((b) => b.id), claw: st.clawItem && { id: st.clawItem.id, cat: st.clawItem.cat }, hand: st.hand.map((h) => ({ id: h.id, owner: h.owner })), mode: r.mode, pos: [r.pos.x, r.pos.z], remote: !!window.__sim.game.remote };
+    });
+  async function restartRobot() {
+    await page.evaluate(() => {
+      const g = window.__sim.game;
+      g.running = true;
+      g.hud.show(true);
+      const scr = document.querySelector('.screen');
+      if (scr) scr.parentNode.removeChild(scr);
+      window.__sim.skipTo('robot');
+    });
+    await sleep(800);
+    await noDialogue();
+  }
+  async function waitRobot(sol) {
+    await waitFor('사건 2 해결 ' + sol, (s) => s.results?.robot === sol && s.period === 'dodgeball', 150000);
+    await noDialogue();
+    log('사건 2 → ' + sol + ', 사건 3으로 넘어감');
+  }
+  const COMP_Z = { books: -4.0, tools: -3.4, paper: -2.8 };
+
+  await step('사건2_A_원격_조종', async () => {
+    await restartRobot();
+    await act('robotPad', 'KeyE', '조종', { from: [-1, 0], dist: 0.9 });
+    let rs = await robotSt();
+    if (!rs.remote || rs.mode !== 'remote') throw new Error('조종 모드 아님');
+    // 실제 키로 조금 움직여 보기
+    const p0 = rs.pos;
+    await page.keyboard.down('KeyW');
+    await sleep(700);
+    await page.keyboard.up('KeyW');
+    rs = await robotSt();
+    if (Math.hypot(rs.pos[0] - p0[0], rs.pos[1] - p0[1]) < 0.2) throw new Error('W로 로봇이 안 움직임');
+    // 나르기: 수거함 앞 ↔ 보관함 칸 앞 (이동은 순간이동, 집게는 실제 Space)
+    for (let n = 0; n < 12; n++) {
+      rs = await robotSt();
+      if (!rs.bin.length && !rs.claw) break;
+      await page.evaluate(() => window.__sim.game.robot.place(5.3, 4.85, 0));
+      await sleep(250);
+      await page.keyboard.press('Space');
+      await sleep(300);
+      rs = await robotSt();
+      if (!rs.claw) throw new Error('수거함에서 못 집음: ' + JSON.stringify(rs));
+      // 일부러 한 번은 틀린 칸
+      if (n === 0) {
+        const wrong = rs.claw.cat === 'books' ? 'tools' : 'books';
+        await page.evaluate((z) => window.__sim.game.robot.place(5.95, z, Math.PI / 2), COMP_Z[wrong]);
+        await sleep(250);
+        await page.keyboard.press('Space');
+        await sleep(300);
+        if (!(await robotSt()).claw) throw new Error('틀린 칸인데 놓아짐');
+      }
+      await page.evaluate((z) => window.__sim.game.robot.place(5.95, z, Math.PI / 2), COMP_Z[rs.claw.cat]);
+      await sleep(250);
+      await page.keyboard.press('Space');
+      await sleep(300);
+      if ((await robotSt()).claw) throw new Error('맞는 칸인데 안 놓아짐');
+    }
+    await waitRobot('remote');
+  });
+
+  await step('사건2_B_청소_금지_구역', async () => {
+    await restartRobot();
+    for (const z of ['desk', 'board', 'locker']) {
+      await act('coneBox', 'KeyE', '고깔', { from: [-1, -1], dist: 0.9 });
+      await selectItem('zoneCone');
+      await act('zone_' + z, 'KeyF', '고깔 놓기', { from: [1, -1], dist: 0.6 });
+    }
+    await act('robotPad', 'KeyE', '저장', { from: [-1, 0], dist: 0.9 });
+    await waitRobot('zones');
+    if (!(await state()).flags.robotReprogrammed) throw new Error('robotReprogrammed 없음');
+  });
+
+  await step('사건2_C_비상정지', async () => {
+    await restartRobot();
+    for (const [id, name] of [['seoa', '서아'], ['junho', '준호'], ['harin', '하린']]) {
+      await act('npc:' + id, 'KeyE', name, { from: [0, 1], dist: 0.8 });
+      await noDialogue();
+    }
+    await act('robotBody', 'KeyE', '숫자판', { from: [-1, -1], dist: 1.0 });
+    await waitPanel(true);
+    for (const k of ['9', '9', '9']) await page.keyboard.press(k); // 틀린 코드
+    await sleep(1200);
+    for (const k of ['4', '1', '7']) {
+      await page.keyboard.press(k);
+      await sleep(120);
+    }
+    await waitPanel(false);
+    await noDialogue();
+    if ((await robotSt()).mode !== 'stopped') throw new Error('로봇이 안 멈춤');
+    const target = { seoa: 'npc:seoa', junho: 'npc:junho', harin: 'npc:harin', minjae: 'npc:minjae', filler0: 'filler:0', filler1: 'filler:1' };
+    for (let n = 0; n < 12; n++) {
+      let rs = await robotSt();
+      if (!rs.bin.length && !rs.hand.length) break;
+      if (rs.bin.length) {
+        await act('robotBin', 'KeyE', '꺼내기', { from: [1, -1], dist: 0.9 });
+        rs = await robotSt();
+      }
+      for (const h of rs.hand) {
+        await selectItem(h.id);
+        await act(target[h.owner], 'KeyF', '돌려주기', { from: [0, 1], dist: 0.8 });
+      }
+    }
+    await waitRobot('stopcode');
+  });
+
+  // ───── 사건 3: 초대형 피구공 — 세 가지 경로 ─────
+  const dodgeSt = () =>
+    page.evaluate(() => {
+      const ev = window.__sim.story.dodge;
+      return { parts: ev.st.parts, launches: ev.st.launches, rolling: !!ev.st.rolling, goals: ev.st.goals, ball: [ev.ball.x, ev.ball.z], rules: ev.st.rules };
+    });
+  async function restartDodge(fixed = false) {
+    await page.evaluate((fx) => {
+      const g = window.__sim.game;
+      g.running = true;
+      g.hud.show(true);
+      const scr = document.querySelector('.screen');
+      if (scr) scr.parentNode.removeChild(scr);
+      if (fx) g.save.flags.fixedMachine = true;
+      else delete g.save.flags.fixedMachine;
+      window.__sim.skipTo('dodgeball');
+    }, fixed);
+    await sleep(800);
+    await noDialogue();
+  }
+  async function waitDodge(sol) {
+    await waitFor('사건 3 해결 ' + sol, (s) => s.results?.dodgeball === sol, 150000);
+    for (let i = 0; i < 60 && !(await page.$('.recap')); i++) {
+      if ((await state()).dialogue) await page.keyboard.press('Enter');
+      await sleep(400);
+    }
+    await page.waitForSelector('.recap', { timeout: 5000 });
+    log((await page.locator('.recap li').allTextContents()).slice(-3).join(' | '));
+  }
+
+  await step('사건3_A_발사_실험', async () => {
+    await restartDodge();
+    for (const part of ['standPart', 'rampPart', 'padPart']) {
+      await act('gymParts', 'KeyE', '꺼내기', { from: [-1, 0], dist: 1.0 });
+      await selectItem(part);
+      await act('launcher', 'KeyF', '설치', { from: [1, 0], dist: 0.9 });
+    }
+    if ((await dodgeSt()).parts !== 3) throw new Error('발사대 조립 안 됨');
+    // 1차: 똑바로 → 뜀틀에 걸려 실패, 공이 돌아온다
+    await act('launcher', 'KeyE', '발사대', { from: [1, 0], dist: 0.9 });
+    await waitPanel(true);
+    await page.keyboard.press('Space');
+    await waitPanel(false);
+    await waitFor('공 돌아옴', () => true, 1000);
+    for (let i = 0; i < 80; i++) {
+      const d = await dodgeSt();
+      if (!d.rolling && Math.abs(d.ball[0] - 9) < 0.01 && d.launches === 1) break;
+      await sleep(250);
+    }
+    // 2차: 북쪽 30° · 힘 8
+    await act('launcher', 'KeyE', '발사대', { from: [1, 0], dist: 0.9 });
+    await waitPanel(true);
+    for (let i = 0; i < 6; i++) await page.keyboard.press('KeyA');
+    for (let i = 0; i < 3; i++) await page.keyboard.press('KeyW');
+    await page.keyboard.press('Space');
+    await waitPanel(false);
+    await waitDodge('physics');
+  });
+
+  await step('사건3_B_크기_조절_리모컨', async () => {
+    await restartDodge(true);
+    if (!(await state()).inventory.includes('sizeRemote')) throw new Error('리모컨을 못 받음');
+    await selectItem('sizeRemote');
+    await act('giantBall', 'KeyF', '리모컨', { from: [0, 1], dist: 2.0 });
+    await waitPanel(true);
+    await page.keyboard.press('1');
+    await sleep(150);
+    await page.keyboard.press('2');
+    await waitPanel(false);
+    for (let i = 0; i < 40 && !(await page.evaluate(() => window.__sim.game.items.has('dball'))); i++) await sleep(200);
+    await act('item:dball', 'KeyE', '피구공', { from: [0, 1], dist: 0.8 });
+    await selectItem('dodgeball');
+    await act('ballCart', 'KeyF', '넣기', { from: [1, 0], dist: 0.9 });
+    await waitDodge('shrink');
+  });
+
+  await step('사건3_C_새_경기', async () => {
+    await restartDodge();
+    await act('ruleBoard', 'KeyE', '규칙', { from: [0, 1], dist: 0.3 });
+    await waitPanel(true);
+    for (const k of ['5', '1', '3']) await page.keyboard.press(k); // 「친구 맞히기」는 거절된다
+    await page.keyboard.press('Enter');
+    await sleep(400);
+    if (!(await panelOpen())) throw new Error('위험한 규칙이 통과됨');
+    await page.keyboard.press('5');
+    await page.keyboard.press('2');
+    await page.keyboard.press('Enter');
+    await waitPanel(false);
+    await noDialogue();
+    if ((await dodgeSt()).rules.length !== 3) throw new Error('규칙 저장 안 됨');
+    // 실제 W 키로 공을 밀기: 북쪽 골, 그다음 동쪽 골
+    const pushes = [
+      { goals: 1, from: [9, -21.0], yaw: 0 },
+      { goals: 2, from: [6.9, -23], yaw: -Math.PI / 2 },
+    ];
+    for (const p of pushes) {
+      await page.evaluate(([x, z, yaw]) => {
+        const g = window.__sim.game;
+        g.player.teleport(x, z, yaw + Math.PI);
+        g.tpc.yaw = yaw;
+      }, [...p.from, p.yaw]);
+      await page.keyboard.down('KeyW');
+      for (let i = 0; i < 120 && (await dodgeSt()).goals < p.goals; i++) {
+        await page.evaluate((yaw) => (window.__sim.game.tpc.yaw = yaw), p.yaw);
+        await sleep(250);
+      }
+      await page.keyboard.up('KeyW');
+      if ((await dodgeSt()).goals < p.goals) throw new Error('골 실패: ' + JSON.stringify(await dodgeSt()));
+      await sleep(600);
+    }
+    await waitDodge('sport');
+    if (!(await state()).flags.newSportInvented) throw new Error('newSportInvented 없음');
   });
 
   await step('다른_역할_자료조사', async () => {

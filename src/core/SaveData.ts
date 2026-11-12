@@ -11,7 +11,7 @@ export type GroupRole = 'speaker' | 'maker' | 'researcher' | 'organizer';
 export type PosterTheme = 'food' | 'rest' | 'play' | 'friends';
 
 /** 오전 일과 순서. 저장은 각 교시가 시작될 때 체크포인트로 남는다. */
-export const PERIODS = ['arrival', 'korean', 'break', 'math', 'group', 'art', 'lunch', 'cutlet'] as const;
+export const PERIODS = ['arrival', 'korean', 'break', 'math', 'group', 'art', 'lunch', 'cutlet', 'robot', 'dodgeball'] as const;
 export type PeriodId = (typeof PERIODS)[number];
 
 export interface Avatar {
@@ -30,6 +30,8 @@ export interface SaveData {
   groupRole: GroupRole | null;
   schoolPosterTheme: PosterTheme | null;
   cafeteriaSolution: CafeteriaSolution;
+  /** 사건 2~4 해결 방법 (robot·dodgeball·hallway → 방법 이름) */
+  results: Record<string, string>;
   quizScore: number;
   flags: Record<string, boolean>;
   stats: Record<string, number>;
@@ -52,6 +54,7 @@ export function newSave(avatar: Avatar): SaveData {
     groupRole: null,
     schoolPosterTheme: null,
     cafeteriaSolution: null,
+    results: {},
     quizScore: 0,
     flags: {},
     stats: {},
@@ -112,6 +115,7 @@ export function parseSave(raw: unknown): SaveData {
     groupRole: oneOf(r.groupRole, ROLES),
     schoolPosterTheme: oneOf(r.schoolPosterTheme, THEMES),
     cafeteriaSolution: oneOf(r.cafeteriaSolution, SOLUTIONS),
+    results: r.results && typeof r.results === 'object' ? Object.fromEntries(Object.entries(r.results as object).filter(([, v]) => typeof v === 'string')) : {},
     quizScore: typeof r.quizScore === 'number' ? r.quizScore : 0,
     flags,
     stats,

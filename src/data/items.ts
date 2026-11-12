@@ -35,6 +35,14 @@ export const ITEMS = {
   trayStack: { name: '식판 여섯 개', desc: '친구들 식탁에서 F를 누르면 식판을 놓아요.', color: 0xd7dde3, shape: 'flat', size: [0.36, 0.1, 0.28] },
   cutletPiece: { name: '돈가스 조각', desc: '친구에게 가서 F를 누르면 식판에 담아요. 크면 절단기 패널에서 반으로!', color: 0xc8803a, shape: 'box', size: [0.3, 0.06, 0.3] },
   foldTable: { name: '접이식 테이블', desc: '복도의 X 표시에서 F를 누르면 펼쳐요.', color: 0xe9e4d4, shape: 'flat', size: [0.5, 0.06, 0.3] },
+  gymClothes: { name: '내 체육복', desc: '사물함에 있던 체육복. 로봇이 「빨랫감」으로 분류했다.', color: 0x4361ee, shape: 'flat', size: [0.28, 0.06, 0.22] },
+  festPoster: { name: '돈가스 축제 포스터', desc: '점심 축제 때 붙인 포스터. 로봇이 「쓰레기」로 판단했다…', color: 0xffb703, shape: 'flat', size: [0.3, 0.01, 0.4] },
+  zoneCone: { name: '청소 금지 고깔', desc: '보호할 곳의 표시 위에서 F. 세 곳 다 놓고 제어 패드에서 저장!', color: 0xff6b35, shape: 'cylinder', size: [0.14, 0.24, 0.14] },
+    standPart: { name: '발사대 받침대', desc: '노란 원(발사대 자리)에서 F로 설치.', color: 0x6c757d, shape: 'box', size: [0.3, 0.2, 0.3] },
+  rampPart: { name: '경사판', desc: '노란 원(발사대 자리)에서 F로 설치.', color: 0xffbe0b, shape: 'flat', size: [0.5, 0.04, 0.25] },
+  padPart: { name: '밀어내기 패드', desc: '노란 원(발사대 자리)에서 F로 설치.', color: 0xe63946, shape: 'box', size: [0.15, 0.25, 0.25] },
+  sizeRemote: { name: '크기 조절 리모컨', desc: '돈가스 때 고친 기계의 리모컨. 거대 피구공 앞에서 F.', color: 0x2b2d42, shape: 'box', size: [0.08, 0.04, 0.16] },
+  dodgeball: { name: '피구공 (원래 크기)', desc: '공 수레에 F로 넣어요.', color: 0xe63946, shape: 'cylinder', size: [0.22, 0.22, 0.22] },
   scraps: { name: '종이 조각', desc: '분리수거함 종이칸에 버리자.', color: 0xdddddd, shape: 'box', size: [0.12, 0.05, 0.12] },
 } satisfies Record<string, ItemDef>;
 

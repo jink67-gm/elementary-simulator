@@ -15,6 +15,7 @@ import { CUTLET_D, CUTLET_H, CUTLET_W } from '../world/SchoolMap';
 import { DINERS, cutPieces, decideSolution, isFair, splitArea, trayDone, tryAddToTray, type Solution } from './cutletLogic';
 import { openAnnounce, openCutter, openMachine, openSplit } from '../minigames/Cafeteria';
 import { wa } from '../ui/dom';
+import type { StoryEvent } from './StoryEvent';
 
 const TABLE = { x: 9, z: 21.0, top: 0.77 };
 const FEST_SPOTS: [number, number][] = [[10.45, 13.4], [10.45, 12.0], [10.45, 10.6]];
@@ -75,7 +76,7 @@ const fresh = (): State => ({
   hintLevel: 0,
 });
 
-export class CutletEvent {
+export class CutletEvent implements StoryEvent {
   st: State = fresh();
   private pieceN = 0;
   /** 사건 중에만 보이는 물건들 (식판, 담긴 조각, 축제 테이블, 바닥 X 표시) */
@@ -505,14 +506,14 @@ export class CutletEvent {
   }
 
   /** 들고 있는 조각으로 친구 식판에 담기 */
-  servePrompt(npc: Npc, item: ItemId | null): string | null {
+  usePromptOn(npc: Npc, item: ItemId | null): string | null {
     if (!this.active || item !== 'cutletPiece') return null;
     const i = this.dinerIndex(npc);
     if (i < 0) return null;
     return `${npc.name} 식판에 담기 (크기 ${this.st.carried ?? '?'})`;
   }
 
-  serve(npc: Npc) {
+  useOn(npc: Npc) {
     const g = this.g;
     const m = this.m;
     const i = this.dinerIndex(npc);
@@ -787,7 +788,7 @@ export class CutletEvent {
     m.set('chapter1Done');
     g.save.chapter = 2;
     g.checkpoint();
-    m.onChapterEnd(g.save);
+    m.advance();
   }
 
   // ───────── 진행 안내 ─────────
@@ -862,6 +863,10 @@ export class CutletEvent {
 
   requiredItems(): ItemId[] {
     return [];
+  }
+
+  returnSpot(): [number, number, number] {
+    return [9, 17.2, 0];
   }
 
   recap(): string[] {

@@ -49,7 +49,11 @@ export class SchoolMap {
   private matCache = new Map<number, THREE.MeshLambertMaterial>();
   private crumbMat: THREE.MeshLambertMaterial | null = null;
   private machineScreen!: CanvasTex;
+  private ruleBoardTex!: CanvasTex;
   broadcastDoor!: Aabb;
+  gymDoor!: Aabb;
+  /** 사건 2 동안만 켜는 충돌 상자 (로봇 수거함·분실물 보관함) */
+  robotColliders: Aabb[] = [];
 
   /** 소품 모델 여러 개 놓기. 모델이 없으면 false */
   private props(id: string, places: Placement[], fit: Fit): boolean {
@@ -73,6 +77,8 @@ export class SchoolMap {
     this.buildHallway();
     this.buildCafeteria();
     this.buildBroadcastRoom();
+    this.buildRobotCorner();
+    this.buildGym();
     this.setBoard(['6학년 3반', '오늘도 무사히!']);
     this.setClock(8 * 60 + 40);
     this.optimize();
@@ -385,7 +391,9 @@ export class SchoolMap {
     this.wallX(11.1, 5.1, 16);
     this.wallX(7.1, -16, -6.2);
     this.wallX(7.1, 7.2, 16);
-    this.wallZ(-16.1, 7, 11);
+    this.wallZ(-16.1, 7, 8.4);
+    this.wallZ(-16.1, 9.6, 11);
+    this.box(1.2, 0.8, 0.2, C.wall, 9, 2.2, -16.1);
     this.wallZ(16.1, 2.9, 8);
     this.wallZ(16.1, 10, 15.1);
     this.box(2, 0.8, 0.2, C.wall, 9, 2.2, 16.1);
@@ -645,6 +653,267 @@ export class SchoolMap {
     this.colliders.push(collider);
     this.cafeteriaDoor = { mesh: g, collider, open: 0 };
     this.objs.cafeteriaDoor = g;
+  }
+
+  /** 사건 2 청소 로봇 관련: 로봇 수거함·분실물 보관함·고깔 상자·제어 패드·청소 금지 표시 (사건 전에는 숨김) */
+  private buildRobotCorner() {
+    const corner = new THREE.Group();
+    corner.visible = false;
+    this.root.add(corner);
+    this.objs.robotCorner = corner;
+    // 로봇 수거함 (교실 뒤 오른쪽)
+    const bin = new THREE.Group();
+    bin.position.set(5.3, 0, 5.7);
+    corner.add(bin);
+    this.box(0.8, 0.55, 0.6, 0x4ea8de, 0, 0, 0, { parent: bin, ownMat: true });
+    this.box(0.84, 0.05, 0.64, 0x1d71d2, 0, 0.55, 0, { parent: bin, ownMat: true });
+    const label = new CanvasTex(256, 64);
+    label.draw((c, w, h) => {
+      c.fillStyle = '#fff';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#1d71d2';
+      c.font = font(30, true);
+      c.textAlign = 'center';
+      c.fillText('로봇 수거함', w / 2, 44);
+    });
+    const lm = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.15), label.material());
+    lm.position.set(0, 0.35, -0.305);
+    lm.rotation.y = Math.PI;
+    bin.add(lm);
+    const binItems = new THREE.Group();
+    binItems.position.y = 0.58;
+    bin.add(binItems);
+    this.objs.robotBin = bin;
+    this.objs.robotBinItems = binItems;
+    this.robotColliders.push(aabb(5.3, 5.7, 0.8, 0.6));
+    // 분실물 보관함 (앞 오른쪽, 칸 3개)
+    const shelf = new THREE.Group();
+    shelf.position.set(6.55, 0, -3.4);
+    corner.add(shelf);
+    this.box(0.5, 0.06, 1.8, 0xb08968, 0, 0.5, 0, { parent: shelf });
+    this.box(0.5, 0.5, 0.05, 0xb08968, 0, 0, -0.9, { parent: shelf });
+    this.box(0.5, 0.5, 0.05, 0xb08968, 0, 0, 0.9, { parent: shelf });
+    const cats: [string, string, string][] = [['lostBooks', '책·기기', '#2a9d8f'], ['lostTools', '학용품', '#e76f51'], ['lostPaper', '종이·옷', '#8338ec']];
+    cats.forEach(([key, name, col], i) => {
+      const z = -0.6 + i * 0.6;
+      const tray = this.box(0.42, 0.12, 0.52, new THREE.Color(col).getHex(), -0.02, 0.56, z, { parent: shelf, ownMat: true });
+      const t = new CanvasTex(192, 64);
+      t.draw((c, w, h) => {
+        c.fillStyle = col;
+        c.fillRect(0, 0, w, h);
+        c.fillStyle = '#fff';
+        c.font = font(30, true);
+        c.textAlign = 'center';
+        c.fillText(name, w / 2, 44);
+      });
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.15), t.material());
+      sign.position.set(-0.26, 0.38, z);
+      sign.rotation.y = -Math.PI / 2;
+      shelf.add(sign);
+      const anchor = new THREE.Group();
+      anchor.position.set(-0.02, 0.68, z);
+      shelf.add(anchor);
+      this.objs[key] = anchor;
+      void tray;
+    });
+    this.objs.lostShelf = shelf;
+    this.robotColliders.push(aabb(6.55, -3.4, 0.5, 1.8));
+    // 고깔 상자
+    const cones = new THREE.Group();
+    cones.position.set(4.4, 0, 5.9);
+    corner.add(cones);
+    this.box(0.5, 0.3, 0.4, 0xdee2e6, 0, 0, 0, { parent: cones });
+    const coneMat = new THREE.MeshLambertMaterial({ color: 0xff6b35 });
+    for (let i = 0; i < 3; i++) {
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.22, 10), coneMat);
+      c.position.set(-0.13 + i * 0.13, 0.4, 0);
+      cones.add(c);
+    }
+    this.objs.coneBox = cones;
+    // 원격 제어 패드 (태블릿 충전함 위)
+    const pad = new THREE.Group();
+    pad.position.set(6.25, 1.0, -0.75);
+    corner.add(pad);
+    this.box(0.32, 0.03, 0.22, 0x212529, 0, 0, 0, { parent: pad, ownMat: true });
+    const scr = this.box(0.26, 0.01, 0.16, 0x4ea8de, 0, 0.03, 0, { parent: pad, ownMat: true, shadow: false });
+    void scr;
+    this.objs.robotPad = pad;
+    // 청소 금지 구역 표시 (바닥 원)
+    const spots: [string, number, number][] = [['zone_desk', -1.05, 0.4], ['zone_board', -3.6, 5.85], ['zone_locker', 1.5, 5.85]];
+    const ring = new THREE.MeshBasicMaterial({ color: 0xff6b35, transparent: true, opacity: 0.7 });
+    for (const [key, x, z] of spots) {
+      const m = new THREE.Mesh(new THREE.RingGeometry(0.25, 0.33, 24), ring);
+      m.rotation.x = -Math.PI / 2;
+      m.position.set(x, 0.006, z);
+      corner.add(m);
+      this.objs[key] = m;
+    }
+    for (const c of this.robotColliders) {
+      c.enabled = false;
+      this.colliders.push(c);
+    }
+  }
+
+  /** 사건 2 물건 보이기·숨기기 (충돌 포함) */
+  setRobotCorner(on: boolean) {
+    this.objs.robotCorner.visible = on;
+    for (const c of this.robotColliders) c.enabled = on;
+  }
+
+  /** 체육관 (복도 북쪽, x 1~17, z -30~-16.1). 사건 3에서 열린다. 공 위치·발사대·골대는 dodgeLogic.ts와 맞춘다 */
+  private buildGym() {
+    const tex = new CanvasTex(512, 448);
+    tex.draw((c, w, h) => {
+      c.fillStyle = '#d9a86c';
+      c.fillRect(0, 0, w, h);
+      for (let i = 0; i < 32; i++) {
+        c.fillStyle = i % 2 ? '#d29e60' : '#dcae74';
+        c.fillRect(0, i * 14, w, 13);
+      }
+      c.strokeStyle = '#ffffff';
+      c.lineWidth = 4;
+      c.strokeRect(20, 20, w - 40, h - 40);
+      c.beginPath();
+      c.moveTo(w / 2, 20);
+      c.lineTo(w / 2, h - 20);
+      c.stroke();
+      c.beginPath();
+      c.arc(w / 2, h / 2, 50, 0, Math.PI * 2);
+      c.stroke();
+    });
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 13.9), new THREE.MeshLambertMaterial({ map: tex.tex }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(9, 0.001, -23.05);
+    floor.receiveShadow = true;
+    this.root.add(floor);
+    this.wallX(17.1, -30.1, -16.1);
+    this.wallZ(-30.1, 0.9, 17.1);
+    this.wallZ(-16.1, 0.9, 7);
+    this.wallZ(-16.1, 11, 17.1);
+    // 서쪽 벽: 공 창고 입구 (z -28 ~ -24)
+    this.wallX(0.9, -30.1, -28);
+    this.wallX(0.9, -24, -16.1);
+    this.box(0.2, 0.6, 4, C.wall, 0.9, 2.4, -26);
+    const storeFloor = new THREE.Mesh(new THREE.PlaneGeometry(3, 5), new THREE.MeshLambertMaterial({ color: 0x9c8466 }));
+    storeFloor.rotation.x = -Math.PI / 2;
+    storeFloor.position.set(-0.6, 0.002, -26);
+    this.root.add(storeFloor);
+    this.wallX(-2.1, -28.6, -23.4);
+    this.wallZ(-28.6, -2.1, 0.9);
+    this.wallZ(-23.4, -2.1, 0.9);
+    this.sign('공 창고', 0.75, 2.55, -26, Math.PI / 2, '#3a86ff');
+    // 창고 입구 바닥 표시
+    const mark = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 4), new THREE.MeshBasicMaterial({ color: 0x3a86ff, transparent: true, opacity: 0.35 }));
+    mark.rotation.x = -Math.PI / 2;
+    mark.position.set(1.6, 0.004, -26);
+    this.root.add(mark);
+    // 뜀틀 (장애물)
+    const vault = new THREE.Group();
+    vault.position.set(5.4, 0, -22.2);
+    this.root.add(vault);
+    for (let i = 0; i < 4; i++) this.box(0.8 - i * 0.04, 0.24, 1.2 - i * 0.04, i === 3 ? 0xf1ece0 : 0xb5835a, 0, i * 0.25, 0, { parent: vault });
+    this.colliders.push(aabb(5.4, -22.2, 0.8, 1.2));
+    // 골대 두 개 (새 경기)
+    const goalMat = 0xff006e;
+    for (const x of [7, 11]) this.box(0.12, 2.2, 0.12, goalMat, x, 0, -29.9, { ownMat: false });
+    this.box(4.1, 0.12, 0.12, goalMat, 9, 2.2, -29.9);
+    for (const z of [-25, -21]) this.box(0.12, 2.2, 0.12, goalMat, 16.9, 0, z);
+    this.box(0.12, 0.12, 4.1, goalMat, 16.9, 2.2, -23);
+    const goalA = new THREE.Group();
+    const goalB = new THREE.Group();
+    this.root.add(goalA, goalB);
+    this.objs.goalNorth = goalA;
+    this.objs.goalEast = goalB;
+    goalA.position.set(9, 0, -29.5);
+    goalB.position.set(16.5, 0, -23);
+    // 부품 선반 (남동쪽 구석)
+    const parts = new THREE.Group();
+    parts.position.set(16.3, 0, -17.4);
+    this.root.add(parts);
+    this.box(0.9, 1.2, 1.4, 0x8d99ae, 0, 0, 0, { parent: parts });
+    this.box(0.5, 0.1, 0.9, 0xffbe0b, -0.1, 1.2, 0, { parent: parts, ownMat: true });
+    this.colliders.push(aabb(16.3, -17.4, 0.9, 1.4));
+    this.objs.gymParts = parts;
+    // 발사대 자리 + 발사대 모양 (부품마다 보임)
+    const launcher = new THREE.Group();
+    launcher.position.set(11.3, 0, -23);
+    this.root.add(launcher);
+    const spot = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.6, 24), new THREE.MeshBasicMaterial({ color: 0xffbe0b }));
+    spot.rotation.x = -Math.PI / 2;
+    spot.position.y = 0.005;
+    launcher.add(spot);
+    const stand = new THREE.Group();
+    this.box(0.7, 0.35, 0.7, 0x6c757d, 0, 0, 0, { parent: stand, ownMat: true });
+    const ramp = new THREE.Group();
+    const rampBoard = this.box(1.2, 0.08, 0.6, 0xffbe0b, 0, 0, 0, { parent: ramp, ownMat: true });
+    rampBoard.position.set(-0.3, 0.55, 0);
+    rampBoard.rotation.z = -0.35;
+    const pad = new THREE.Group();
+    this.box(0.25, 0.5, 0.5, 0xe63946, 0.3, 0.35, 0, { parent: pad, ownMat: true });
+    launcher.add(stand, ramp, pad);
+    stand.visible = ramp.visible = pad.visible = false;
+    this.objs.launcher = launcher;
+    this.objs.launcherStand = stand;
+    this.objs.launcherRamp = ramp;
+    this.objs.launcherPad = pad;
+    // 규칙 게시판 (북쪽 벽)
+    const board = new CanvasTex(512, 320);
+    board.draw((c, w, h) => {
+      c.fillStyle = '#ffffff';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#ff006e';
+      c.font = font(40, true);
+      c.textAlign = 'center';
+      c.fillText('우리 반 새 경기 규칙', w / 2, 60);
+      c.fillStyle = '#888';
+      c.font = font(26);
+      c.fillText('(아직 비어 있음)', w / 2, 170);
+    });
+    const bm = this.plane(2.4, 1.5, board.material(), 13.5, 1.6, -29.98);
+    this.objs.ruleBoard = bm;
+    this.ruleBoardTex = board;
+    // 공 수레 (작아진 공 넣는 곳)
+    const cart = new THREE.Group();
+    cart.position.set(2.4, 0, -17.3);
+    this.root.add(cart);
+    this.box(0.9, 0.6, 0.6, 0x495057, 0, 0, 0, { parent: cart });
+    const balls = new THREE.Group();
+    balls.position.y = 0.72;
+    cart.add(balls);
+    for (let i = 0; i < 3; i++) {
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8), this.mat(0xe63946));
+      b.position.set(-0.25 + i * 0.25, 0, 0);
+      balls.add(b);
+    }
+    this.colliders.push(aabb(2.4, -17.3, 0.9, 0.6));
+    this.objs.ballCart = cart;
+    this.objs.ballCartBalls = balls;
+    // 체육관 문 (잠김)
+    this.gymDoor = aabb(9, -16.1, 1.2, 0.3);
+    this.colliders.push(this.gymDoor);
+  }
+
+  /** 체육관 문 열림 0~1 */
+  setGymDoor(t: number) {
+    const d = this.objs.doorGym;
+    d.position.x = 9 + t * 1.25;
+    this.gymDoor.enabled = t < 0.5;
+  }
+
+  setRuleBoard(lines: string[]) {
+    this.ruleBoardTex.draw((c, w, h) => {
+      c.fillStyle = '#ffffff';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#ff006e';
+      c.font = font(40, true);
+      c.textAlign = 'center';
+      c.fillText('우리 반 새 경기 규칙', w / 2, 60);
+      c.fillStyle = '#243447';
+      c.font = font(26, true);
+      c.textAlign = 'left';
+      lines.forEach((l, i) => c.fillText(`${i + 1}. ${l}`, 30, 120 + i * 50));
+      void h;
+    });
   }
 
   /** 방송실 (복도 동쪽, x 11.1~14.7, z 2.5~6.5). 사건 1 축제 경로에서 열린다 */

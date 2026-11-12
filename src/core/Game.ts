@@ -20,6 +20,7 @@ import { panelsOpen } from '../ui/Panel';
 import { itemDef, type ItemId } from '../data/items';
 import { itemHalfHeight, makeItemMesh } from '../world/itemMesh';
 import { Ball, PaperPlaneFlight } from '../world/Toys';
+import { Robot } from '../world/Robot';
 import type { UiCtx } from '../minigames/Textbook';
 import type { Circle } from '../world/Collision';
 
@@ -43,13 +44,22 @@ interface WorldItem {
 
 export type MainNpcId = keyof typeof CAST;
 
+/** 원격 조종 중일 때: 플레이어 대신 조종 대상이 움직이고 카메라가 따라간다 */
+export interface RemoteControl {
+  target(): THREE.Vector3;
+  /** Space 또는 화면 클릭: 집게 */
+  onAction(): void;
+  /** E 또는 Esc: 조종 끝내기 */
+  onExit(): void;
+}
+
 export class Game {
   renderer: THREE.WebGLRenderer;
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(60, 1, 0.05, 120);
   tpc = new ThirdPersonCamera(this.camera);
   map = new SchoolMap();
-  nav = new NavGrid(-7.5, -16.5, 15.5, 27.5, 0.3);
+  nav = new NavGrid(-7.5, -30.5, 17.5, 27.5, 0.3);
   input: Input;
   sfx = new Sfx();
   saves = new SaveManager();
@@ -66,6 +76,10 @@ export class Game {
   items = new Map<string, WorldItem>();
   plane: PaperPlaneFlight;
   ball: Ball;
+  robot: Robot;
+  remote: RemoteControl | null = null;
+  /** 사건이 잠깐 추가하는 충돌 원 (거대 피구공 등) */
+  extraCircles: Circle[] = [];
   save!: SaveData;
   story!: StoryHooks;
   running = false;
@@ -128,6 +142,8 @@ export class Game {
     this.marker.rotation.x = Math.PI;
     this.marker.visible = false;
     this.scene.add(this.marker);
+    this.robot = new Robot(this.nav);
+    this.scene.add(this.robot.root);
 
     // 인물
     for (const id of Object.keys(CAST) as MainNpcId[]) {
@@ -265,17 +281,22 @@ export class Game {
     const consumedE = eForDialogue;
     if (input.pressed('Q')) this.dialogue.skipEverything();
 
-    if (input.pressed('Escape') && !input.captured) this.onPauseRequest();
+    if (input.pressed('Escape') && !input.captured) {
+      if (this.remote) this.remote.onExit();
+      else this.onPauseRequest();
+    }
 
     // 소지품
     for (let i = 1; i <= 4; i++) if (input.pressed(String(i))) this.inventory.select(i - 1);
     if (input.pressed('Tab')) this.hud.toggleInventoryDesc();
 
-    this.player.frozen = this.cutscene;
+    this.player.frozen = this.cutscene || !!this.remote;
     this.hud.root.classList.toggle('cine', this.cutscene);
     const npcCircles: Circle[] = [...Object.values(this.npcs), ...this.fillers]
       .filter((n) => n.char.root.visible)
       .map((n) => ({ x: n.pos.x, z: n.pos.z, r: n.radius }));
+    npcCircles.push(...this.extraCircles);
+    if (this.robot.root.visible) npcCircles.push({ x: this.robot.pos.x, z: this.robot.pos.z, r: this.robot.radius });
     this.lastPlayerPos.copy(this.player.pos);
 
     // 종이비행기: Space 꾹 → 놓으면 날리기
@@ -310,12 +331,17 @@ export class Game {
     for (const n of this.fillers) n.update(dt);
     this.plane.update(dt, this.map.colliders);
     this.ball.update(dt, this.map.colliders, this.player.pos, this.playerVel);
+    if (this.robot.root.visible) this.robot.update(dt, this.map.colliders, this.remote && !this.cutscene && !input.captured ? input : undefined, this.tpc.yaw);
+    if (this.remote && !this.cutscene && !input.captured) {
+      if (input.pressed('Space') || input.pressed('MouseLeft')) this.remote.onAction();
+      else if (input.pressed('E')) this.remote.onExit();
+    }
 
     this.story.update(real);
 
     // 상호작용
     const facing = this.player.seat ? new THREE.Vector3(-Math.sin(this.tpc.yaw), 0, -Math.cos(this.tpc.yaw)) : this.player.forward();
-    if (this.cutscene || input.captured) {
+    if (this.cutscene || input.captured || this.remote) {
       this.interactions.focus = null;
       this.hud.setPrompt(null, null, null);
     } else {
@@ -337,7 +363,7 @@ export class Game {
     }
 
     // 카메라
-    this.tpc.update(dt, input, this.player.pos, !!this.player.seat, this.map.cameraBlockers);
+    this.tpc.update(dt, input, this.remote ? this.remote.target() : this.player.pos, !!this.player.seat && !this.remote, this.map.cameraBlockers);
     // 카메라가 친구 머리 속에 들어가면 그 친구를 잠깐 숨긴다 (앉아 있을 때 뒷자리 친구 등)
     for (const n of [...Object.values(this.npcs), ...this.fillers]) n.char.setHidden(n.headPos().distanceTo(this.camera.position) < 0.75);
     this.hud.showLockHint(!input.pointerLocked && !input.captured && !this.cutscene);

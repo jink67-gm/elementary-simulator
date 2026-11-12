@@ -248,3 +248,6 @@ button { font-family: inherit; }
 .machine-screen { background: #10261c; color: #7cfc8a; border-radius: 12px; padding: 10px 24px; text-align: center; min-width: 240px; font-family: monospace; }
 .machine-value { font-size: 38px; font-weight: bold; }
 .machine-hist { font-size: 14px; opacity: 0.85; }
+.keypad { display: grid; grid-template-columns: repeat(5, 56px); gap: 8px; justify-content: center; }
+.gym-wrap { display: flex; justify-content: center; }
+.gym-map { max-width: 100%; height: auto; border-radius: 12px; border: 3px solid var(--line); }
