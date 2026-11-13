@@ -393,7 +393,13 @@ try {
       g.save.cafeteriaSolution = null;
       window.__sim.skipTo('cutlet');
     });
-    await sleep(800);
+    // 사건 시작 대사(0.6초 뒤에 뜬다)가 실제로 지나갈 때까지: 끝나면 목표가 「…둘러보기」로 바뀐다
+    for (let i = 0; i < 120; i++) {
+      const s = await state();
+      if (s.dialogue) await page.keyboard.press('KeyE');
+      else if (s.objective.includes('둘러보기')) break;
+      await sleep(250);
+    }
     await noDialogue();
   }
 
