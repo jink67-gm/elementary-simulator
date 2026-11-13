@@ -763,8 +763,9 @@ export class Morning implements StoryHooks {
           else void n.walkTo(x, z, yaw);
         }
         fillers.forEach((f, i) => seatOrWalk(f, 'filler' + i));
-        if (fromLoad) teacher.place(0, -4.9, 0);
-        else void teacher.walkTo(0, -4.9, 0);
+        // 모둠 시간: 선생님은 교사용 책상 옆에서 지켜본다 (자료 조사 담당이 전자칠판에 다가갈 수 있게)
+        if (fromLoad) teacher.place(-3.0, -4.9, 0.3);
+        else void teacher.walkTo(-3.0, -4.9, 0.3);
         break;
       }
       case 'lunch': {
