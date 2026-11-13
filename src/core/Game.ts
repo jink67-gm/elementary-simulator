@@ -26,6 +26,9 @@ import { skyTexture } from '../world/pbr';
 import type { UiCtx } from '../minigames/Textbook';
 import type { Circle } from '../world/Collision';
 
+/** 해 방향 (서쪽 위, 고도 약 33°) */
+const SUN_OFFSET = new THREE.Vector3(-25, 16, 5);
+
 export interface StoryHooks {
   start(save: SaveData): void;
   update(dt: number): void;
@@ -136,8 +139,9 @@ export class Game {
     this.scene.add(new THREE.HemisphereLight(0xf4f8ff, 0xcbb89a, 0.85));
     // 아침 햇빛: 동쪽(복도 창문 쪽)에서 낮게 들어와 창틀 그림자를 바닥에 드리운다
     this.sun = new THREE.DirectionalLight(0xffeccc, 3.4);
-    this.sun.position.set(26, 15, 7);
-    this.sun.target.position.set(4, 0, 2);
+    // 운동장(서쪽) 창으로 햇빛이 들어온다. 그림자 범위는 플레이어를 따라간다 (followSun)
+    this.sun.position.copy(SUN_OFFSET).add(new THREE.Vector3(1, 0, 1));
+    this.sun.target.position.set(1, 0, 1);
     this.sun.shadow.camera.left = -20;
     this.sun.shadow.camera.right = 20;
     this.sun.shadow.camera.top = 24;
@@ -250,6 +254,16 @@ export class Game {
   }
 
   private looping = false;
+  /** 그림자 지도 범위(±20m)를 플레이어 둘레로 옮긴다. 2m 칸에 맞춰 옮겨 그림자가 떨리지 않게 */
+  private followSun() {
+    const p = this.player.pos;
+    const tx = Math.round(p.x / 2) * 2, ty = Math.round(p.y / 2) * 2, tz = Math.round(p.z / 2) * 2;
+    const t = this.sun.target.position;
+    if (t.x === tx && t.y === ty && t.z === tz) return;
+    t.set(tx, ty, tz);
+    this.sun.position.copy(SUN_OFFSET).add(t);
+  }
+
   private loop = () => {
     this.looping = true;
     requestAnimationFrame(this.loop);
@@ -272,6 +286,7 @@ export class Game {
       }
     }
     if (this.running && !this.paused) this.tick(dt, real);
+    this.followSun();
     this.renderer.render(this.scene, this.camera);
     this.input.endFrame();
   };

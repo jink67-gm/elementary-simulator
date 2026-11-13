@@ -4,9 +4,9 @@
 // - 색깔 기둥·보(모서리 둥근), 교실 쪽 나무틀 유리창, 미닫이 나무 문, 모서리 그림자, 비상구 등
 // 모든 좌표는 SchoolMap과 같다 (복도 x 7.1~11.1, z -16.1~16.1, 천장 높이 3).
 import * as THREE from 'three';
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { aabb, type Aabb } from './Collision';
+import { aabb } from './Collision';
 import { TILE, aoMaterial, paint, pbr, worldUV } from './pbr';
+import { HQBuilder } from './hq';
 
 const H = 3; // 천장
 const X_IN = 7.2; // 교실 쪽 벽 안쪽 면
@@ -27,44 +27,7 @@ export interface CorridorSpec {
   openDoors: { z0: number; z1: number }[];
 }
 
-export class CorridorBuilder {
-  private glass = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, roughness: 0.04, metalness: 0, envMapIntensity: 1.6, depthWrite: false });
-  private frost = paint(0xdde6ea, 0.35);
-  private frame = paint(0x2f6b4f, 0.45, 0.25);
-  private chrome = paint(0xc9ced3, 0.28, 0.85);
-  private dark = paint(0x2f3337, 0.55);
-
-  constructor(
-    private root: THREE.Object3D,
-    private colliders: Aabb[],
-    private blockers: THREE.Object3D[],
-  ) {}
-
-  private y = 0;
-  private level: 0 | 1 = 1;
-
-  private add(geo: THREE.BufferGeometry, mat: THREE.Material, x: number, y: number, z: number, o: { cast?: boolean; receive?: boolean; ry?: number } = {}) {
-    const m = new THREE.Mesh(geo, mat);
-    m.position.set(x, this.y + y, z);
-    if (o.ry) m.rotation.y = o.ry;
-    m.castShadow = o.cast ?? true;
-    m.receiveShadow = o.receive ?? true;
-    this.root.add(m);
-    return m;
-  }
-
-  /** 상자 (밑면 높이 y) */
-  private box(w: number, h: number, d: number, mat: THREE.Material, x: number, y: number, z: number, cast = true, tile = 0) {
-    const g = new THREE.BoxGeometry(w, h, d);
-    if (tile) worldUV(g, w, h, d, tile);
-    return this.add(g, mat, x, y + h / 2, z, { cast });
-  }
-
-  /** 모서리 둥근 상자 */
-  private rbox(w: number, h: number, d: number, mat: THREE.Material, x: number, y: number, z: number, r = 0.035) {
-    return this.add(new RoundedBoxGeometry(w, h, d, 2, r), mat, x, y + h / 2, z);
-  }
-
+export class CorridorBuilder extends HQBuilder {
   build(s: CorridorSpec) {
     this.y = s.baseY;
     this.level = s.level;
@@ -81,7 +44,7 @@ export class CorridorBuilder {
       d.rotation.set(-Math.PI / 2, 0, Math.PI / 4);
     }
     // 천장: 흡음 텍스 + 매립 LED (알루미늄 테두리)
-    const ceil = this.add(worldUV(new THREE.PlaneGeometry(w, len), w, len, 0, TILE.ceiling), pbr('ceiling', { roughness: 0.95 }), 9.1, H - 0.002, zc, { cast: false });
+    const ceil = this.add(worldUV(new THREE.PlaneGeometry(w, len), w, len, 0, TILE.ceiling), pbr('ceiling', { roughness: 0.95 }), 9.1, H - 0.002, zc, { cast: true });
     ceil.rotation.x = Math.PI / 2;
     this.blockers.push(ceil);
     const led = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfffbf0, emissiveIntensity: 1.25, roughness: 0.4 });

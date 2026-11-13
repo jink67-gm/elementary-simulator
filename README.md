@@ -82,6 +82,7 @@ src/
   main.ts                 시작 · 디버그 API(?debug)
   core/                   Game(루프·렌더러), Input, Audio(합성 효과음), SaveData·SaveManager, Settings
   world/                  SchoolMap(교실·복도·급식실), Character(블록 인물), Collision, NavGrid(A*), Toys(종이비행기·공), merge(그리기 호출 줄이기)
+                          pbr(CC0 재질·직접 그린 텍스처), hq(공통 도구), CorridorHQ(고품질 2층 복도), ClassroomHQ(고품질 6-1 교실·창밖 운동장)
   player/                 Player, ThirdPersonCamera, Inventory(4칸)
   npc/Npc.ts              걷기·앉기·손들기, 취소 가능한 이동
   interact/Interaction.ts E/F 대상 고르기(거리 + 바라보는 방향)
