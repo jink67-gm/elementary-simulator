@@ -152,9 +152,17 @@ try {
     await waitFor('필통 주움', (s) => s.inventory.includes('pencilCase'));
     await act('npc:junho', 'KeyF', '필통');
     await waitFor('필통 돌려줌', (s) => s.flags.pencilReturned);
-    await selectItem('bag');
-    await act('seat', 'KeyF', '가방');
-    await waitFor('가방 놓음', (s) => s.flags.bagOnDesk);
+    // 가방은 소지품이 아니라 등에 메고 있다 → 내 책상에서 E로 벗어 고리에 걸기
+    if (!(await page.evaluate(() => window.__sim.game.player.wearingBag))) throw new Error('등교할 때 가방을 메고 있지 않음');
+    if ((await state()).inventory.includes('bag')) throw new Error('가방이 손 소지품에 있음');
+    await act('seat', 'KeyE', '가방');
+    await waitFor('가방 걸음', (s) => s.flags.bagOnDesk);
+    if (await page.evaluate(() => window.__sim.game.player.wearingBag)) throw new Error('걸었는데 아직 메고 있음');
+    // E로 다시 메고, 다시 걸기
+    await act('deskBag', 'KeyE', '메기', { dist: 0.9 });
+    if (!(await page.evaluate(() => window.__sim.game.player.wearingBag))) throw new Error('E로 가방을 다시 못 멤');
+    await act('seat', 'KeyE', '가방');
+    if (await page.evaluate(() => window.__sim.game.player.wearingBag)) throw new Error('다시 걸기 안 됨');
     await act('locker', 'KeyE', '사물함');
     await waitFor('국어책 챙김', (s) => s.inventory.includes('koreanBook'));
     await selectItem('koreanBook');
@@ -239,7 +247,34 @@ try {
   });
 
   await step('2교시_수학', async () => {
-    await waitFor('태블릿 단계', (s) => s.phase === 'tablet', 60000);
+    // 선생님 안내 → 현우가 충전함에서 꺼내 책상마다 걸어가 나눠 줌 (내 것만 깜빡)
+    const said = [];
+    const tabs = () => page.evaluate(() => {
+      const st = window.__sim.story;
+      return { npc: Object.keys(st.props).filter((k) => k.startsWith('npcTablet_') && st.props[k].visible).length, mine: st.props.deskTablet.visible, cart: window.__sim.game.map.objs.tabletSlots.children.filter((c) => c.visible).length, hyunwoo: window.__sim.game.fillers[2].pos.toArray().map((v) => +v.toFixed(2)) };
+    });
+    let sawPartial = false;
+    for (let i = 0; ; i++) {
+      const s0 = await state();
+      if (s0.phase === 'tablet') break;
+      if (i > 1200) throw new Error('태블릿 배부가 안 끝남: ' + JSON.stringify(await tabs()));
+      if (s0.dialogue) {
+        said.push(s0.dialogue);
+        await page.keyboard.press('KeyE');
+      }
+      if (s0.phase === 'handout') {
+        const t = await tabs();
+        if (t.npc > 0 && t.npc < 7) sawPartial = true;
+      }
+      await sleep(250);
+    }
+    const t1 = await tabs();
+    log('태블릿 배부 끝', JSON.stringify(t1));
+    if (!said.some((d) => d.includes('현우야'))) throw new Error('선생님이 현우에게 부탁하지 않음');
+    if (!sawPartial) throw new Error('태블릿이 한 번에 나타남 (하나씩 놓이지 않음)');
+    if (t1.npc !== 7 || t1.mine || t1.cart !== 1) throw new Error('배부 결과 이상: ' + JSON.stringify(t1));
+    await noDialogue();
+    if (!said.concat([(await state()).dialogue ?? '']).some((d) => d.includes('깜빡'))) log('(현우 사과 대사는 대화 넘기는 중에 지나감)');
     await act('tabletCart', 'KeyE', '태블릿');
     await selectItem('tablet');
     await act('seat', 'KeyF', '태블릿');
@@ -320,9 +355,10 @@ try {
   });
 
   await step('급식실_전환', async () => {
-    await page.evaluate(() => window.__sim.teleport(9, 11));
+    // 급식실은 1층 복도 끝
+    await page.evaluate(() => window.__sim.teleport(9, 11, -3.6));
     await sleep(500);
-    await page.evaluate(() => window.__sim.teleport(9, 12));
+    await page.evaluate(() => window.__sim.teleport(9, 12, -3.6));
     await waitFor('사건 1 시작', (s) => s.period === 'cutlet', 90000);
     await noDialogue();
   });
@@ -365,11 +401,12 @@ try {
     if (ONLY) await restartCutlet();
     await act('npc:cook', 'KeyE', '조리사');
     await noDialogue();
-    await act('cutletTable', 'KeyE', '살펴보기', { dist: 2.4, from: [0, -1] });
+    // 조리실 안전 작업 구역(난간 안)에서 작업대를 본다
+    await act('cutletTable', 'KeyE', '살펴보기', { dist: 1.8, from: [1, -0.4] });
     await noDialogue();
     await act('item:cut_unit', 'KeyE', '절단기');
     await selectItem('cutterUnit');
-    await act('cutletTable', 'KeyF', '레일', { dist: 2.4, from: [0, -1] });
+    await act('cutletTable', 'KeyF', '레일', { dist: 1.8, from: [1, -0.4] });
     await noDialogue();
     await act('cutterPanel', 'KeyE', '패널');
     await waitPanel(true);
@@ -386,19 +423,19 @@ try {
     await noDialogue();
     let cs = await cutletSt();
     if (cs.pieces.length !== 6 || !cs.pieces.every(([, a]) => a === 4)) throw new Error('조각 이상: ' + JSON.stringify(cs.pieces));
-    await page.evaluate(() => window.__sim.teleport(9, 18.6));
+    await page.evaluate(() => window.__sim.teleport(9, 18.6, -3.6));
     await sleep(600);
     await page.screenshot({ path: `${OUT}/사건1_A_자른_조각.png` });
     await act('trayCart', 'KeyE', '식판');
     await selectItem('trayStack');
     await act('dinerTable0', 'KeyF', '식판', { dist: 1.6, from: [0, 1] });
     await act('dinerTable1', 'KeyF', '식판', { dist: 1.6, from: [0, 1] });
-    const diners = [['npc:minjae', [0, 1]], ['npc:seoa', [0, 1]], ['filler:0', [-1, 0]], ['npc:junho', [0, 1]], ['npc:harin', [0, 1]], ['filler:1', [1, 0]]];
+    const diners = [['npc:minjae', [0, 1]], ['npc:seoa', [0, 1]], ['filler:0', [0, 1]], ['npc:junho', [0, 1]], ['npc:harin', [0, 1]], ['filler:1', [0, 1]]];
     for (const [who, from] of diners) {
       cs = await cutletSt();
       const [key] = cs.pieces[0];
-      const z = await page.evaluate((k) => window.__sim.game.items.get(k).obj.position.z, key);
-      await act('item:' + key, 'KeyE', '조각', { dist: 1.3, from: [0, z < 21 ? -1 : 1] });
+      // 조각은 배식 이송대(안전 구역 안) 위 → 남쪽(구역 안)에서 집는다
+      await act('item:' + key, 'KeyE', '조각', { dist: 1.2, from: [0, -1] });
       await selectItem('cutletPiece');
       await act(who, 'KeyF', '식판에 담기', { from, dist: 0.8 });
     }
@@ -446,13 +483,13 @@ try {
     for (let i = 0; i < 3; i++) {
       await act('foldStack', 'KeyE', '테이블', { from: [0, -1], dist: 1.0 });
       await selectItem('foldTable');
-      await act('festSpot' + i, 'KeyF', '펼치기', { from: [-1, 0], dist: 0.8 });
+      await act('festSpot' + i, 'KeyF', '펼치기', { from: [1, 0], dist: 0.8 });
     }
     for (const [id, name] of [['minjae', '민재'], ['seoa', '서아'], ['junho', '준호']]) {
       await act('npc:' + id, 'KeyE', name, { from: [0, 1], dist: 0.8 });
       await noDialogue();
     }
-    await page.evaluate(() => window.__sim.teleport(8.6, 9.0));
+    await page.evaluate(() => window.__sim.teleport(8.6, 9.0, -3.6));
     await sleep(600);
     await page.screenshot({ path: `${OUT}/사건1_C_축제_준비.png` });
     await act('mic', 'KeyE', '축제', { from: [-1, 0], dist: 0.9 });
@@ -978,8 +1015,8 @@ try {
         const s = window.__sim.game.save;
         for (const k of Object.keys(s.flags)) delete s.flags[k];
         s.groupRole = null;
-        s.inventory = ['bag'];
-        window.__sim.game.inventory.load(['bag']);
+        s.inventory = [];
+        window.__sim.game.inventory.load([]);
         window.__sim.skipTo(p);
         window.__sim.teleport(9, -11);
       }, from);
