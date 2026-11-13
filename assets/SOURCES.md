@@ -11,6 +11,8 @@
 | 테스트 | Vitest 4 | https://vitest.dev | MIT | 개발 도구 |
 | 3D 모델 | 교실·복도·급식실 구조, 인물(블록 캐릭터), 돈가스·절단기·크기 조절기 등 | 이 저장소 코드 (`src/world/*.ts`)에서 기본 도형으로 직접 생성 | 이 프로젝트 | |
 | 3D 모델 | 책상·의자·가구·급식실 소품 8종 | Poly Haven (아래 표) | CC0 | `public/models/props/` · 못 불러오면 기본 도형으로 대신 |
+| 글꼴 | Pretendard (본문, 400·600·700·800, KS X 1001 subset) | https://github.com/orioncactus/pretendard (npm pretendard@1.3.9) | SIL OFL 1.1 | `src/assets/fonts/` · 게임에 포함(인터넷 없이 동작) · 라이선스 `LICENSE-Pretendard.txt` |
+| 글꼴 | Jua (제목·이름·시계) | https://fonts.google.com/specimen/Jua (npm @fontsource/jua@5.2.5) | SIL OFL 1.1 | `src/assets/fonts/` · 라이선스 `LICENSE-Jua.txt` |
 | PBR 재질 | 인조석 바닥·페인트 벽·참나무·마루 (색·노멀·거칠기) | Poly Haven (아래 표) | CC0 | `public/textures/` · 못 불러오면 단색 재질로 대신 |
 | 그림(텍스처) | 칠판·급식표·게시판·시계·바닥 무늬·돈가스 빵가루 | 코드에서 캔버스로 직접 그림 (`canvasTex.ts`) | 이 프로젝트 | 외부 그림 파일 없음 |
 | 효과음 | 종소리·줍기·성공·페이지 넘김 등 | WebAudio로 직접 합성 (`src/core/Audio.ts`) | 이 프로젝트 | 외부 소리 파일 없음 |

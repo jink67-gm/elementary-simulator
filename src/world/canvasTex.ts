@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const FONT = `"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR","WenQuanYi Zen Hei",sans-serif`;
+export const FONT = `"Pretendard","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",sans-serif`;
 
 /** 글자를 그려 넣는 캔버스 텍스처 */
 export class CanvasTex {

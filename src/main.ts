@@ -20,6 +20,13 @@ function fail(msg: string) {
   }
 }
 
+/** 게임에 넣어 둔 글꼴을 먼저 받아 둔다 (교실 칠판·명패 등 캔버스 글씨가 기본 글꼴로 그려지지 않게). 실패해도 진행 */
+async function preloadFonts() {
+  if (!document.fonts) return;
+  const sample = '가나다 초등학생 6-1 ABC 123';
+  await Promise.all(['400 20px Pretendard', '600 20px Pretendard', '700 20px Pretendard', '800 20px Pretendard', '20px Jua'].map((f) => document.fonts.load(f, sample).catch(() => null)));
+}
+
 async function boot() {
   const app = document.getElementById('app')!;
   const loading = document.getElementById('loading');
@@ -29,6 +36,7 @@ async function boot() {
     }),
     preloadProps(),
     preloadPbr(),
+    preloadFonts(),
   ]);
   let game: Game;
   try {
