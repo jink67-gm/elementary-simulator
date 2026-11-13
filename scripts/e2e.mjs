@@ -557,11 +557,16 @@ try {
     if (!rs.remote || rs.mode !== 'remote') throw new Error('조종 모드 아님');
     // 실제 키로 조금 움직여 보기
     const p0 = rs.pos;
+    // 느린 렌더링에서는 0.7초가 몇 프레임뿐이라, 움직일 때까지(최대 4초) 누르고 있는다
     await page.keyboard.down('KeyW');
-    await sleep(700);
+    for (let i = 0; i < 20; i++) {
+      await sleep(200);
+      rs = await robotSt();
+      if (Math.hypot(rs.pos[0] - p0[0], rs.pos[1] - p0[1]) >= 0.2) break;
+    }
     await page.keyboard.up('KeyW');
     rs = await robotSt();
-    if (Math.hypot(rs.pos[0] - p0[0], rs.pos[1] - p0[1]) < 0.2) throw new Error('W로 로봇이 안 움직임');
+    if (Math.hypot(rs.pos[0] - p0[0], rs.pos[1] - p0[1]) < 0.2) throw new Error('W로 로봇이 안 움직임: ' + JSON.stringify({ from: p0, to: rs.pos, fps: (await state()).fps }));
     // 나르기: 수거함 앞 ↔ 보관함 칸 앞 (이동은 순간이동, 집게는 실제 Space)
     for (let n = 0; n < 12; n++) {
       rs = await robotSt();
