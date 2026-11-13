@@ -197,14 +197,39 @@ export const CHATTER: Record<ChatNpc, { lines: Record<ChatPeriod, PeriodLines>; 
   },
 };
 
+/**
+ * 같은 친구에게 연달아(3번째부터) 말을 걸면: 성격대로 "왜? 무슨 할 말 있어?" 같은 진짜 대화 반응.
+ * 단계마다 하나씩 (3번째, 4번째, 5번째 이후). 마지막 단계는 돌아가며 쓴다.
+ */
+export const REPEAT_TALK: Record<ChatNpc, string[][]> = {
+  minjae: [['왜? 무슨 할 말 있어?', '응? 왜 자꾸 불러ㅋㅋ'], ['너 혹시 나랑 놀고 싶은 거지? 인정?', '아 알았어, 알았어. 내가 그렇게 재밌냐?'], ['…설마 내 간식 노리는 거 아니지?', '너 오늘 나한테 할 말 엄청 많구나ㅋㅋ', '그만 불러~ 나 바빠! …사실 안 바빠.']],
+  seoa: [['응? 나한테 할 말 있어?', '왜? 뭐 도와줄까?'], ['혹시 숙제 때문에 그래? 천천히 말해 봐.', '무슨 일 있어? 표정이 진지한데.'], ['계속 부르니까 궁금하잖아. 뭔데?', '…장난이지? 나 지금 집중하는 중이야.', '할 말 생각나면 다시 말해 줘.']],
+  junho: [['왜? 공 차러 가자고?', '어? 나 불렀어?'], ['뭐야~ 내기라도 하자는 거야?', '할 말 있으면 빨리! 나 다리 근질근질해.'], ['너 혹시 내 팀 하고 싶은 거지?', '알았어, 다음 체육 시간에 너 먼저 뽑을게!', '자꾸 부르면 나 진짜 달려간다?']],
+  harin: [['왜왜? 재밌는 거 있어?', '응? 나 불렀지?'], ['너 오늘 나한테 관심 많다?ㅋㅋ', '뭔데뭔데, 비밀 얘기야?'], ['아 궁금해! 빨리 말해 줘~', '혹시 나한테 풀 또 빌리려고?', '우리 오늘 말 진짜 많이 한다ㅋㅋ']],
+  filler0: [['응? 왜 불렀어?', '나한테 할 말 있어?'], ['무슨 일인데? 들어 줄게.', '혹시 같이 하고 싶은 거 있어?'], ['헤헤, 너 오늘 기분 좋구나?', '계속 부르니까 좀 웃기다ㅋㅋ', '언제든 말 걸어도 돼!']],
+  filler1: [['…응? 나?', '(놀란 눈으로 쳐다본다) …왜?'], ['…무슨 할 말 있어?', '(작게) 나, 나한테?'], ['…부끄러우니까 그만 불러.', '(얼굴이 빨개진다)', '…고마워, 말 걸어 줘서.']],
+  filler2: [['응, 왜? 뭐 필요한 거 있어?', '부르셨어요~ 현우입니다!'], ['태블릿 문제야? 내가 봐 줄까?', '무슨 일인데? 담당으로서 도와줄게.'], ['혹시 아까 태블릿 깜빡한 거 아직도 서운해? 미안하다니까~', '너 오늘 나 엄청 찾는다ㅋㅋ', '나 지금 충전함 정리해야 하는데… 그래도 말해 봐!']],
+};
+
 /** 같은 친구에게 연달아 말을 걸어도 같은 말이 바로 반복되지 않게 고른다 */
 export class ChatPicker {
   private recent = new Map<string, { line: string; t: number }[]>();
   constructor(private cooldown = 90, private keep = 5) {}
 
+  /** 연달아 말 건 횟수 (다른 친구에게 말을 걸거나 40초가 지나면 처음부터) */
+  private streak = { npc: '' as string, n: 0, t: -1e9 };
+
   pick(npc: ChatNpc, period: ChatPeriod, stage: ChatStage, ctx: ChatCtx, now: number): string | null {
     const d = CHATTER[npc];
     if (!d) return null;
+    if (this.streak.npc === npc && now - this.streak.t < 40) this.streak.n++;
+    else this.streak = { npc, n: 1, t: now };
+    this.streak.t = now;
+    if (this.streak.n >= 3) {
+      const tiers = REPEAT_TALK[npc];
+      const tier = tiers[Math.min(this.streak.n - 3, tiers.length - 1)];
+      return tier[(this.streak.n - 3 + Math.floor(Math.random() * tier.length)) % tier.length];
+    }
     const pl = d.lines[period];
     const pool = [...(pl?.[stage] ?? []), ...(pl?.any ?? [])];
     for (const e of d.extras) if ((!e.period || e.period === period) && e.line && e.when(ctx)) pool.unshift(e.line);
