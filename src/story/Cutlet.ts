@@ -204,7 +204,7 @@ export class CutletEvent implements StoryEvent {
       },
       onUse: (item) => {
         if (item === 'cutterUnit') this.install();
-        else if (item === 'ladle') void this.m.say([this.m.L('cook', '얘야, 국자로는 안 잘려~ 창고 선반에 「안전 절단기」가 있단다. 그걸 식탁에 걸자!')]);
+        else if (item === 'ladle') void this.m.say([this.m.L('cook', '얘야, 국자로는 안 잘려~ 식재료 창고 선반에 「안전 절단기」가 있단다. 그걸 조리실 작업대에 걸자!')]);
       },
     });
     add({
@@ -238,7 +238,7 @@ export class CutletEvent implements StoryEvent {
         if (this.st.tables.every(Boolean)) return this.m.toast('테이블은 세 개면 충분해요.');
         if (this.g.inventory.has('foldTable')) return this.m.toast('하나씩 옮기자. 들고 있는 테이블부터 펼쳐요!');
         this.g.give('foldTable');
-        this.m.toast(this.st.festIdea ? '접이식 테이블을 들었다. 복도의 X 표시에 펼치자!' : '접이식 테이블… 어디에 쓰면 좋을까?');
+        this.m.toast(this.st.festIdea ? '접이식 테이블을 들었다. 급식실 앞 1층 복도의 X 표시에 펼치자!' : '접이식 테이블… 어디에 쓰면 좋을까?');
         this.showMarks();
       },
     });
@@ -386,7 +386,7 @@ export class CutletEvent implements StoryEvent {
         say([
           ['me', '복도에서 다 같이 나눠 먹는 「돈가스 축제」를 하면 어때요? 방송실 마이크도 켜져 있어요!'],
           ['cook', '축제? …하하, 좋다! 대신 줄 서서 차례대로, 뛰지 않기!'],
-          ['cook', '창고에 접이식 테이블이 있어. 복도에 세 개 펼치고, 도와줄 친구 세 명만 불러 오렴.'],
+          ['cook', '식재료 창고에 접이식 테이블이 있어. 급식실 앞 복도에 세 개 펼치고, 도와줄 친구 세 명만 불러 오렴.'],
         ]);
         this.showMarks();
         this.updateObjective();
@@ -398,7 +398,7 @@ export class CutletEvent implements StoryEvent {
         say([
           ['cook', '이걸 어떻게 학생들한테 나눠 주니?! 기계가 「1,000% 증가」래.'],
           ['cook', m.f('lunchExpert') ? '오, 네가 아침에 급식표 세 번 봤다는 급식 전문가구나! 도와줄래?' : '얘, 손 좀 빌려줄 수 있겠니?'],
-          ['cook', '창고 선반에 「안전 절단기」가 있어. 레일을 식탁에 걸면 버튼으로 자를 수 있지. 버튼은 같이 누르자.'],
+          ['cook', '식재료 창고 선반에 「안전 절단기」가 있어. 조리실 문 안쪽 노란 난간까지만 들어와서 레일을 작업대에 걸면 버튼으로 자를 수 있지. 칼날 근처엔 오지 말고!'],
           ['cook', '아, 창고 구석엔 AI가 들여놓은 「크기 조절기」라는 것도 있던데… 나는 무서워서 안 만져 봤단다.'],
         ]);
         this.updateObjective();
@@ -409,7 +409,7 @@ export class CutletEvent implements StoryEvent {
         return true;
       }
       if (st.cut && !st.traysOnTable.every(Boolean)) {
-        say([['cook', '식판은 배식대 옆 수레에 있어. 친구들 식탁에 먼저 깔아 주렴.']]);
+        say([['cook', '식판은 식사 공간 동쪽 벽 수레에 있어. 친구들 식탁에 먼저 깔아 주렴.']]);
         return true;
       }
       if (st.cut) {
@@ -453,8 +453,8 @@ export class CutletEvent implements StoryEvent {
     g.map.objs.cutterGantry.visible = true;
     g.map.objs.cutterPanel.visible = true;
     g.sfx.place();
-    void this.m.say([this.m.L('cook', '레일 걸었구나! 이제 식탁 끝 노란 패널에서 같이 자르자. 손은 손잡이에만!')]);
-    g.setObjective('식탁 끝 노란 절단기 패널 조작하기 (E)', this.inter.cutterPanel);
+    void this.m.say([this.m.L('cook', '레일 걸었구나! 이제 난간 옆 노란 패널에서 같이 자르자. 자른 조각은 내가 이송대에 올려 줄게!')]);
+    g.setObjective('조리실 안전 작업 구역(노란 난간 안)의 절단기 패널 조작하기 (E)', this.inter.cutterPanel);
   }
 
   private async runCutter() {
@@ -540,7 +540,7 @@ export class CutletEvent implements StoryEvent {
     if (!r.ok) {
       g.sfx.oops();
       g.bark(npc, r.verdict === 'tooBig' ? '야ㅋㅋ 식판보다 크잖아!' : '나 이만큼은 다 못 먹어~ 다른 친구 줘!');
-      if (r.verdict === 'tooBig') m.toast('너무 큰 조각은 절단기 패널(식탁 끝)에서 F로 반으로 나눠요.');
+      if (r.verdict === 'tooBig') m.toast('너무 큰 조각은 조리실 안전 구역의 절단기 패널에서 F로 반으로 나눠요.');
       return;
     }
     g.take('cutletPiece');
@@ -821,8 +821,8 @@ export class CutletEvent implements StoryEvent {
       if (!st.traysOnTable.every(Boolean)) return g.setObjective(`식판 수레에서 식판 챙겨 친구들 식탁에 놓기 (${st.traysOnTable.filter(Boolean).length}/2)`, g.inventory.has('trayStack') ? this.inter['dinerTable' + st.traysOnTable.indexOf(false)] : this.inter.trayCart);
       return g.setObjective(`조각 집어서(E) 친구 식판에 담기(F) — ${done}/${DINERS}`, null);
     }
-    if (st.installed) return g.setObjective('식탁 끝 노란 절단기 패널 조작하기 (E)', this.inter.cutterPanel);
-    if (st.talkedCook) return g.setObjective('방법 찾기: 창고 「안전 절단기」 · 창고 구석 기계 · 그 밖의 아이디어', null);
+    if (st.installed) return g.setObjective('조리실 안전 작업 구역(노란 난간 안)의 절단기 패널 조작하기 (E)', this.inter.cutterPanel);
+    if (st.talkedCook) return g.setObjective('방법 찾기: 식재료 창고 「안전 절단기」 · 창고 구석 기계 · 그 밖의 아이디어', null);
   }
 
   /** 막힘 방지: 시간이 지나면 친구·어른이 힌트를 주고, 10분이 넘으면 함께 마무리 */
@@ -847,7 +847,7 @@ export class CutletEvent implements StoryEvent {
     st.hintLevel = lvl;
     if (lvl === 1 && !st.talkedCook) this.g.bark(this.m.n('cook'), '얘! 이리 와 보렴, 같이 방법을 찾자!');
     else if (lvl === 1) this.g.bark(this.m.n('harin'), st.cut ? '조각 들고 우리한테 와서 F!' : '창고 선반에 노란 상자 있던데? 절단기 아니야?');
-    else if (lvl === 2) this.m.toast('힌트: 창고 선반의 「안전 절단기」를 들고 돈가스 식탁에서 F → 노란 패널에서 자르기', 'warn');
+    else if (lvl === 2) this.m.toast('힌트: 식재료 창고 선반의 「안전 절단기」를 들고 → 조리실 문 안 안전 구역에서 작업대에 F → 노란 패널에서 자르기', 'warn');
   }
 
   // ───────── 소지품 규칙 ─────────
@@ -863,7 +863,7 @@ export class CutletEvent implements StoryEvent {
       this.st.pieceArea.delete(key);
       this.m.toast(`돈가스 조각 (크기 ${this.st.carried}) — 친구에게 가서 F`, 'info');
     }
-    if (id === 'cutterUnit') this.g.setObjective('거대 돈가스 식탁에 절단기 레일 걸기 (들고 식탁에서 F)', this.inter.cutletTable);
+    if (id === 'cutterUnit') this.g.setObjective('조리실 작업대에 절단기 레일 걸기 (조리실 문 안 안전 구역에서 작업대 쪽으로 F)', this.inter.cutletTable);
     if (id === 'foldTable') this.showMarks();
   }
 
