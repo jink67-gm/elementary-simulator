@@ -26,7 +26,9 @@ npm run dev        # http://localhost:5173/elementary-simulator/
 2. `main` 브랜치에 올리면 `.github/workflows/deploy.yml`이 테스트·빌드 후 배포한다.
 3. 주소: `https://<계정>.github.io/elementary-simulator/` (저장소 이름을 바꾸면 `vite.config.ts`의 `base`도 바꿔야 함)
 
-## 학교 구조 (무사초등학교, 2층 건물)
+## 학교 구조 (우리초등학교, 2층 건물)
+
+학교 이름은 `src/data/school.ts`의 `SCHOOL_NAME` 하나만 바꾸면 정문 간판·현관 안내도·강당 현수막·도서관 문구가 모두 바뀝니다.
 
 | 층 | 들어갈 수 있는 곳 | 닫힌 문 (이름표만) |
 |---|---|---|

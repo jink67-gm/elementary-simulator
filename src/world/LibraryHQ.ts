@@ -1,5 +1,6 @@
 // 2층 도서관 (예전 급식실 자리): 참고 사진처럼 낮은 책장, 알록달록한 의자·쿠션, 큰 창, 대출 데스크.
 // 범위: x 3.0~15.0, z 16.2~27.0 (벽 안쪽), 바닥 y 0. 남쪽 벽(복도 쪽)과 문 자리는 SchoolMap.buildHallway.
+import { SCHOOL_SHORT } from '../data/school';
 import * as THREE from 'three';
 import { aabb } from './Collision';
 import { CanvasTex, font } from './canvasTex';
@@ -179,7 +180,7 @@ export class LibraryBuilder extends HQBuilder {
       c.fillStyle = '#e76f51';
       c.font = font(56, true);
       c.textAlign = 'center';
-      c.fillText('책 읽는 무사초', w / 2, 80);
+      c.fillText(`책 읽는 ${SCHOOL_SHORT}`, w / 2, 80);
       c.fillStyle = '#457b9d';
       c.font = font(28);
       c.fillText('한 달에 한 권 더! 도서관에서 만나요', w / 2, 130);

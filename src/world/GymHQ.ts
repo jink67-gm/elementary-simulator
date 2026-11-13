@@ -1,6 +1,8 @@
 // 고품질 강당 (2층 남쪽): 참고 사진처럼 나무 마루 + 파란 선, 높은 창 + 커튼, 무대, 철골 지붕.
 // 경기장 범위는 그대로(x 1.0~17.0, z -30.0~-16.2), 북쪽(z -34.6~-30.15)에 무대를 붙이고 천장을 6.5m로 올린다.
 // 골대·공 창고·규칙 게시판·발사대 등 게임 물건은 SchoolMap이 그대로 만든다.
+import { SCHOOL_NAME } from '../data/school';
+import { TILE_EXT, brickMat } from './exteriorTex';
 import * as THREE from 'three';
 import { aabb } from './Collision';
 import { CanvasTex, font } from './canvasTex';
@@ -177,7 +179,7 @@ export class GymBuilder extends HQBuilder {
       c.fillStyle = '#ffffff';
       c.font = font(92, true);
       c.textAlign = 'center';
-      c.fillText('무사초등학교', w / 2, 120);
+      c.fillText(SCHOOL_NAME, w / 2, 120);
     });
     this.add(new THREE.PlaneGeometry(6.4, 1.2), ban.material(), xc, 3.3, ZN + 0.02, { cast: false });
     // 교탁
@@ -258,18 +260,18 @@ export class GymBuilder extends HQBuilder {
 
   /** 바깥 껍데기 (높아진 강당·무대 동) */
   private exterior() {
-    const ext = paint(0xc96f55, 0.85);
+    const ext = brickMat(); // 차분한 벽돌 (강당 동 포인트)
     const top = paint(0xe9e2d4, 0.8);
     const gy = -3.6, hh = GYM_H + 0.4 - gy;
     // 높은 창(3.6~5.6) 자리는 비운다
     const zl = ZS - ZN + 0.6, zcc = (ZS + ZN) / 2, topH = GYM_H + 0.4 - 5.6;
-    this.box(0.12, 3.6 - gy, zl, ext, X1 + 0.27, gy, zcc, false);
-    this.box(0.12, topH, zl, ext, X1 + 0.27, 5.6, zcc, false);
-    this.box(0.12, 0.6, zl, ext, X0 - 0.27, 3.0, zcc, false); // 공 창고 지붕 위부터
-    this.box(0.12, topH, zl, ext, X0 - 0.27, 5.6, zcc, false);
-    this.box(0.12, 3.6, -28.7 - ZN, ext, X0 - 0.27, gy, (ZN - 28.6) / 2, false);
-    this.box(0.12, 3.0, -28.7 - ZN, ext, X0 - 0.27, 0, (ZN - 28.6) / 2, false);
-    this.box(X1 - X0 + 0.66, hh, 0.12, ext, (X0 + X1) / 2, gy, ZN - 0.27, false);
+    this.box(0.12, 3.6 - gy, zl, ext, X1 + 0.27, gy, zcc, false, TILE_EXT.brick);
+    this.box(0.12, topH, zl, ext, X1 + 0.27, 5.6, zcc, false, TILE_EXT.brick);
+    this.box(0.12, 0.6, zl, ext, X0 - 0.27, 3.0, zcc, false, TILE_EXT.brick); // 공 창고 지붕 위부터
+    this.box(0.12, topH, zl, ext, X0 - 0.27, 5.6, zcc, false, TILE_EXT.brick);
+    this.box(0.12, 3.6, -28.7 - ZN, ext, X0 - 0.27, gy, (ZN - 28.6) / 2, false, TILE_EXT.brick);
+    this.box(0.12, 3.0, -28.7 - ZN, ext, X0 - 0.27, 0, (ZN - 28.6) / 2, false, TILE_EXT.brick);
+    this.box(X1 - X0 + 0.66, hh, 0.12, ext, (X0 + X1) / 2, gy, ZN - 0.27, false, TILE_EXT.brick);
     this.box(X1 - X0 + 0.7, 0.3, ZS - ZN + 0.7, top, (X0 + X1) / 2, GYM_H + 0.4, (ZS + ZN) / 2, false);
   }
 }

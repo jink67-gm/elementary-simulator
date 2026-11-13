@@ -31,7 +31,7 @@ import type { StoryEvent } from './StoryEvent';
 
 const never = () => new Promise<never>(() => {});
 /** 등교 시작: 1층 현관 앞 마당 (서쪽 현관을 바라봄) */
-const SPAWN = { x: 21.4, z: -1.5, y: FLOOR1_Y, yaw: -Math.PI / 2 }; // 현관 유리문(x 18) 앞 마당
+const SPAWN = { x: 23.2, z: -1.5, y: FLOOR1_Y, yaw: -Math.PI / 2 }; // 정문 앞 보도블록 길 (캐노피·간판이 한눈에 보이게)
 const ROLE_ITEMS: Record<GroupRole, ItemId> = { speaker: 'roleSpeaker', maker: 'roleMaker', researcher: 'roleResearcher', organizer: 'roleOrganizer' };
 const ROLE_NAMES: Record<GroupRole, string> = { speaker: '발표', maker: '제작', researcher: '자료', organizer: '정리' };
 const WISH_THEME: Record<Wish, PosterTheme> = { lunch: 'food', break: 'rest', sport: 'play', clean: 'friends' };
@@ -450,6 +450,7 @@ export class Morning implements StoryHooks {
       ['doorBroadcast', '방송실 — 「관계자 외 출입 금지」. 안에서 기계 소리가 웅웅 난다.'],
       ['doorScience', '과학실 — 「실험 준비 중」. 비커가 줄 맞춰 서 있다.'],
       ['door1_1', '1학년 교실에서 받아쓰기 소리가 들린다.'],
+      ['doorAdmin', '행정실 — 선생님들이 서류를 정리하고 계신다. 조용히 지나가자.'],
       ['doorClass1', '옆 반은 벌써 조용하다… 살금살금 지나가자.'],
       ['doorGym', '체육관: 오늘 체육은 5교시! 지금은 잠겨 있다.'],
       ['cafeteriaDoor', '급식실에서 고소한 냄새가 난다… 아직은 준비 중.'],

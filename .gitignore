@@ -5,3 +5,4 @@ test-results
 .DS_Store
 tools/character/__pycache__
 public/models/_local/
+dist-shots

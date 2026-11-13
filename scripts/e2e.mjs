@@ -1013,7 +1013,8 @@ try {
     if (!s.seated) throw new Error('자리로 돌아가기 안 됨');
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: '설정' }).click();
-    await page.locator('select').first().selectOption('mid');
+    if (!(await page.locator('label.set-row', { hasText: '조작 방식' }).count())) throw new Error('조작 방식 설정 없음');
+    await page.locator('label.set-row', { hasText: '그래픽 품질' }).locator('select').selectOption('mid');
     await page.getByRole('button', { name: '확인' }).click();
     await page.getByRole('button', { name: '계속하기' }).click();
     const q = await page.evaluate(() => window.__sim.game.settings.quality);
