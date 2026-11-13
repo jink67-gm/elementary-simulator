@@ -6,6 +6,7 @@ import type { SaveData } from './core/SaveData';
 import { PERIODS, type PeriodId } from './core/SaveData';
 import { preloadCharacterModels, modelErrors } from './world/models';
 import { preloadProps, propErrors } from './world/props';
+import { preloadPbr, pbrErrors } from './world/pbr';
 
 /** 게임에서 쓰는 3D 캐릭터 모델 (public/models/characters/*.glb) */
 // 3D 인물 모델은 쓰지 않는다(사용자 결정: 블록 캐릭터로 게임 플레이 우선). 다시 쓰려면 id 목록을 넣는다.
@@ -27,6 +28,7 @@ async function boot() {
       if (loading) loading.textContent = `학교 가는 중… 친구들 불러오는 중 (${d}/${n})`;
     }),
     preloadProps(),
+    preloadPbr(),
   ]);
   let game: Game;
   try {
@@ -43,7 +45,7 @@ async function boot() {
   story.onEnding = (save, ending, epi) => setTimeout(() => menus.ending(save, ending, epi, story.recap()), 1200);
   game.onPauseRequest = () => menus.pause();
   menus.title();
-  for (const m of [...modelErrors, ...propErrors]) game.hud.toast(m, 'warn', 8000);
+  for (const m of [...modelErrors, ...propErrors, ...pbrErrors]) game.hud.toast(m, 'warn', 8000);
 
   // 자동 테스트·디버그용 (주소 끝에 ?debug)
   if (new URLSearchParams(location.search).has('debug')) {

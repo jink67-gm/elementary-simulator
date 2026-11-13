@@ -6,6 +6,9 @@ import { CanvasTex, font, wrapText } from './canvasTex';
 import { mergeStatic } from './merge';
 import type { PosterTheme } from '../core/SaveData';
 import { hasProp, placeInstances, placeOne, type Fit, type Placement } from './props';
+import { CorridorBuilder } from './CorridorHQ';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
+import { TILE, isPbrMaterial, paint, pbr, worldUV } from './pbr';
 
 export interface Seat {
   x: number;
@@ -31,7 +34,7 @@ const C = {
   floorWood: 0xd9b382,
   floorHall: 0xd8d5cc,
   wall: 0xf4efe4,
-  wallTrim: 0x9fc5a8,
+  wallTrim: 0x3a3f44, // 짙은 걸레받이
   desk: 0xe8c592,
   deskLeg: 0x8a8f99,
   chair: 0x6ca0dc,
@@ -97,7 +100,21 @@ export class SchoolMap {
     this.buildStairs();
     this.buildFirstFloor();
     // 복도 꾸미기: (창문 벽 구간, 교실 쪽 위 유리창 구간, 색깔 아치 위치)
-    this.decorateCorridor(1, [[-13.6, -6.8], [6.0, 12.8]], [[-15.6, -11.8], [-10.2, -6.4], [-3.4, 4.2], [9.6, 15.6]], [-9.6, -0.2, 7.0, 15.4]);
+    new CorridorBuilder(this.root, this.colliders, this.cameraBlockers).build({
+      baseY: 0,
+      level: 1,
+      z0: -16.1,
+      z1: 16.1,
+      windows: [[-4.2, 2.2], [6.9, 15.8]],
+      transoms: [
+        { z0: -15.6, z1: -11.8, clear: false },
+        { z0: -10.2, z1: -6.4, clear: false },
+        { z0: -3.4, z1: 4.2, clear: true },
+        { z0: 9.6, z1: 15.6, clear: false },
+      ],
+      arches: [-9.6, -0.2, 7.0, 15.4],
+      openDoors: [{ z0: -5.4, z1: -3.8 }, { z0: 4.6, z1: 6.2 }],
+    });
     this.decorateCorridor(0, [], [[-15.6, -11.8], [-10.2, -6.4], [-5.6, -2.3], [-0.7, 6.6], [9.8, 13.4]], [-12.0, 2.0, 11.8]);
     this.buildExterior();
     this.setBoard(['6-1', '오늘도 무사히!']);
@@ -110,7 +127,7 @@ export class SchoolMap {
     const keep = new Set<THREE.Object3D>();
     for (const [k, o] of Object.entries(this.objs)) if (!k.startsWith('desk_') || o === this.objs.playerDesk) keep.add(o);
     const cached = new Set<THREE.Material>(this.matCache.values());
-    mergeStatic(this.root, keep, (m) => cached.has(m));
+    mergeStatic(this.root, keep, (m) => cached.has(m) || isPbrMaterial(m));
   }
 
   private mat(color: number): THREE.MeshLambertMaterial {
@@ -127,7 +144,12 @@ export class SchoolMap {
     w: number, h: number, d: number, color: number, x: number, y: number, z: number,
     o: { collide?: boolean; wall?: boolean; parent?: THREE.Object3D; ownMat?: boolean; shadow?: boolean } = {},
   ): THREE.Mesh {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), o.ownMat ? new THREE.MeshLambertMaterial({ color }) : this.mat(color));
+    const geo = new THREE.BoxGeometry(w, h, d);
+    let material: THREE.Material;
+    if (color === C.wall && !o.ownMat) material = pbr('plaster', { roughness: 0.92 }), worldUV(geo, w, h, d, TILE.plaster);
+    else if (color === C.wallTrim && !o.ownMat) material = paint(C.wallTrim, 0.45);
+    else material = o.ownMat ? new THREE.MeshLambertMaterial({ color }) : this.mat(color);
+    const m = new THREE.Mesh(geo, material);
     // parent가 있으면 부모 기준 좌표, 없으면 지금 짓는 층의 바닥 높이(baseY)를 더한다
     m.position.set(x, y + h / 2 + (o.parent ? 0 : this.baseY), z);
     m.receiveShadow = true;
@@ -569,8 +591,11 @@ export class SchoolMap {
   private buildHallway() {
     // 복도 바닥·창문·기둥은 decorateCorridor에서
 
-    this.wallX(11.1, -14, 3.9); // z -16~-14: 계단 위 입구
-    this.wallX(11.1, 5.1, 16);
+    // z -16~-14: 계단 위 입구 / 창문 구간(-4.2~2.2, 6.9~15.8)은 CorridorHQ가 창문 벽으로 짓는다
+    this.wallX(11.1, -14, -4.2);
+    this.wallX(11.1, 2.2, 3.9);
+    this.wallX(11.1, 5.1, 6.9);
+    this.wallX(11.1, 15.8, 16);
     this.wallX(7.1, -16, -6.2);
     this.wallX(7.1, 7.2, 16);
     this.wallZ(-16.1, 7, 8.4);
@@ -616,12 +641,35 @@ export class SchoolMap {
         wrapText(c, body, x + 10, 116, 132, 28);
       });
     });
-    const bulletin = this.plane(2.0, 1.17, bb.material(), 10.98, 1.6, -2, -Math.PI / 2);
+    const bframe = this.box(0.06, 1.35, 2.2, 0x9c6644, 10.97, 0.92, -10.5, { shadow: false });
+    bframe.material = pbr('oak', { roughness: 0.7 });
+    const cork = this.plane(2.06, 1.22, pbr('cork', { roughness: 0.95 }), 10.935, 1.595, -10.5, -Math.PI / 2);
+    worldUV(cork.geometry, 2.06, 1.22, 0, TILE.cork);
+    const bulletin = this.plane(1.9, 1.11, bb.material(), 10.93, 1.6, -10.5, -Math.PI / 2);
     this.objs.bulletin = bulletin;
 
     // 정수기
-    this.box(0.45, 1.2, 0.4, 0xe0e0e0, 7.45, 0, 10.5, { collide: true });
-    this.box(0.3, 0.2, 0.05, 0x4ea8de, 7.45, 0.85, 10.29, { shadow: false });
+    {
+      // 흰 몸통(모서리 둥근) + 스테인리스 앞판 + 물 받는 곳 + 꼭지 두 개
+      const body = new THREE.Mesh(new RoundedBoxGeometry(0.42, 1.25, 0.46, 3, 0.05), paint(0xf4f5f2, 0.35));
+      body.position.set(7.5, 0.625, 10.5);
+      body.castShadow = body.receiveShadow = true;
+      const front = new THREE.Mesh(new RoundedBoxGeometry(0.02, 0.62, 0.36, 2, 0.008), paint(0xc8cdd2, 0.25, 0.85));
+      front.position.set(7.72, 0.62, 10.5);
+      const recess = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.3, 0.3), paint(0x2b2f33, 0.6));
+      recess.position.set(7.72, 1.0, 10.5);
+      const tray = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.03, 0.3), paint(0x8d939a, 0.4, 0.6));
+      tray.position.set(7.76, 0.86, 10.5);
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.08, 0.22), paint(0x4ea8de, 0.3));
+      panel.position.set(7.725, 1.2, 10.5);
+      this.root.add(body, front, recess, tray, panel);
+      for (const z of [10.43, 10.57]) {
+        const tap = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.06, 8), paint(0xdee2e6, 0.25, 0.9));
+        tap.position.set(7.74, 1.1, z);
+        this.root.add(tap);
+      }
+      this.colliders.push(aabb(7.5, 10.5, 0.42, 0.46));
+    }
   }
 
   /** 급식실 (x 2.9~15.1, z 16.1~27) + 조리 창고 + 배식대 + 거대 돈가스 식탁 + 친구들 식탁 */
@@ -1248,7 +1296,6 @@ export class SchoolMap {
     this.baseY = 0;
     this.curLevel = 1;
     this.ceiling(14.2, 13.2, 0, 0.5);
-    this.ceiling(4.0, 32.2, 9, 0);
     this.ceiling(12.2, 11, 9, 21.55);
     this.ceiling(3.7, 4, 12.95, 4.5);
     this.ceiling(16.2, 14, 9, -23.05, true, WALL_H + 0.01);
@@ -1258,8 +1305,14 @@ export class SchoolMap {
     this.wallZ(16.1, -7.2, 2.9);
     this.wallX(-7.1, 7.0, 16.1);
     // 복도 동쪽 닫힌 방들(화장실·도서관 뒤)의 바깥 벽
-    this.wallX(14.9, -4.5, 2.5);
-    this.wallX(14.9, 6.5, 16.1);
+    // 창문 너머(x 11.2~15)는 바깥: 1층 지붕(옥상) + 난간 벽
+    for (const [z0, z1] of [[-4.5, 2.5], [6.5, 16.1]] as [number, number][]) {
+      const zc = (z0 + z1) / 2, len = z1 - z0;
+      const roof = this.box(3.8, 0.3, len, 0x9a9b96, 13.1, -0.32, zc, { shadow: false });
+      roof.material = pbr('terrazzo', { color: 0x9c9d98, roughness: 0.95 });
+      worldUV(roof.geometry, 3.8, 0.3, len, 3);
+      this.box(0.25, 0.9, len, C.wall, 14.95, -0.02, zc, { shadow: false });
+    }
 
     // 우리 반 앞쪽: 전자칠판 양옆 흰 보드, 아래 수납장, 태극기, TV, 벽걸이 선풍기
     const white = new THREE.MeshLambertMaterial({ color: 0xf8f9fa });
@@ -1312,7 +1365,7 @@ export class SchoolMap {
     }
     // 복도: 소화기, 게시물
     this.box(0.18, 0.5, 0.18, 0xd62828, 7.35, 0, 1.2, { shadow: false });
-    this.box(0.18, 0.5, 0.18, 0xd62828, 10.85, 0, -12.6, { shadow: false });
+    this.box(0.18, 0.5, 0.18, 0xd62828, 10.85, 0, -7.3, { shadow: false });
   }
 
   /** 1층 (y = FLOOR1_Y): 복도, 현관(신발장), 1~3학년 교실·교무실·보건실·행정실 (모두 닫힌 문) */
@@ -1436,15 +1489,18 @@ export class SchoolMap {
     };
     // 동쪽 정면 (현관 쪽): 창문 줄 + 색깔 창틀
     // 현관 출입문 자리(z -2.6~-0.4, 1층 높이 2.2m)는 비워 둔다
-    facade(13.6, 15.02, -9.4, Math.PI / 2);
-    facade(16.6, 15.02, 7.9, Math.PI / 2);
-    facade(2.2, 15.02, -1.5, Math.PI / 2, FLOOR1_Y + 2.2, H - 2.2);
+    facade(13.6, 15.02, -9.4, Math.PI / 2, FLOOR1_Y, -FLOOR1_Y);
+    facade(16.6, 15.02, 7.9, Math.PI / 2, FLOOR1_Y, -FLOOR1_Y);
+    facade(11.7, 15.02, -10.35, Math.PI / 2, 0, H + FLOOR1_Y);
+    facade(4.0, 15.02, 4.5, Math.PI / 2, 0, H + FLOOR1_Y);
+    facade(2.2, 15.02, -1.5, Math.PI / 2, FLOOR1_Y + 2.2, -FLOOR1_Y - 2.2);
     const glass = new THREE.MeshLambertMaterial({ color: 0x7fb7d9 });
     const frames = [0x2ec4f1, 0xe63946, 0xffc300, 0x3a86ff, 0x8338ec];
     for (const [y, row] of [[FLOOR1_Y + 1.2, 0], [1.2, 1]] as [number, number][]) {
       for (let i = 0; i < 10; i++) {
         const z = -14.5 + i * 3.2;
         if (row === 0 && Math.abs(z + 1.5) < 2) continue; // 현관 자리
+        if (row === 1 && ((z > -4.5 && z < 2.5) || z > 6.5)) continue; // 2층 복도 창문 쪽은 바깥(옥상)
         const win = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 1.3), glass);
         win.position.set(15.04, y + 0.65, z);
         win.rotation.y = Math.PI / 2;
@@ -1459,7 +1515,8 @@ export class SchoolMap {
     }
     // 층 사이 흰 띠 + 지붕 테두리
     this.box(0.3, 0.25, 32.4, 0xf1faee, 15.1, -0.3, 0, { shadow: false });
-    this.box(0.4, 0.35, 32.6, 0xadb5bd, 15.1, WALL_H, 0, { shadow: false });
+    this.box(0.4, 0.35, 11.7, 0xadb5bd, 15.1, WALL_H, -10.35, { shadow: false });
+    this.box(0.4, 0.35, 4.0, 0xadb5bd, 15.1, WALL_H, 4.5, { shadow: false });
     // 현관 캐노피 + 학교 이름
     this.box(1.6, 0.18, 3.6, 0xf1faee, 15.8, FLOOR1_Y + 2.3, -1.5, { shadow: false });
     const name = new CanvasTex(512, 96);
@@ -1490,6 +1547,36 @@ export class SchoolMap {
     north.position.set(15.0, FLOOR1_Y + H / 2, 16.2);
     this.root.add(north);
     facade(11.0, 15.12, 21.6, Math.PI / 2);
+    // 창밖 풍경: 나무 줄 + 아파트 단지 (운동장 사진처럼)
+    const trunkMat = paint(0x6b4f3a, 0.9);
+    const leafMats = [paint(0x4f8a3c, 0.85), paint(0x5f9e45, 0.85), paint(0x3f7a35, 0.85)];
+    for (let i = 0; i < 14; i++) {
+      const z = -26 + i * 4.1 + ((i * 37) % 7) * 0.2;
+      const x = 24 + ((i * 53) % 5) * 0.6;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 2.2, 8), trunkMat);
+      trunk.position.set(x, FLOOR1_Y + 1.1, z);
+      const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5 + ((i * 13) % 4) * 0.2, 1), leafMats[i % 3]);
+      crown.position.set(x, FLOOR1_Y + 3.3, z);
+      crown.scale.y = 1.25;
+      this.root.add(trunk, crown);
+    }
+    const apt = new CanvasTex(128, 256);
+    apt.draw((c, w, h) => {
+      c.fillStyle = '#e9e4da';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#9fb3c2';
+      for (let y = 6; y < h; y += 14) for (let x = 6; x < w; x += 20) c.fillRect(x, y, 12, 8);
+    });
+    apt.tex.wrapS = apt.tex.wrapT = THREE.RepeatWrapping;
+    for (let i = 0; i < 5; i++) {
+      const hgt = 26 + (i % 3) * 6;
+      const t = apt.tex.clone();
+      t.needsUpdate = true;
+      t.repeat.set(2, hgt / 14);
+      const b = new THREE.Mesh(new THREE.BoxGeometry(8, hgt, 18), new THREE.MeshLambertMaterial({ map: t }));
+      b.position.set(58 + (i % 2) * 9, FLOOR1_Y + hgt / 2, -40 + i * 20);
+      this.root.add(b);
+    }
     // 멀리 보이는 산 (분위기)
     const hill = new THREE.Mesh(new THREE.SphereGeometry(30, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x4f772d }));
     hill.scale.set(1.6, 0.35, 1);

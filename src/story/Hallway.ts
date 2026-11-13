@@ -20,13 +20,13 @@ const DOORS: { id: CardId; x: number; z: number; ry: number }[] = [
   { id: 'group', x: 7.23, z: -14.0, ry: Math.PI / 2 },
   { id: 'lunch', x: 10.97, z: -6.0, ry: -Math.PI / 2 },
   { id: 'korean', x: 7.23, z: -8.2, ry: Math.PI / 2 },
-  { id: 'art', x: 10.97, z: 1.9, ry: -Math.PI / 2 },
+  { id: 'art', x: 10.97, z: -12.6, ry: -Math.PI / 2 },
   { id: 'math', x: 7.23, z: 12.6, ry: Math.PI / 2 },
-  { id: 'break', x: 10.97, z: 13.6, ry: -Math.PI / 2 },
+  { id: 'break', x: 10.97, z: 6.0, ry: -Math.PI / 2 },
 ];
 const TAPES: [number, number, number][] = [
   [10.55, 0.03, -14.6], // 계단 입구 앞 바닥
-  [7.45, 1.22, 10.5], // 정수기 위
+  [7.5, 1.27, 10.5], // 정수기 위
   [9.0, 0.03, 15.3], // 급식실 문 앞 바닥
 ];
 const START: [number, number, number] = [9, -13.5, Math.PI];

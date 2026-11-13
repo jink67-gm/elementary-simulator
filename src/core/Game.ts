@@ -21,6 +21,8 @@ import { itemDef, type ItemId } from '../data/items';
 import { itemHalfHeight, makeItemMesh } from '../world/itemMesh';
 import { Ball, PaperPlaneFlight } from '../world/Toys';
 import { Robot } from '../world/Robot';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { skyTexture } from '../world/pbr';
 import type { UiCtx } from '../minigames/Textbook';
 import type { Circle } from '../world/Collision';
 
@@ -106,6 +108,9 @@ export class Game {
     this.renderer = new THREE.WebGLRenderer({ antialias: this.settings.quality !== 'low', powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // 영화처럼 부드러운 색 (밝은 창가가 하얗게 날아가지 않게)
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.1;
     container.append(this.renderer.domElement);
     this.input = new Input(this.renderer.domElement);
     this.input.blockKeys = () => panelsOpen() || this.paused;
@@ -121,18 +126,25 @@ export class Game {
     this.layer.append(this.chargeBar);
 
     // 하늘·빛
-    this.scene.background = new THREE.Color(0xbfe3ff);
-    this.scene.fog = new THREE.Fog(0xbfe3ff, 30, 70);
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xd8c7a8, 1.6));
-    this.sun = new THREE.DirectionalLight(0xfff1d6, 1.6);
-    this.sun.position.set(-14, 18, 6);
-    this.sun.target.position.set(2, 0, 3);
-    this.sun.shadow.camera.left = -18;
-    this.sun.shadow.camera.right = 18;
-    this.sun.shadow.camera.top = 22;
-    this.sun.shadow.camera.bottom = -22;
-    this.sun.shadow.camera.far = 60;
-    this.sun.shadow.bias = -0.0005;
+    this.scene.background = skyTexture();
+    this.scene.fog = new THREE.Fog(0xcfe6f5, 45, 140);
+    // 실내 반사·은은한 빛 (한 번만 만드는 환경 지도: 바닥 광택, 유리 반사)
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    this.scene.environmentIntensity = 0.42;
+    pmrem.dispose();
+    this.scene.add(new THREE.HemisphereLight(0xf4f8ff, 0xcbb89a, 0.85));
+    // 아침 햇빛: 동쪽(복도 창문 쪽)에서 낮게 들어와 창틀 그림자를 바닥에 드리운다
+    this.sun = new THREE.DirectionalLight(0xffeccc, 3.4);
+    this.sun.position.set(26, 15, 7);
+    this.sun.target.position.set(4, 0, 2);
+    this.sun.shadow.camera.left = -20;
+    this.sun.shadow.camera.right = 20;
+    this.sun.shadow.camera.top = 24;
+    this.sun.shadow.camera.bottom = -24;
+    this.sun.shadow.camera.far = 80;
+    this.sun.shadow.bias = -0.0004;
+    this.sun.shadow.normalBias = 0.025;
     this.scene.add(this.sun, this.sun.target);
     this.scene.add(this.map.root);
     this.nav.rebuild(this.map.colliders, 0.3);
@@ -197,7 +209,7 @@ export class Game {
     const shadows = s.quality !== 'low';
     this.renderer.shadowMap.enabled = shadows;
     this.sun.castShadow = shadows;
-    this.sun.shadow.mapSize.setScalar(s.quality === 'high' ? 2048 : 1024);
+    this.sun.shadow.mapSize.setScalar(s.quality === 'high' ? 4096 : 2048);
     if (this.sun.shadow.map) {
       this.sun.shadow.map.dispose();
       (this.sun.shadow as unknown as { map: null }).map = null;

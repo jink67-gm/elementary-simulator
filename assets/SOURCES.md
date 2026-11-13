@@ -11,6 +11,7 @@
 | 테스트 | Vitest 4 | https://vitest.dev | MIT | 개발 도구 |
 | 3D 모델 | 교실·복도·급식실 구조, 인물(블록 캐릭터), 돈가스·절단기·크기 조절기 등 | 이 저장소 코드 (`src/world/*.ts`)에서 기본 도형으로 직접 생성 | 이 프로젝트 | |
 | 3D 모델 | 책상·의자·가구·급식실 소품 14종 | Poly Haven (아래 표) | CC0 | `public/models/props/` · 못 불러오면 기본 도형으로 대신 |
+| PBR 재질 | 인조석 바닥·페인트 벽·참나무·마루 (색·노멀·거칠기) | Poly Haven (아래 표) | CC0 | `public/textures/` · 못 불러오면 단색 재질로 대신 |
 | 그림(텍스처) | 칠판·급식표·게시판·시계·바닥 무늬·돈가스 빵가루 | 코드에서 캔버스로 직접 그림 (`canvasTex.ts`) | 이 프로젝트 | 외부 그림 파일 없음 |
 | 효과음 | 종소리·줍기·성공·페이지 넘김 등 | WebAudio로 직접 합성 (`src/core/Audio.ts`) | 이 프로젝트 | 외부 소리 파일 없음 |
 | 글꼴 | 컴퓨터에 설치된 한글 글꼴 (맑은 고딕 등) | 운영체제 | 각 OS 라이선스 | 글꼴 파일을 배포하지 않음 |
@@ -37,8 +38,14 @@
 | public/models/props/brass_pan_01.glb | https://polyhaven.com/a/brass_pan_01 | Poly Haven | CC0 | 2026-11-12 | 512px 텍스처·삼각형 줄임·정점 압축 · 조리실 팬 · 삼각형 1500 |
 | public/models/props/WetFloorSign_01.glb | https://polyhaven.com/a/WetFloorSign_01 | Poly Haven | CC0 | 2026-11-12 | 512px 텍스처·삼각형 줄임·정점 압축 · 복도 미끄럼 주의 표지 · 삼각형 228 |
 | public/models/props/classic_laptop.glb | https://polyhaven.com/a/classic_laptop | Poly Haven | CC0 | 2026-11-12 | 512px 텍스처·삼각형 줄임·정점 압축 · 방송실 컴퓨터 · 삼각형 3334 |
+| public/textures/terrazzo_tiles/ | https://polyhaven.com/a/terrazzo_tiles | Poly Haven | CC0 | 2026-11-13 | 복도 인조석 바닥 · 1024px로 줄임 (색·노멀·거칠기) |
+| public/textures/painted_plaster_wall/ | https://polyhaven.com/a/painted_plaster_wall | Poly Haven | CC0 | 2026-11-13 | 페인트 칠한 벽 · 512px로 줄임 (색·노멀·거칠기) |
+| public/textures/oak_veneer_01/ | https://polyhaven.com/a/oak_veneer_01 | Poly Haven | CC0 | 2026-11-13 | 나무 문·창틀·게시판 틀 · 512px로 줄임 (색·노멀·거칠기) |
+| public/textures/laminate_floor_02/ | https://polyhaven.com/a/laminate_floor_02 | Poly Haven | CC0 | 2026-11-13 | 교실 마루 · 1024px로 줄임 (색·노멀·거칠기) |
+| (코드로 그림) 천장 흡음 텍스·코르크 게시판·모서리 그림자·하늘 | — | 직접 제작 (`src/world/pbr.ts`) | 프로젝트 자체 | 2026-11-13 | 캔버스로 그린 텍스처 |
 
 가공 도구: `tools/assets/fetch_polyhaven.mjs` (Poly Haven API에서 1k glTF를 받아 텍스처 512px, 삼각형 줄이기, 정점 압축).
+재질 텍스처: `tools/assets/fetch_textures.mjs` (Poly Haven 1k 색·노멀·거칠기 맵을 512~1024px로 줄이고, 인조석은 회색·벽은 흰색으로 색 보정).
 
 ## 보류한 것 (게임에 넣지 않음)
 

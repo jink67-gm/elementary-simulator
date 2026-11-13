@@ -216,8 +216,8 @@ try {
     await page.keyboard.down('Space');
     await sleep(900);
     await page.keyboard.up('Space');
-    await waitFor('비행기 착지', () => true, 100);
-    await sleep(4000);
+    // 착지할 때까지 기다린다 (느린 PC에서는 비행이 더 오래 걸림)
+    await page.waitForFunction(() => !!window.__sim.game.save.stats.planeBest, null, { timeout: 20000 }).catch(() => {});
     const best = await page.evaluate(() => window.__sim.game.save.stats.planeBest);
     if (!best) throw new Error('비행 기록 없음');
     log(`종이비행기 ${best}m`);

@@ -24,11 +24,14 @@ export function mergeStatic(root: THREE.Object3D, keep: Set<THREE.Object3D>, mer
   let removed = 0;
   for (const [mat, meshes] of groups) {
     if (meshes.length < 2) continue;
-    const geoms = meshes.map((m) => {
-      const g = m.geometry.index ? m.geometry.clone() : m.geometry.clone();
+    let geoms = meshes.map((m) => {
+      const g = m.geometry.clone();
       g.applyMatrix4(m.matrixWorld);
+      // 합치려면 속성이 같아야 한다 (모서리 둥근 상자 등은 색인이 없거나 다른 속성이 있을 수 있음)
+      for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') g.deleteAttribute(k);
       return g;
     });
+    if (geoms.some((g) => !g.index)) geoms = geoms.map((g) => (g.index ? g.toNonIndexed() : g));
     const merged = mergeGeometries(geoms, false);
     if (!merged) continue;
     const mesh = new THREE.Mesh(merged, mat);
