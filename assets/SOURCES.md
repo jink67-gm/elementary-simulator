@@ -10,7 +10,7 @@
 | 빌드 | Vite 7, TypeScript 5.9 | https://vite.dev · https://www.typescriptlang.org | MIT · Apache-2.0 | 개발 도구 (게임 파일에는 안 들어감) |
 | 테스트 | Vitest 4 | https://vitest.dev | MIT | 개발 도구 |
 | 3D 모델 | 교실·복도·급식실 구조, 인물(블록 캐릭터), 돈가스·절단기·크기 조절기 등 | 이 저장소 코드 (`src/world/*.ts`)에서 기본 도형으로 직접 생성 | 이 프로젝트 | |
-| 3D 모델 | 책상·의자·가구·급식실 소품 10종 | Poly Haven (아래 표) | CC0 | `public/models/props/` · 못 불러오면 기본 도형으로 대신 |
+| 3D 모델 | 책상·의자·가구·급식실 소품 8종 | Poly Haven (아래 표) | CC0 | `public/models/props/` · 못 불러오면 기본 도형으로 대신 |
 | PBR 재질 | 인조석 바닥·페인트 벽·참나무·마루 (색·노멀·거칠기) | Poly Haven (아래 표) | CC0 | `public/textures/` · 못 불러오면 단색 재질로 대신 |
 | 그림(텍스처) | 칠판·급식표·게시판·시계·바닥 무늬·돈가스 빵가루 | 코드에서 캔버스로 직접 그림 (`canvasTex.ts`) | 이 프로젝트 | 외부 그림 파일 없음 |
 | 효과음 | 종소리·줍기·성공·페이지 넘김 등 | WebAudio로 직접 합성 (`src/core/Audio.ts`) | 이 프로젝트 | 외부 소리 파일 없음 |
@@ -30,8 +30,6 @@
 | public/models/props/Shelf_01.glb | https://polyhaven.com/a/Shelf_01 | Poly Haven | CC0 | 2026-11-12 | 512px 텍스처·삼각형 줄임·정점 압축 · 학급 문고 책장 · 삼각형 182 |
 | public/models/props/plastic_broom.glb | https://polyhaven.com/a/plastic_broom | Poly Haven | CC0 | 2026-11-12 | 512px 텍스처·삼각형 줄임·정점 압축 · 청소 도구(빗자루) · 삼각형 2842 |
 | public/models/props/dustpan.glb | https://polyhaven.com/a/dustpan | Poly Haven | CC0 | 2026-11-12 | 512px 텍스처·삼각형 줄임·정점 압축 · 청소 도구(쓰레받기) · 삼각형 1500 |
-| public/models/props/pot_enamel_01.glb | https://polyhaven.com/a/pot_enamel_01 | Poly Haven | CC0 | 2026-11-12 | 512px 텍스처·삼각형 줄임·정점 압축 · 급식 국통 · 삼각형 1498 |
-| public/models/props/brass_pan_01.glb | https://polyhaven.com/a/brass_pan_01 | Poly Haven | CC0 | 2026-11-12 | 512px 텍스처·삼각형 줄임·정점 압축 · 조리실 팬 · 삼각형 1500 |
 | public/models/props/WetFloorSign_01.glb | https://polyhaven.com/a/WetFloorSign_01 | Poly Haven | CC0 | 2026-11-12 | 512px 텍스처·삼각형 줄임·정점 압축 · 복도 미끄럼 주의 표지 · 삼각형 228 |
 | public/models/props/classic_laptop.glb | https://polyhaven.com/a/classic_laptop | Poly Haven | CC0 | 2026-11-12 | 512px 텍스처·삼각형 줄임·정점 압축 · 방송실 컴퓨터 · 삼각형 3334 |
 | public/textures/terrazzo_tiles/ | https://polyhaven.com/a/terrazzo_tiles | Poly Haven | CC0 | 2026-11-13 | 복도 인조석 바닥 · 1024px로 줄임 (색·노멀·거칠기) |
@@ -47,6 +45,7 @@
 
 - Poly Haven `painted_wooden_cabinet`(미술 재료함), `metal_trash_can`(쓰레기통): 2026-11-13 교실 리모델링 때 교실 재질과 안 어울려 빼고, `src/world/classroomFurniture.ts`로 직접 만든 수납장·분리수거함으로 바꿈. 학급 문고도 창 아래 낮은 책장으로 직접 제작 (Shelf_01은 급식실에서만 씀).
 - Poly Haven `dining_table`, `plastic_monobloc_chair_01`: 급식실 리모델링 때 참고 사진처럼 흰 식탁 + 주황 둥근 의자로 직접 제작해 바꿈 (`src/world/CafeteriaHQ.ts`).
+- Poly Haven `pot_enamel_01`(불꽃 무늬 냄비), `brass_pan_01`: 급식실 배식대에 안 어울려 스테인리스 국통·식판 더미로 직접 만들어 바꿈.
 
 | 무엇 | 출처 | 라이선스 | 상태 |
 |---|---|---|---|

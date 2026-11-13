@@ -73,7 +73,7 @@ B-37,급식 테이블,학교 공간,B,P3,직접 제작,코드 (src/world/Cafeter
 B-38,급식 의자,학교 공간,B,P3,직접 제작,코드 (src/world/CafeteriaHQ.ts),,,프로젝트 자체,src/world/CafeteriaHQ.ts,완료,적용,참고 사진처럼 주황 둥근 의자 (Poly Haven 플라스틱 의자 대신, 2026-11-13)
 B-39,배식대,학교 공간,C,P3,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-40,식판 보관대,학교 공간,C,P3,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
-B-41,배식 용기,학교 공간,B,P3,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,https://polyhaven.com/a/pot_enamel_01,CC0,public/models/props/pot_enamel_01.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
+B-41,배식 용기,학교 공간,B,P3,직접 제작,코드 (src/world/SchoolMap.ts buildCafeteria),,,프로젝트 자체,src/world/SchoolMap.ts,완료,적용,스테인리스 국통·뚜껑·손잡이 (Poly Haven 불꽃 무늬 냄비 대신, 2026-11-13)
 B-42,조리대,학교 공간,C,P3,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-43,대형 도마,학교 공간,C,P3,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,,미제작,,
 B-44,급식실 냉장고,학교 공간,B,P3,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,

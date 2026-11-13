@@ -752,8 +752,29 @@ export class SchoolMap {
     this.root.add(rail);
     const pots = new THREE.Group();
     this.root.add(pots);
-    for (let i = 0; i < 3; i++) if (!this.prop('pot_enamel_01', pots, { w: 0.6 }, 7.6 + i * 1.6, 0.95, 25.7)) this.box(0.5, 0.35, 0.5, 0xf2f2f2, 7.6 + i * 1.6, 0.95, 25.7, { parent: pots });
-    this.prop('brass_pan_01', this.root, { w: 0.5 }, 12.2, 0.95, 25.8, 0.4);
+    // 스테인리스 국통·밥통 (뚜껑 + 손잡이) + 국자
+    const potSteel = paint(0xd3d7db, 0.25, 0.85);
+    for (let i = 0; i < 3; i++) {
+      const px = 7.6 + i * 1.6, r0 = i === 1 ? 0.24 : 0.28;
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(r0, r0 * 0.95, 0.34, 24), potSteel);
+      body.position.set(px, 0.95 + 0.17, 25.7);
+      const lid = new THREE.Mesh(new THREE.CylinderGeometry(r0 + 0.01, r0 + 0.01, 0.02, 24), potSteel);
+      lid.position.set(px, 0.95 + 0.35, 25.7);
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(0.03, 10, 6), this.mat(0x222222));
+      knob.position.set(px, 0.95 + 0.38, 25.7);
+      for (const m of [body, lid, knob]) (m.castShadow = true), pots.add(m);
+      for (const s of [-1, 1]) {
+        const h = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.012, 6, 10, Math.PI), potSteel);
+        h.position.set(px + s * (r0 + 0.03), 0.95 + 0.28, 25.7);
+        h.rotation.set(0, s > 0 ? -Math.PI / 2 : Math.PI / 2, 0);
+        pots.add(h);
+      }
+    }
+    for (let k = 0; k < 8; k++) {
+      const tray = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.02, 0.32), paint(0xcfd5da, 0.3, 0.6));
+      tray.position.set(12.2, 0.96 + k * 0.022, 25.7);
+      pots.add(tray);
+    }
     // 원래 크기로 돌아온 돈가스 더미 (크기 조절기 성공 시)
     const stack = new THREE.Group();
     stack.position.set(9.6, 0.95, 25.65);
@@ -779,7 +800,8 @@ export class SchoolMap {
     this.objs.trayCart = cart;
 
     // 거대 돈가스 식탁
-    this.box(5.6, 0.72, 3.4, 0xe9dcc0, 9, 0, 21.0, { collide: true });
+    cafeteriaTable(this.root, 9, 21.0, 5.6, 3.4, steel, 0.72);
+    this.colliders.push({ ...aabb(9, 21.0, 5.6, 3.4), level: this.curLevel });
     const cutlet = new THREE.Group();
     cutlet.position.set(9, 0.72, 21.0);
     const plate = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.05, 3.25), this.mat(0xf8f9fa));
@@ -988,7 +1010,18 @@ export class SchoolMap {
     const vault = new THREE.Group();
     vault.position.set(5.4, 0, -22.2);
     this.root.add(vault);
-    for (let i = 0; i < 4; i++) this.box(0.8 - i * 0.04, 0.24, 1.2 - i * 0.04, i === 3 ? 0xf1ece0 : 0xb5835a, 0, i * 0.25, 0, { parent: vault });
+    const vaultWood = pbr('oak', { color: 0xf0d2a8, roughness: 0.55 });
+    for (let i = 0; i < 4; i++) {
+      const tier = new THREE.Mesh(new RoundedBoxGeometry(0.86 - i * 0.05, 0.235, 1.24 - i * 0.05, 2, i === 3 ? 0.06 : 0.02), i === 3 ? paint(0xf4efe4, 0.7) : vaultWood);
+      tier.position.y = i * 0.245 + 0.1175;
+      tier.castShadow = tier.receiveShadow = true;
+      vault.add(tier);
+      if (i < 3) {
+        const hole = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.07, 0.36), paint(0x5b3a24, 0.8));
+        hole.position.set(0.43 - i * 0.025 + 0.005, i * 0.245 + 0.12, 0);
+        vault.add(hole);
+      }
+    }
     this.colliders.push(aabb(5.4, -22.2, 0.8, 1.2));
     // 골대 두 개 (새 경기)
     const goalMat = 0xff006e;

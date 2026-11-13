@@ -224,7 +224,7 @@ function stoolMat() {
 }
 
 /** 급식실 식탁 (윗면 높이 0.74): 흰 상판 + 나무 테두리 + 스테인리스 다리 — parent 좌표 */
-export function cafeteriaTable(parent: THREE.Object3D, x: number, z: number, w: number, d: number, steel: THREE.Material) {
+export function cafeteriaTable(parent: THREE.Object3D, x: number, z: number, w: number, d: number, steel: THREE.Material, topY = 0.74) {
   const add = (geo: THREE.BufferGeometry, mat: THREE.Material, px: number, py: number, pz: number) => {
     const m = new THREE.Mesh(geo, mat);
     m.position.set(px, py, pz);
@@ -232,9 +232,12 @@ export function cafeteriaTable(parent: THREE.Object3D, x: number, z: number, w: 
     parent.add(m);
     return m;
   };
-  add(new THREE.BoxGeometry(w, 0.03, d), paint(0xf4f1ea, 0.4), x, 0.725, z);
-  add(worldUV(new THREE.BoxGeometry(w + 0.02, 0.03, d + 0.02), w + 0.02, 0.03, d + 0.02, TILE.oak), pbr('oak', { color: 0xf3e2c8, roughness: 0.5 }), x, 0.695, z);
-  for (const sx of [-1, 1])
-    for (const sz of [-1, 1]) add(new THREE.BoxGeometry(0.05, 0.68, 0.05), steel, x + sx * (w / 2 - 0.12), 0.34, z + sz * (d / 2 - 0.12));
-  for (const sz of [-1, 1]) add(new THREE.BoxGeometry(w - 0.24, 0.035, 0.035), steel, x, 0.62, z + sz * (d / 2 - 0.12));
+  const o = topY - 0.74;
+  add(new THREE.BoxGeometry(w, 0.03, d), paint(0xf4f1ea, 0.4), x, 0.725 + o, z);
+  add(worldUV(new THREE.BoxGeometry(w + 0.02, 0.03, d + 0.02), w + 0.02, 0.03, d + 0.02, TILE.oak), pbr('oak', { color: 0xf3e2c8, roughness: 0.5 }), x, 0.695 + o, z);
+  // 긴 식탁은 다리를 더 (1.4m마다)
+  const nx = Math.max(1, Math.round((w - 0.24) / 1.4));
+  for (let i = 0; i <= nx; i++)
+    for (const sz of [-1, 1]) add(new THREE.BoxGeometry(0.05, 0.68 + o, 0.05), steel, x - (w / 2 - 0.12) + (i * (w - 0.24)) / nx, (0.68 + o) / 2, z + sz * (d / 2 - 0.12));
+  for (const sz of [-1, 1]) add(new THREE.BoxGeometry(w - 0.24, 0.035, 0.035), steel, x, 0.62 + o, z + sz * (d / 2 - 0.12));
 }

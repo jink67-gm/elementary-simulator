@@ -9,7 +9,7 @@ export const propErrors: string[] = [];
 export const PROP_IDS = [
   'SchoolDesk_01', 'SchoolChair_01', 'metal_office_desk', 'Shelf_01',
   'plastic_broom', 'dustpan',
-  'pot_enamel_01', 'brass_pan_01', 'WetFloorSign_01', 'classic_laptop',
+  'WetFloorSign_01', 'classic_laptop',
 ];
 
 export async function preloadProps(ids = PROP_IDS) {

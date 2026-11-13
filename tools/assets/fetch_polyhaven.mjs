@@ -17,8 +17,6 @@ export const PROPS = {
   Shelf_01: '학급 문고 책장',
   plastic_broom: '청소 도구(빗자루)',
   dustpan: '청소 도구(쓰레받기)',
-  pot_enamel_01: '급식 국통',
-  brass_pan_01: '조리실 팬',
   WetFloorSign_01: '복도 미끄럼 주의 표지',
   classic_laptop: '방송실 컴퓨터',
 };

@@ -261,9 +261,14 @@ export class GymBuilder extends HQBuilder {
     const ext = paint(0xc96f55, 0.85);
     const top = paint(0xe9e2d4, 0.8);
     const gy = -3.6, hh = GYM_H + 0.4 - gy;
-    this.box(0.12, hh, ZS - ZN + 0.6, ext, X1 + 0.27, gy, (ZS + ZN) / 2, false);
-    this.box(0.12, hh - 3.6, ZS - ZN + 0.6, ext, X0 - 0.27, 0, (ZS + ZN) / 2, false);
+    // 높은 창(3.6~5.6) 자리는 비운다
+    const zl = ZS - ZN + 0.6, zcc = (ZS + ZN) / 2, topH = GYM_H + 0.4 - 5.6;
+    this.box(0.12, 3.6 - gy, zl, ext, X1 + 0.27, gy, zcc, false);
+    this.box(0.12, topH, zl, ext, X1 + 0.27, 5.6, zcc, false);
+    this.box(0.12, 0.6, zl, ext, X0 - 0.27, 3.0, zcc, false); // 공 창고 지붕 위부터
+    this.box(0.12, topH, zl, ext, X0 - 0.27, 5.6, zcc, false);
     this.box(0.12, 3.6, -28.7 - ZN, ext, X0 - 0.27, gy, (ZN - 28.6) / 2, false);
+    this.box(0.12, 3.0, -28.7 - ZN, ext, X0 - 0.27, 0, (ZN - 28.6) / 2, false);
     this.box(X1 - X0 + 0.66, hh, 0.12, ext, (X0 + X1) / 2, gy, ZN - 0.27, false);
     this.box(X1 - X0 + 0.7, 0.3, ZS - ZN + 0.7, top, (X0 + X1) / 2, GYM_H + 0.4, (ZS + ZN) / 2, false);
   }
