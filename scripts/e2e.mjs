@@ -80,6 +80,12 @@ async function act(id, key, expect, { stay = false, from, dist = 0.7 } = {}) {
   }
   if (!label) throw new Error(`${id}: ${key} 동작 없음 (focus=${JSON.stringify(s.focus)})`);
   if (expect && !label.includes(expect)) throw new Error(`${id}: 예상 「${expect}」, 실제 「${label}」`);
+  // 누르기 직전에 이야기 대사가 떴으면 먼저 넘긴다 (대화창이 떠 있으면 E는 「다음 대사」로 쓰이므로)
+  if ((await state()).dialogue) {
+    await noDialogue();
+    if (!stay) await page.evaluate(([i, f, d]) => window.__sim.goto(i, d, f), [id, from, dist]);
+    await sleep(300);
+  }
   await page.keyboard.press(key);
   await sleep(250);
   log(`${key === 'KeyE' ? 'E' : 'F'} → ${label}`);
