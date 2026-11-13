@@ -26,6 +26,12 @@ export const PLAYER_LOOKS: Look[] = [
 ]
 
 export type Pose = 'stand' | 'walk' | 'sit' | 'raise' | 'cheer' | 'run';
+/**
+ * 자세 위에 잠깐 덧붙이는 작은 동작 (교실에서 볼 법한 반응). 'carry'·'tablet'은 끝낼 때까지 유지.
+ * fist 작은 주먹 쥐기 · lean 몸 앞으로 · wave 작은 손짓 · nod 고개 끄덕 · lookUp 고개 들기 · shrug 갸웃
+ * carry 두 손으로 물건 들기 · place 내려놓기 · tablet 태블릿 만지기
+ */
+export type Gesture = 'none' | 'fist' | 'lean' | 'wave' | 'nod' | 'lookUp' | 'shrug' | 'carry' | 'place' | 'tablet';
 
 function box(w: number, h: number, d: number, color: number, y = 0): THREE.Mesh {
   const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color }));
@@ -44,6 +50,8 @@ export class Character {
   private legR = new THREE.Group();
   /** 오른손 위치(물건 들기용) */
   hand = new THREE.Group();
+  /** 등 부착점 (책가방). 몸통 등 가운데, -z가 등 쪽 */
+  backSocket = new THREE.Group();
   pose: Pose = 'stand';
   private phase = 0;
   private headTarget: THREE.Vector3 | null = null;
@@ -66,6 +74,8 @@ export class Character {
     }
     const torso = box(0.36, torsoH, 0.22, look.shirt, legH + torsoH / 2);
     this.body.add(torso);
+    this.backSocket.position.set(0, legH + torsoH / 2, -0.11);
+    this.body.add(this.backSocket);
     // 팔 (어깨 축)
     for (const [arm, x] of [[this.armL, -0.24], [this.armR, 0.24]] as const) {
       arm.position.set(x, legH + torsoH - 0.05, 0);
@@ -143,6 +153,16 @@ export class Character {
     this.pose = p;
   }
 
+  private gestureKind: Gesture = 'none';
+  private gestureT = 0;
+  private gestureDur = 0;
+  /** 작은 동작. dur 초 뒤 끝난다 (Infinity면 'none'으로 끝낼 때까지) */
+  gesture(g: Gesture, dur = 1.2) {
+    this.gestureKind = g;
+    this.gestureT = 0;
+    this.gestureDur = dur;
+  }
+
   lookAt(target: THREE.Vector3 | null) {
     this.headTarget = target;
   }
@@ -169,6 +189,35 @@ export class Character {
       lerp(this.armL, sitting ? -0.7 : -swing * 0.8);
       lerp(this.armR, sitting ? -0.7 : swing * 0.8);
     }
+    // 작은 동작 (자세 위에 덧붙임)
+    let leanX = 0, headNod = 0, headTilt = 0;
+    if (this.gestureKind !== 'none') {
+      this.gestureT += dt;
+      const t = this.gestureT, g = this.gestureKind;
+      const env = Math.min(1, t / 0.2, this.gestureDur === Infinity ? 1 : Math.max(0, (this.gestureDur - t) / 0.25));
+      if (g === 'fist') this.armR.rotation.x = -1.5 + Math.sin(t * 14) * 0.18 * env;
+      else if (g === 'lean') leanX = 0.22 * env;
+      else if (g === 'wave') {
+        this.armR.rotation.x = -1.9 * env + this.armR.rotation.x * (1 - env);
+        this.armR.rotation.z = Math.sin(t * 9) * 0.25 * env;
+      } else if (g === 'nod') headNod = Math.sin(t * 10) * 0.18 * env;
+      else if (g === 'lookUp') headNod = -0.35 * env;
+      else if (g === 'shrug') headTilt = 0.25 * env;
+      else if (g === 'carry' || g === 'tablet') {
+        const a = g === 'carry' ? -1.25 : -1.05 + Math.sin(t * 6) * 0.06;
+        this.armL.rotation.x = a;
+        this.armR.rotation.x = a;
+      } else if (g === 'place') {
+        this.armL.rotation.x = -0.9 * env;
+        this.armR.rotation.x = -0.9 * env;
+        leanX = 0.3 * env;
+      }
+      if (t > this.gestureDur) {
+        this.gestureKind = 'none';
+        this.armR.rotation.z = 0;
+      }
+    }
+    this.body.rotation.x += (leanX - this.body.rotation.x) * k;
     // 머리 돌리기
     let yaw = 0, pitch = 0;
     if (this.headTarget) {
@@ -181,7 +230,8 @@ export class Character {
       pitch = Math.max(-0.6, Math.min(0.6, -Math.atan2(d.y, Math.hypot(d.x, d.z))));
     }
     this.head.rotation.y += (yaw - this.head.rotation.y) * k;
-    this.head.rotation.x += (pitch - this.head.rotation.x) * k;
+    this.head.rotation.x += (pitch + headNod - this.head.rotation.x) * k;
+    this.head.rotation.z += (headTilt - this.head.rotation.z) * k;
   }
 }
 
@@ -189,12 +239,16 @@ export class Character {
 export interface Avatar {
   root: THREE.Group;
   hand: THREE.Group;
+  /** 등 부착점 (블록 캐릭터: 몸통 뒤 / GLB: 척추 본에 붙일 자리) */
+  backSocket: THREE.Object3D;
   pose: Pose;
   readonly scale: number;
   setPose(p: Pose): void;
   update(dt: number, speed01?: number): void;
   lookAt(target: THREE.Vector3 | null): void;
   setHidden(h: boolean): void;
+  /** 작은 동작 (블록 캐릭터). GLB 캐릭터는 나중에 본 애니메이션으로 */
+  gesture(g: Gesture, dur?: number): void;
 }
 
 /** 모델이 준비돼 있으면 GLB 캐릭터, 아니면(불러오기 실패 포함) 블록 캐릭터 */

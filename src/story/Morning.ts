@@ -1,5 +1,7 @@
 // 1장: 오전 학교생활 (등교 → 1교시 국어 → 쉬는 시간 → 2교시 수학 → 3교시 모둠 → 4교시 미술 → 급식실 전환)
 // 행동 → NPC 반응 → 플래그 → 실패 복구 순서로 설계. 선택지 버튼 대신 실제 월드 행동으로 진행한다.
+import { ChatPicker, type ChatNpc, type ChatPeriod, type ChatStage } from '../data/chatter';
+import type { Gesture } from '../world/Character';
 import { CAFE, CAFE_FRONT, FLOOR1_Y as F1, cafe } from '../world/rooms';
 import { GROUP_TABLE } from '../world/classroomLayout';
 import * as THREE from 'three';
@@ -44,6 +46,9 @@ const BIN_NAMES = { cut: '자르기·재기', stick: '붙이기', paper: '종이
 const RESEARCH = ['bulletin', 'board', 'bookshelf'] as const;
 
 type Phase = string;
+
+/** 6-1 반 친구 자리 (플레이어 빼고 7명) */
+const CLASSMATES = ['seoa', 'minjae', 'junho', 'harin', 'filler0', 'filler1', 'filler2'];
 
 export class Morning implements StoryHooks {
   period: PeriodId = 'arrival';
@@ -118,8 +123,8 @@ export class Morning implements StoryHooks {
   n(id: MainNpcId): Npc {
     return this.g.npcs[id];
   }
-  L(who: MainNpcId | 'me' | 'ai' | 'narr' | 'cook', text: string, act?: () => void): Line {
-    const name = who === 'me' ? this.me : who === 'ai' ? 'AI 방송' : who === 'narr' ? '' : who === 'cook' ? '조리사 선생님' : this.n(who).name;
+  L(who: MainNpcId | 'me' | 'ai' | 'narr' | 'cook' | `filler${number}`, text: string, act?: () => void): Line {
+    const name = who === 'me' ? this.me : who === 'ai' ? 'AI 방송' : who === 'narr' ? '' : who === 'cook' ? '조리사 선생님' : who.startsWith('filler') ? this.g.fillers[Number(who.slice(6))].name : this.n(who as MainNpcId).name;
     return { who: name, text, act };
   }
   /** 교시가 바뀌면 이전 교시의 대기는 영원히 멈춘다(취소). */
@@ -175,7 +180,7 @@ export class Morning implements StoryHooks {
     add('deskTablet', makeItemMesh('tablet'), ps.deskX + 0.15, 0.655, ps.deskZ - 0.02, -0.15);
     const ss = m.seats.seoa;
     add('seoaBook', makeItemMesh('koreanBook'), ss.deskX, 0.67, ss.deskZ, -0.1);
-    add('seoaTablet', makeItemMesh('tablet'), ss.deskX + 0.05, 0.655, ss.deskZ, 0.1);
+
     add('posterSheet', new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.01, 0.6), new THREE.MeshLambertMaterial({ color: 0xfff3b0 })), GROUP_TABLE.x, GROUP_TABLE.top + 0.006, GROUP_TABLE.z);
     const paperStack = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.06, 0.25), new THREE.MeshLambertMaterial({ color: 0x58c4f6 }));
     add('colorPaperStack', paperStack, GROUP_TABLE.x - 0.8, GROUP_TABLE.top + 0.031, GROUP_TABLE.z - 0.1);
@@ -190,11 +195,10 @@ export class Morning implements StoryHooks {
       const p = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5), new THREE.MeshLambertMaterial({ color: [0xcdeac0, 0xffd6e0, 0xcde7f0, 0xfff3b0, 0xe2cfea][i] }));
       add('classArt' + i, p, -4.9 + i * 0.5 + (i > 2 ? 0.9 : 0), 1.75 + (i % 2) * 0.15, 6.89, Math.PI);
     }
-    // 수학 시간 친구들 태블릿
-    let k = 0;
-    for (const [key, seat] of Object.entries(m.seats)) {
-      if (key === 'player' || key === 'seoa' || !/^(filler|minjae|junho|harin)/.test(key)) continue;
-      add('npcTablet' + k++, makeItemMesh('tablet'), seat.deskX, 0.655, seat.deskZ, 0);
+    // 수학 시간 친구들 태블릿: 현우가 책상에 놓아 준 것만 보인다 (npcTablet_자리)
+    for (const key of CLASSMATES) {
+      const seat = m.seats[key];
+      add('npcTablet_' + key, makeItemMesh('tablet'), seat.deskX + 0.05, 0.665, seat.deskZ - 0.03, 0.1);
     }
   }
 
@@ -206,12 +210,13 @@ export class Morning implements StoryHooks {
   private syncProps() {
     const p = this.period;
     const after = (q: PeriodId) => SCHEDULE[p].start >= SCHEDULE[q].start;
-    this.show('deskBag', this.f('bagOnDesk'));
+    this.show('deskBag', this.bagHung());
+    this.g.player.setBackpack(!this.bagHung());
     this.show('deskBook', this.f('bookOnDesk') && p !== 'lunch');
     this.show('seoaBook', p === 'korean');
     this.show('deskTablet', this.f('tabletOnDesk') && (p === 'math' || p === 'group'));
-    this.show('seoaTablet', p === 'math' && !this.f('helpedDevice_share'));
-    for (const key of Object.keys(this.props)) if (key.startsWith('npcTablet')) this.show(key, p === 'math');
+    for (const key of CLASSMATES) this.show('npcTablet_' + key, p === 'math' && this.tabletHanded(key) && !(key === 'seoa' && this.f('helpedDevice_share')));
+    this.syncCartSlots();
     this.show('posterSheet', p === 'group' && !this.f('groupDone'));
     this.show('colorPaperStack', false);
     this.show('drawingStack', false);
@@ -268,10 +273,19 @@ export class Morning implements StoryHooks {
       radius: 1.3,
       promptY: 0.8,
       bias: 1.4,
-      prompt: () => (this.seated || !this.needsSeat() ? null : '내 자리에 앉기'),
-      onInteract: () => this.sitDown(),
+      prompt: () => (!this.bagHung() ? '가방 벗어서 책상 옆 고리에 걸기' : this.seated || !this.needsSeat() ? null : '내 자리에 앉기'),
+      onInteract: () => (!this.bagHung() ? this.hangBag() : this.sitDown()),
       usePrompt: (item) => this.seatUsePrompt(item),
       onUse: (item) => this.seatUse(item),
+    });
+    // 책상 옆 고리에 건 가방: 다시 메기 (E)
+    add({
+      id: 'deskBag',
+      obj: this.props.deskBag,
+      radius: 1.2,
+      promptY: 0.3,
+      prompt: () => (this.bagHung() && !this.seated && (this.period === 'arrival' || this.period === 'lunch' || this.period === 'break') ? '가방 메기' : null),
+      onInteract: () => this.wearBag(),
     });
     // 책상 위 국어책
     add({
@@ -359,7 +373,7 @@ export class Morning implements StoryHooks {
       onInteract: () => {
         this.set('gotTablet');
         g.give('tablet');
-        g.map.objs.tabletCart.children.forEach((c, i) => i === 1 && (c.visible = false));
+        this.syncCartSlots();
         this.updateMathObjective();
       },
     });
@@ -600,7 +614,6 @@ export class Morning implements StoryHooks {
     if (ev) return ev.requiredItems();
     const out: ItemId[] = [];
     if (this.period === 'arrival') {
-      if (!this.f('bagOnDesk')) out.push('bag');
       if (this.f('tookBook') && !this.f('bookOnDesk')) out.push('koreanBook');
     }
     if (this.period === 'math' && this.f('gotTablet') && !this.f('tabletOnDesk')) out.push('tablet');
@@ -793,6 +806,29 @@ export class Morning implements StoryHooks {
     return p === 'korean' || p === 'math' || (p === 'art' && this.phase === 'craft') || (p === 'arrival' && this.phase === 'teacher');
   }
 
+  /** 가방이 책상 옆 고리에 걸려 있나 (아니면 등에 메고 있다). 예전 저장은 bagOnDesk로 판단 */
+  private bagHung(): boolean {
+    const v = this.save.flags.bagHung;
+    return v === undefined ? !!this.save.flags.bagOnDesk : !!v;
+  }
+  /** 등에서 벗어 책상 옆 고리에 건다 → 등교 미션(bagOnDesk) 완료 */
+  private hangBag(quiet = false) {
+    const first = !this.f('bagOnDesk');
+    this.save.flags.bagHung = true;
+    this.set('bagOnDesk');
+    this.syncProps();
+    if (quiet) return;
+    this.g.sfx.place();
+    this.toast('가방을 벗어 책상 옆 고리에 걸었다.', 'good');
+    if (first) this.bark('seoa', '안녕! 오늘 일찍 왔네?');
+  }
+  private wearBag() {
+    this.save.flags.bagHung = false;
+    this.syncProps();
+    this.g.sfx.pickup();
+    this.toast('가방을 다시 멨다. (책상에서 E로 다시 걸 수 있어요)');
+  }
+
   private sitDown() {
     this.g.player.sitAt(this.g.map.seats.player);
     this.g.sfx.place();
@@ -809,7 +845,7 @@ export class Morning implements StoryHooks {
     }
     const takenOver = () => this.phase === 'teacher';
     if (!this.f('bagOnDesk')) {
-      g.setObjective('2층 6-1 교실로 가서 내 자리에 가방 걸기 (현관 → 계단 → 가방 들고 책상에서 F)', this.inter.seat);
+      g.setObjective('가방을 메고 2층 6-1 교실로 가서 책상 옆에 걸기 (현관 → 계단 → 내 책상에서 E)', this.inter.seat);
       await this.until(() => this.f('bagOnDesk'));
     }
     if (takenOver()) return;
@@ -837,10 +873,7 @@ export class Morning implements StoryHooks {
       this.g.tpc.behind(this.g.player.yaw);
       this.toast('선생님: 「얼른 올라와요~」 교실 앞까지 뛰어왔다!');
     }
-    if (!this.f('bagOnDesk')) {
-      this.g.take('bag');
-      this.set('bagOnDesk');
-    }
+    if (!this.bagHung()) this.hangBag(true);
     if (!this.f('bookOnDesk')) {
       if (this.g.take('koreanBook')) this.set('bookOnDesk');
       else this.set('sharedBook');
@@ -1015,15 +1048,41 @@ export class Morning implements StoryHooks {
   }
 
   // ───────────────────────── 2교시 수학 ─────────────────────────
+  /** 현우가 태블릿을 놓아 준 자리들 (이번 교시) */
+  private handed = new Set<string>();
+  private tabletHanded(key: string) {
+    return this.f('tabletsHandedOut') || this.handed.has(key);
+  }
+  /** 충전함 칸의 태블릿: 수학 시간에는 꺼낸 만큼 비어 있다 */
+  private syncCartSlots() {
+    const slots = this.g.map.objs.tabletSlots;
+    if (!slots) return;
+    const out = this.period === 'math' ? (this.f('tabletsHandedOut') ? CLASSMATES.length : this.handed.size + (this.carrying ? this.carryLeft : 0)) + (this.f('gotTablet') ? 1 : 0) : 0;
+    slots.children.forEach((c, i) => (c.visible = i >= out));
+  }
+  private carrying = false;
+  private carryLeft = 0;
+  private npcOfSeat(key: string): Npc {
+    return key.startsWith('filler') ? this.g.fillers[Number(key.slice(6))] : this.n(key as MainNpcId);
+  }
+
   private async math() {
     const g = this.g;
-    await this.say([this.L('teacher', '2교시는 수학! 오늘은 태블릿으로 퀴즈 대결 해 볼까요?'), this.L('narr', '반 전체: 오예~!!')]);
-    [...this.students, ...g.fillers].forEach((n) => n.char.setPose('cheer'));
-    g.sfx.cheer();
-    await this.sleep(1.6);
-    [...this.students, ...g.fillers].forEach((n) => n.char.setPose('sit'));
-    await this.say([this.L('teacher', '각자 충전함에서 자기 번호 태블릿 가져와요~')]);
+    await this.say([this.L('teacher', '2교시는 수학! 오늘은 수학 문제를 태블릿 게임으로 풀어 볼 거예요.')]);
+    if (!this.f('tabletsHandedOut')) {
+      await this.mathReactions();
+      await this.say([this.L('teacher', '현우야, 태블릿 충전함에서 꺼내서 친구들한테 나눠 줄래?'), this.L('filler2', '네! 제가 할게요.')]);
+      this.phase = 'handout';
+      g.setObjective('현우가 태블릿을 나눠 주는 중… 자리에서 기다리기', null);
+      await this.handOutTablets();
+      this.set('tabletsHandedOut');
+      // 내 책상만 비어 있다 → 알아차리면
+      const t0 = this.t;
+      await this.until(() => this.seated || g.player.pos.distanceTo(this.seatPos) < 1.8 || this.t > t0 + 20);
+      await this.say([this.L('me', '어? 내 태블릿은?'), this.L('filler2', '앗! 너 거 깜빡했다. 미안! 충전함에 하나 남아 있어.')]);
+    }
     this.phase = 'tablet';
+    this.syncProps();
     this.updateMathObjective();
     await this.until(() => this.f('tabletOnDesk') || this.f('quizDone'));
     if (!this.f('quizDone')) {
@@ -1044,11 +1103,114 @@ export class Morning implements StoryHooks {
     await this.endPeriod();
   }
 
+  /** 수학 게임 발표: 학생마다 다른 작은 반응을, 조금씩 어긋난 시간에 (모두 같은 동작 금지) */
+  private async mathReactions() {
+    const g = this.g;
+    const cart = new THREE.Vector3(6.3, 1.0, -1.2);
+    const seatHead = (k: string) => {
+      const s = g.map.seats[k];
+      return new THREE.Vector3(s.x, 1.1, s.z);
+    };
+    const reactions: [string, number, string | null, Gesture, THREE.Vector3 | null][] = [
+      ['minjae', 0.0, '오! 오늘 게임해요?', 'fist', null],
+      ['junho', 0.45, '이번엔 내가 1등 한다!', 'lean', null],
+      ['seoa', 0.9, '배터리 충분하려나?', 'shrug', cart],
+      ['filler0', 1.3, '재밌겠다!', 'nod', seatHead('minjae')],
+      ['filler2', 1.75, '오늘은 어떤 게임이지?', 'lookUp', null],
+      ['filler1', 2.1, null, 'nod', seatHead('harin')], // 수빈: 말없이 미소 지으며 짝꿍을 본다
+      ['harin', 2.5, '지난번에는 아깝게 졌는데.', 'wave', null],
+    ];
+    for (const [key, at, line, gest, look] of reactions)
+      void (async () => {
+        await this.sleep(at);
+        const n = this.npcOfSeat(key);
+        n.char.gesture(gest, 1.4 + (at % 0.5));
+        if (look) n.char.lookAt(look);
+        if (line) g.bark(n, line, 1900);
+      })();
+    await this.sleep(3.6);
+    for (const [key] of reactions) this.npcOfSeat(key).char.lookAt(null);
+  }
+
+  /**
+   * 현우의 태블릿 배부: 자리에서 일어나 충전함까지 걸어가 태블릿 묶음을 꺼내 들고,
+   * 친구들 책상마다 걸어가 하나씩 내려놓는다 (플레이어 자리는 깜빡). 마지막에 자기 것도 놓고 앉는다.
+   */
+  private async handOutTablets() {
+    const g = this.g;
+    const tk = this.token;
+    const h = g.fillers[2];
+    const seats = g.map.seats;
+    const order = ['harin', 'filler1', 'seoa', 'minjae', 'filler0', 'junho'];
+    // 1. 일어나서 충전함으로
+    await h.walkTo(5.55, -1.2, Math.PI / 2, 2.0);
+    if (tk !== this.token) return;
+    h.char.gesture('place', 0.7);
+    await this.sleep(0.7);
+    // 태블릿 묶음 (실제 물체를 손에 든다)
+    const stack = new THREE.Group();
+    const n = order.length + 1;
+    for (let i = 0; i < n; i++) {
+      const t = makeItemMesh('tablet');
+      t.position.y = i * 0.022;
+      stack.add(t);
+    }
+    stack.position.set(0, -0.05, 0.12);
+    h.char.hand.add(stack);
+    this.carrying = true;
+    this.carryLeft = n;
+    this.syncCartSlots();
+    h.char.gesture('carry', Infinity);
+    const reacts: Record<string, [string, Gesture]> = {
+      harin: ['고마워 현우야~', 'tablet'],
+      filler1: ['땡큐!', 'nod'],
+      seoa: ['고마워. …배터리 몇 퍼센트지?', 'tablet'],
+      minjae: ['오 내 거 왔다! 빨리 켜 보자', 'fist'],
+      filler0: ['고마워!', 'tablet'],
+      junho: ['좋았어, 준비 완료!', 'lean'],
+    };
+    // 2. 책상마다 (책상 앞쪽 통로에 서서 내려놓기)
+    for (const key of order) {
+      const s = seats[key];
+      await h.walkTo(s.deskX, s.deskZ - 0.62, 0, 2.0);
+      if (tk !== this.token) return;
+      h.char.gesture('place', 0.6);
+      await this.sleep(0.45);
+      stack.remove(stack.children[stack.children.length - 1]);
+      this.carryLeft--;
+      this.handed.add(key);
+      this.show('npcTablet_' + key, true);
+      g.sfx.place();
+      const who = this.npcOfSeat(key);
+      const [line, gest] = reacts[key];
+      who.char.lookAt(new THREE.Vector3(s.deskX, 0.7, s.deskZ));
+      who.char.gesture(gest, 1.6);
+      g.bark(who, line, 1500);
+      await this.sleep(0.3);
+      h.char.gesture('carry', Infinity);
+      setTimeout(() => who.char.lookAt(null), 2200);
+    }
+    // 3. 자기 자리로 — 플레이어 것은 빠뜨린 채
+    const mine = seats.filler2;
+    await h.walkTo(mine.deskX, mine.deskZ - 0.62, 0, 2.0);
+    if (tk !== this.token) return;
+    h.char.gesture('place', 0.6);
+    await this.sleep(0.45);
+    h.char.hand.remove(stack);
+    this.carrying = false;
+    this.carryLeft = 0;
+    this.handed.add('filler2');
+    this.show('npcTablet_filler2', true);
+    await h.walkToSeat(mine);
+    h.char.gesture('tablet', 1.5);
+    this.syncCartSlots();
+  }
+
   private updateMathObjective() {
     const g = this.g;
     if (this.period !== 'math' || this.phase !== 'tablet') return;
     const extra = this.f('seoaLow') && !this.f('helpedDevice') ? ' · (선택) 서아 태블릿 3%! 충전기 찾아 주기 또는 같이 보기' : '';
-    if (!this.f('gotTablet')) g.setObjective('앞쪽 충전함에서 내 태블릿 꺼내기 (E)' + extra, this.inter.tabletCart);
+    if (!this.f('gotTablet')) g.setObjective('태블릿 충전함에서 내 태블릿 가져오기 (E)' + extra, this.inter.tabletCart);
     else if (!this.f('tabletOnDesk')) g.setObjective('책상에 태블릿 올려 두기 (태블릿 들고 F)' + extra, this.inter.seat);
     else if (this.f('gotCharger') && !this.f('helpedDevice')) g.setObjective('서아에게 충전기 건네기 (충전기 들고 F)', this.n('seoa'));
     else g.setObjective('태블릿 켜고 퀴즈 시작 (E)' + extra, this.inter.deskTablet);
@@ -1392,7 +1554,7 @@ export class Morning implements StoryHooks {
     const p = this.period;
     if (this.seated && p === 'korean' && this.phase === 'question' && !this.handRaised && !this.f('spokeInClass')) return '손 들기 (발표하기)';
     if (!item) return null;
-    if (item === 'bag' && !this.f('bagOnDesk')) return '가방 책상에 걸기';
+    if (item === 'bag' && !this.bagHung()) return '가방 책상 옆에 걸기';
     if (item === 'koreanBook' && !this.f('bookOnDesk')) return '국어책 책상에 올려 두기';
     if (item === 'tablet' && p === 'math' && !this.f('tabletOnDesk')) return '태블릿 책상에 올려 두기';
     if (p === 'art' && this.phase === 'craft' && !this.f('crafted')) {
@@ -1411,9 +1573,7 @@ export class Morning implements StoryHooks {
     const g = this.g;
     if (item === 'bag') {
       g.take('bag');
-      this.set('bagOnDesk');
-      g.sfx.place();
-      this.bark('seoa', '안녕! 오늘 일찍 왔네?');
+      this.hangBag();
     } else if (item === 'koreanBook') {
       g.take('koreanBook');
       this.set('bookOnDesk');
@@ -1495,8 +1655,7 @@ export class Morning implements StoryHooks {
         const best = this.save.stats.planeBest;
         return say(best ? `지금 네 기록 ${best}m! 나는 9m 넘겨 봤다?` : '날려 봐 날려 봐! 떨어진 비행기는 E로 주워.');
       }
-      if (p === 'group' && this.phase === 'task') return say(pick(['정리하는 김에 내 필통도 정리해 줄래?ㅋㅋ', '발표할 때 떨면 앞에 있는 사람 이마 보래.']));
-      return say(pick(['오늘 체육 있지? 5교시라던데!', '배고프다… 아직 2시간 남았어?', '피구 하고 싶다…']));
+      return this.chat('junho');
     }
     if (id === 'minjae') {
       if (p === 'break') {
@@ -1507,10 +1666,7 @@ export class Morning implements StoryHooks {
         }
         return;
       }
-      if (p === 'arrival') return say(pick([this.f('lunchExpert') ? '급식 전문가님, 오늘 돈가스 몇 개 나와요?' : '오늘 급식 뭐야? …돈가스? 오예!', '어제 숙제 했어? 나 반만 했는데 반은 한 거지?']));
-      if (p === 'math') return say(pick(['퀴즈 대결이면 무조건 1등이지!', '내 소원 뭐 쓸지 정했어. 비밀이야ㅋㅋ']));
-      if (p === 'art') return say(pick(['내 비행기 이름은 「돈가스 1호」야.', '미술 시간이 제일 좋아. 점심 바로 전이라서.']));
-      return say(pick(['(속닥) 쉬는 시간 언제야?', '배고파서 집중이 안 돼…']));
+      return this.chat('minjae');
     }
     if (id === 'seoa') {
       if (p === 'korean') {
@@ -1536,8 +1692,7 @@ export class Morning implements StoryHooks {
         return this.say([this.L('me', '내 태블릿 같이 보자.'), this.L('seoa', '진짜? 고마워! 화면 반씩 나눠 보자.')]);
       }
       if (p === 'group' && this.save.groupRole === 'researcher') return say('AI 도우미 안내는 전자칠판에 떠 있었어. 그것도 봐 봐.');
-      if (p === 'break') return say(pick(['이 책 진짜 웃겨. 주인공이 급식실에 갇히는 얘기야.', '종이비행기는 앞을 살짝 무겁게 접어야 멀리 가.']));
-      return say(pick(['너 어제 숙제 했어?', '오늘 하루 진짜 길 것 같아.', '급식실 앞 줄 서는 거 1등 하자.']));
+      return this.chat('seoa');
     }
     if (id === 'harin') {
       if (p === 'art' && !this.g.inventory.has('glue') && !this.f('returnedGlue') && this.g.inventory.has('drawingPaper')) {
@@ -1550,15 +1705,42 @@ export class Morning implements StoryHooks {
         this.set('heardBreakWish');
         return say('쉬는 시간 100분이었으면 좋겠다… 그럼 다 놀 수 있는데.');
       }
-      if (p === 'math') return say('내 태블릿도 15%… 서아보단 낫다.');
-      return say(pick(['태블릿 충전 안 했는데… 괜찮겠지?', '사물함 정리 언제 하지… 언젠가 하겠지.', '선생님 목소리 들으면 졸려…']));
+      return this.chat('harin');
     }
   }
 
   private fillerTalk(npc: Npc, i: number) {
     if (this.ev()?.fillerTalk(i)) return;
-    const lines = ['안녕!', '숙제 보여 줄 수 있어? …농담이야.', '어제 그 영상 봤어? 고양이가 피아노 치는 거.', '배고파…', '오늘 급식 돈가스래!', '나 연필 깎으러 가야 돼.'];
-    this.g.bark(npc, lines[(i + npc.talkCount++) % lines.length]);
+    npc.talkCount++;
+    if (npc.path.length === 0 && !npc.seat) npc.faceTo(this.g.player.pos.x, this.g.player.pos.z);
+    const line = this.chatLine(`filler${i}` as ChatNpc);
+    if (line) this.g.bark(npc, line, 2600);
+  }
+
+  // ───────── 반 친구 잡담 (src/data/chatter.ts): 교시·활동 단계·앞선 행동에 따라 ─────────
+  private chatPicker = new ChatPicker(90, 5);
+  private chatStage(): ChatStage {
+    const p = this.period, ph = this.phase;
+    if (p === 'arrival') return ph === 'bag' || ph === 'book' ? 'before' : ph === 'teacher' ? 'after' : 'during';
+    if (p === 'korean') return ph === 'find' ? 'before' : ph === 'question' ? 'during' : 'after';
+    if (p === 'math') return this.f('quizDone') ? 'after' : this.f('tabletOnDesk') ? 'during' : 'before';
+    if (p === 'group') return this.f('groupDone') ? 'after' : this.save.groupRole ? 'during' : 'before';
+    if (p === 'art') return this.f('crafted') ? 'after' : 'during';
+    return 'during';
+  }
+  private chatLine(npc: ChatNpc): string | null {
+    const p = this.period;
+    const period: ChatPeriod = (['arrival', 'korean', 'break', 'math', 'group', 'art', 'lunch'] as string[]).includes(p) ? (p as ChatPeriod) : 'lunch';
+    return this.chatPicker.pick(npc, period, this.chatStage(), {
+      flag: (f) => this.f(f),
+      role: this.save.groupRole ?? null,
+      planeBest: this.save.stats.planeBest ?? 0,
+      rpsGames: this.save.stats.rpsGames ?? 0,
+    }, performance.now() / 1000);
+  }
+  private chat(id: MainNpcId) {
+    const line = this.chatLine(id as ChatNpc);
+    return line ? this.say([this.L(id, line)]) : undefined;
   }
 
   private ambient() {

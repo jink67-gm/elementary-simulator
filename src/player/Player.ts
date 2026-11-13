@@ -1,3 +1,4 @@
+import { makeBackpack } from '../world/backpack';
 import * as THREE from 'three';
 import { createAvatar, type Avatar, type Look } from '../world/Character';
 import { resolveCircle, separateCircles, type Aabb, type Circle } from '../world/Collision';
@@ -23,6 +24,21 @@ export class Player {
 
   constructor(look: Look) {
     this.char = createAvatar(look);
+  }
+
+  /** 등에 멘 책가방 (손에 드는 물건과 따로). 등 부착점(backSocket)에 붙는다 */
+  private backpack: THREE.Object3D | null = null;
+  get wearingBag() {
+    return !!this.backpack;
+  }
+  setBackpack(on: boolean) {
+    if (on && !this.backpack) {
+      this.backpack = makeBackpack();
+      this.char.backSocket.add(this.backpack);
+    } else if (!on && this.backpack) {
+      this.backpack.removeFromParent();
+      this.backpack = null;
+    }
   }
 
   get object() {

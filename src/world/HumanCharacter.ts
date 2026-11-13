@@ -124,6 +124,26 @@ export class HumanCharacter {
     this.headTarget = target;
   }
 
+  /** 등 부착점: 척추(spine) 본이 있으면 거기에, 없으면 몸 뒤 가슴 높이 */
+  private _back: THREE.Object3D | null = null;
+  get backSocket(): THREE.Object3D {
+    if (this._back) return this._back;
+    const g = new THREE.Group();
+    let spine: THREE.Object3D | null = null;
+    this.root.traverse((o) => {
+      if (!spine && (o as THREE.Bone).isBone && /spine2|spine1|chest|spine/i.test(o.name)) spine = o;
+    });
+    if (spine) (spine as THREE.Object3D).add(g);
+    else {
+      g.position.set(0, 1.0, -0.12);
+      this.root.add(g);
+    }
+    return (this._back = g);
+  }
+
+  /** 작은 동작: GLB 캐릭터가 들어오면 본(팔·척추) 애니메이션으로 바꿀 자리. 지금은 무시 */
+  gesture(_g: string, _dur?: number) {}
+
   setHidden(h: boolean) {
     this.model.visible = !h;
   }

@@ -60,7 +60,7 @@ export function newSave(avatar: Avatar): SaveData {
     stats: {},
     collectibles: [],
     schoolChaos: 0,
-    inventory: ['bag'],
+    inventory: [], // 책가방은 소지품이 아니라 등에 멘다 (flags.bagHung)
     lastCheckpoint: 'arrival',
     savedAt: new Date(0).toISOString(),
   };

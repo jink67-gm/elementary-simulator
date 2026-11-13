@@ -411,8 +411,19 @@ export class SchoolMap {
     const cart = new THREE.Group();
     cart.position.set(6.3, 0, -1.2);
     this.root.add(cart);
-    this.box(0.6, 0.9, 1.1, 0x5c6f82, 0, 0.05, 0, { parent: cart });
-    for (let i = 0; i < 6; i++) this.box(0.04, 0.3, 0.2, 0x2b2f3a, -0.2 + (i % 3) * 0.2, 0.95, -0.25 + Math.floor(i / 3) * 0.5, { parent: cart });
+    this.box(0.6, 0.9, 1.1, 0x5c6f82, 0, 0.05, 0, { parent: cart }).material = paint(0x5c6f82, 0.45, 0.3).clone();
+    // 칸마다 세워 꽂힌 태블릿 8대 (학생 8명). 현우가 하나씩 꺼내 가면 사라진다 — objs.tabletSlots
+    const slots = new THREE.Group();
+    cart.add(slots);
+    const slab = paint(0x2b2f3a, 0.35);
+    for (let i = 0; i < 8; i++) {
+      const t = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.26, 0.19), slab);
+      t.position.set(-0.18 + (i % 4) * 0.12, 0.95 + 0.13, -0.24 + Math.floor(i / 4) * 0.48);
+      t.castShadow = true;
+      slots.add(t);
+    }
+    this.box(0.62, 0.02, 1.12, 0x3a3f44, 0, 0.95, 0, { parent: cart, shadow: false });
+    this.objs.tabletSlots = slots;
     const lamp = this.box(0.1, 0.06, 0.02, 0x7cfc8a, -0.3, 0.7, 0.3, { parent: cart, ownMat: true });
     lamp.rotation.y = Math.PI / 2;
     this.colliders.push(aabb(6.3, -1.2, 0.6, 1.1));

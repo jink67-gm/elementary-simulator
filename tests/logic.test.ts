@@ -19,10 +19,11 @@ class MemStore implements StorageLike {
 }
 
 describe('저장', () => {
-  it('새 저장은 등교부터, 가방을 들고 시작', () => {
+  it('새 저장은 등교부터, 가방은 손이 아니라 등에 메고 시작', () => {
     const s = newSave({ nickname: '콩떡', look: 1 });
     expect(s.period).toBe('arrival');
-    expect(s.inventory).toEqual(['bag']);
+    expect(s.inventory).toEqual([]); // 소지품 칸은 비어 있다
+    expect(s.flags.bagHung).toBeFalsy(); // 아직 책상에 걸지 않음 = 메고 있음
     expect(s.version).toBe(SAVE_VERSION);
   });
 
