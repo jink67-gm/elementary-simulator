@@ -29,6 +29,17 @@ describe('반 친구 잡담', () => {
     const back = pk.pick('minjae', 'break', 'during', ctx, 4)!;
     expect(CHATTER.minjae.lines.break.any.concat(CHATTER.minjae.extras.map((e) => e.line))).toContain(back);
   });
+  it('연달아 말 걸기 반응도 시간대에 따라 다르다 (수업 중엔 속닥속닥)', () => {
+    const third = (period: ChatPeriod) => {
+      const pk = new ChatPicker();
+      pk.pick('seoa', period, 'during', ctx, 0);
+      pk.pick('seoa', period, 'during', ctx, 1);
+      return pk.pick('seoa', period, 'during', ctx, 2)!;
+    };
+    expect(third('korean')).toMatch(/속닥|작게/);
+    expect(third('break')).not.toMatch(/속닥/);
+    expect(['응? 뭐 필요한 거 있어?', '왜? 순서 헷갈려?']).toContain(third('group'));
+  });
   it('교시가 바뀌면 그 교시 대사로 바뀐다', () => {
     const pk = new ChatPicker();
     const a = pk.pick('seoa', 'math', 'before', ctx, 0)!;
