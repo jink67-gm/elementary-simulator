@@ -479,16 +479,17 @@ export class SchoolMap {
     this.root.add(hinge);
     const door = this.box(LOCKER_DOOR.w, LOCKER_DOOR.h, 0.03, 0xffb703, LOCKER_DOOR.w / 2, 0, 0, { parent: hinge, ownMat: true });
     door.position.y = LOCKER_DOOR.h / 2;
-    const tag = new CanvasTex(128, 64);
+    // 번호표는 다른 칸과 같은 크기 (0.34 × 0.2)
+    const tag = new CanvasTex(136, 80);
     tag.draw((c, w, h) => {
       c.fillStyle = '#fff';
       c.fillRect(0, 0, w, h);
-      c.fillStyle = '#222';
-      c.font = font(40, true);
+      c.fillStyle = '#333';
+      c.font = font(64, true);
       c.textAlign = 'center';
-      c.fillText(String(MY_LOCKER), w / 2, 46);
+      c.fillText(String(MY_LOCKER), w / 2, 63);
     });
-    const tagMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.1), tag.material());
+    const tagMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.2), tag.material());
     tagMesh.position.set(LOCKER_DOOR.w / 2, 0.34, -0.02);
     tagMesh.rotation.y = Math.PI;
     hinge.add(tagMesh);

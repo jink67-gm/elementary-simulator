@@ -183,7 +183,7 @@ export class DodgeEvent implements StoryEvent {
     const t = m.n('teacher');
     t.char.root.visible = true;
     t.place(9.6, -17.6, Math.PI);
-    g.player.teleport(8.4, -18.4, Math.PI);
+    g.player.teleport(8.4, -21.0, Math.PI); // 문에서 충분히 안쪽: 뒤따르는 카메라가 문 밖 복도로 빠지지 않게
     g.tpc.behind(g.player.yaw);
     this.lastPlayer.copy(g.player.pos);
     g.setObjective('체육관에서 피구를 할 수 있게 해 주세요', null);
@@ -516,7 +516,7 @@ export class DodgeEvent implements StoryEvent {
     return this.g.inventory.has('sizeRemote') || !this.m.f('fixedMachine') || this.st.shrunk ? [] : ['sizeRemote'];
   }
   returnSpot(): [number, number, number] {
-    return [8.4, -18.4, Math.PI];
+    return [8.4, -21.0, Math.PI];
   }
 
   /** 사건이 끝나면 공은 그대로 두되 충돌만 끈다 */
