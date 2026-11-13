@@ -1,4 +1,4 @@
-// 학교 맵: 2층 건물. 2층(y=0) = 6학년 1반 교실·복도·급식실·강당·방송실(사건 무대), 1층(y=-3.6) = 현관·저학년 교실·교무실.
+// 학교 맵: 2층 건물. 2층(y=0) = 6-1 교실·복도·급식실·강당·방송실(사건 무대), 1층(y=-3.6) = 현관·저학년 교실·교무실.
 // 책상·의자·가구는 Poly Haven(CC0) 모델을 쓰고, 모델을 못 불러오면 기본 도형으로 대신한다.
 import * as THREE from 'three';
 import { aabb, type Aabb } from './Collision';
@@ -100,7 +100,7 @@ export class SchoolMap {
     this.decorateCorridor(1, [[-13.6, -6.8], [6.0, 12.8]], [[-15.6, -11.8], [-10.2, -6.4], [-3.4, 4.2], [9.6, 15.6]], [-9.6, -0.2, 7.0, 15.4]);
     this.decorateCorridor(0, [], [[-15.6, -11.8], [-10.2, -6.4], [-5.6, -2.3], [-0.7, 6.6], [9.8, 13.4]], [-12.0, 2.0, 11.8]);
     this.buildExterior();
-    this.setBoard(['6학년 1반', '오늘도 무사히!']);
+    this.setBoard(['6-1', '오늘도 무사히!']);
     this.setClock(8 * 60 + 40);
     this.optimize();
   }
@@ -196,9 +196,9 @@ export class SchoolMap {
       c.lineWidth = 6;
       c.strokeRect(3, 3, w - 6, h - 6);
       c.fillStyle = fg;
-      c.font = font(text.length > 5 ? 34 : 42, true);
+      c.font = font(text.length <= 3 ? 60 : text.length > 5 ? 34 : 42, true);
       c.textAlign = 'center';
-      c.fillText(text, w / 2, 64);
+      c.fillText(text, w / 2, text.length <= 3 ? 70 : 64);
     });
     const g = new THREE.Group();
     g.position.set(wallX + dir * 0.42, this.baseY + 2.5, z);
@@ -582,14 +582,14 @@ export class SchoolMap {
 
     // 문 장식 (잠긴 문들)
     this.door('doorBroadcast', '방송실', 10.97, 4.5, -Math.PI / 2, 0x9b8bb4);
-    this.door('doorClass1', '5학년 1반', 7.23, -11, Math.PI / 2);
-    this.door('doorClass4', '4학년 1반', 7.23, 8.4, Math.PI / 2);
+    this.door('doorClass1', '5-1', 7.23, -11, Math.PI / 2);
+    this.door('doorClass4', '4-1', 7.23, 8.4, Math.PI / 2);
     this.door('doorGym', '강당 ▲', 9, -15.97, 0, 0x7a9cc6);
     this.flagSign('계단 ▶ 1층', 11.1, -13.8, -1, '#457b9d', '#ffffff');
 
     // 우리 반 명패 (앞문·뒷문 옆에 튀어나온 판)
-    this.flagSign('6학년 1반', 7.1, -3.4, 1, '#ffe8d6', '#d62828');
-    this.flagSign('6학년 1반', 7.1, 6.55, 1, '#ffe8d6', '#d62828');
+    this.flagSign('6-1', 7.1, -3.4, 1, '#ffe8d6', '#d62828');
+    this.flagSign('6-1', 7.1, 6.55, 1, '#ffe8d6', '#d62828');
 
     // 게시판 (자료 조사)
     const bb = new CanvasTex(512, 300);
@@ -1252,7 +1252,7 @@ export class SchoolMap {
     this.ceiling(12.2, 11, 9, 21.55);
     this.ceiling(3.7, 4, 12.95, 4.5);
     this.ceiling(16.2, 14, 9, -23.05, true, WALL_H + 0.01);
-    // 5학년 1반(남쪽)·4학년 1반(북쪽): 닫힌 교실의 바깥 벽
+    // 5-1(남쪽)·4-1(북쪽): 닫힌 교실의 바깥 벽
     this.wallZ(-16.1, -7.2, 0.9);
     this.wallX(-7.1, -16.1, -6.0);
     this.wallZ(16.1, -7.2, 2.9);
@@ -1335,9 +1335,9 @@ export class SchoolMap {
     this.wallX(11.1, 1.0, 16.1);
     this.wallZ(-16.1, 7.0, 11.2);
     this.wallZ(16.1, 7.0, 11.2);
-    this.door('door1_1', '1학년 1반', 7.23, -11, Math.PI / 2, 0xf4a261);
-    this.door('door2_1', '2학년 1반', 7.23, -1.5, Math.PI / 2, 0xe9c46a);
-    this.door('door3_1', '3학년 1반', 7.23, 9.0, Math.PI / 2, 0x90be6d);
+    this.door('door1_1', '1-1', 7.23, -11, Math.PI / 2, 0xf4a261);
+    this.door('door2_1', '2-1', 7.23, -1.5, Math.PI / 2, 0xe9c46a);
+    this.door('door3_1', '3-1', 7.23, 9.0, Math.PI / 2, 0x90be6d);
     this.door('doorOffice', '교무실', 10.97, 3.0, -Math.PI / 2, 0x8d99ae, '#264653');
     this.door('doorAdmin', '행정실', 10.97, 6.5, -Math.PI / 2, 0x8d99ae, '#264653');
     this.door('doorNurse', '보건실', 10.97, 10.0, -Math.PI / 2, 0xf8f9fa, '#e63946');
@@ -1376,13 +1376,13 @@ export class SchoolMap {
       c.fillText('2층', 30, 110);
       c.fillStyle = '#243447';
       c.font = font(21);
-      c.fillText('4·5·6학년 1반 · 급식실 · 강당 · 방송실 · 도서관', 90, 110);
+      c.fillText('4-1 · 5-1 · 6-1 · 급식실 · 강당 · 방송실 · 도서관', 90, 110);
       c.fillStyle = '#e76f51';
       c.font = font(24, true);
       c.fillText('1층', 30, 180);
       c.fillStyle = '#243447';
       c.font = font(21);
-      c.fillText('1·2·3학년 1반 · 교무실 · 행정실 · 보건실 · 현관', 90, 180);
+      c.fillText('1-1 · 2-1 · 3-1 · 교무실 · 행정실 · 보건실 · 현관', 90, 180);
       c.fillStyle = '#457b9d';
       c.font = font(24, true);
       c.fillText('▶ 계단은 현관 바로 남쪽!', 30, 260);
@@ -1573,7 +1573,7 @@ export class SchoolMap {
       }
       c.fillStyle = '#555';
       c.font = font(20);
-      c.fillText(`6학년 1반 2모둠 · ${{ food: '맛있는 학교', rest: '쉬는 학교', play: '신나는 학교', friends: '함께하는 학교' }[theme]}`, w / 2, h - 18);
+      c.fillText(`6-1 2모둠 · ${{ food: '맛있는 학교', rest: '쉬는 학교', play: '신나는 학교', friends: '함께하는 학교' }[theme]}`, w / 2, h - 18);
     });
     this.objs.groupPoster.visible = true;
   }

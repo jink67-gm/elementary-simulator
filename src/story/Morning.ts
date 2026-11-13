@@ -518,7 +518,7 @@ export class Morning implements StoryHooks {
 
   private boardText(p: PeriodId): string[] {
     switch (p) {
-      case 'arrival': return ['6학년 1반', '오늘도 무사히 하교하기!'];
+      case 'arrival': return ['6-1', '오늘도 무사히 하교하기!'];
       case 'korean': return ['1교시 국어', '국어책 86쪽 · 인물의 마음 짐작하기'];
       case 'break': return ['쉬는 시간', '복도에서 뛰지 않기!'];
       case 'math': return ['2교시 수학', '태블릿 퀴즈 대결!'];
@@ -804,7 +804,7 @@ export class Morning implements StoryHooks {
     }
     const takenOver = () => this.phase === 'teacher';
     if (!this.f('bagOnDesk')) {
-      g.setObjective('2층 6학년 1반 교실로 가서 내 자리에 가방 걸기 (현관 → 계단 → 가방 들고 책상에서 F)', this.inter.seat);
+      g.setObjective('2층 6-1 교실로 가서 내 자리에 가방 걸기 (현관 → 계단 → 가방 들고 책상에서 F)', this.inter.seat);
       await this.until(() => this.f('bagOnDesk'));
     }
     if (takenOver()) return;
