@@ -87,7 +87,7 @@ async function act(id, key, expect, { stay = false, from, dist = 0.7 } = {}) {
     await sleep(300);
   }
   await page.keyboard.press(key);
-  await sleep(250);
+  await frames(3);
   log(`${key === 'KeyE' ? 'E' : 'F'} → ${label}`);
 }
 async function npcIdle(id) {
@@ -95,6 +95,11 @@ async function npcIdle(id) {
     if (await page.evaluate((n) => window.__sim.game.npcs[n].path.length === 0, id)) return;
     await sleep(100);
   }
+}
+/** 게임이 n프레임을 더 그릴 때까지 기다린다 (느린 렌더링에서도 키 입력이 처리되도록) */
+async function frames(n = 3) {
+  const f0 = await page.evaluate(() => window.__sim.game.renderer.info.render.frame);
+  await page.waitForFunction(([f, k]) => window.__sim.game.renderer.info.render.frame >= f + k, [f0, n], { timeout: 15000 });
 }
 async function selectItem(item) {
   // 느린 렌더링(초당 5프레임)에서는 줍기가 다음 프레임에 처리되므로 잠깐 기다린다
@@ -519,24 +524,24 @@ try {
       rs = await robotSt();
       if (!rs.bin.length && !rs.claw) break;
       await page.evaluate(() => window.__sim.game.robot.place(5.3, 4.85, 0));
-      await sleep(250);
+      await frames(2);
       await page.keyboard.press('Space');
-      await sleep(300);
+      await frames(3);
       rs = await robotSt();
       if (!rs.claw) throw new Error('수거함에서 못 집음: ' + JSON.stringify(rs));
       // 일부러 한 번은 틀린 칸
       if (n === 0) {
         const wrong = rs.claw.cat === 'books' ? 'tools' : 'books';
         await page.evaluate((z) => window.__sim.game.robot.place(5.95, z, Math.PI / 2), COMP_Z[wrong]);
-        await sleep(250);
+        await frames(2);
         await page.keyboard.press('Space');
-        await sleep(300);
+        await frames(3);
         if (!(await robotSt()).claw) throw new Error('틀린 칸인데 놓아짐');
       }
       await page.evaluate((z) => window.__sim.game.robot.place(5.95, z, Math.PI / 2), COMP_Z[rs.claw.cat]);
-      await sleep(250);
+      await frames(2);
       await page.keyboard.press('Space');
-      await sleep(300);
+      await frames(3);
       if ((await robotSt()).claw) throw new Error('맞는 칸인데 안 놓아짐');
     }
     await waitRobot('remote');
