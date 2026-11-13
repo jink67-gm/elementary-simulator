@@ -2,6 +2,7 @@
 import { el, button } from './dom';
 import { ENDING_TITLES, type Ending } from '../story/finalLogic';
 import { Panel } from './Panel';
+import { fullscreenSupported, isFullscreen, toggleFullscreen } from '../core/Device';
 import type { Game } from '../core/Game';
 import { newSave, type SaveData } from '../core/SaveData';
 import { SaveManager } from '../core/SaveManager';
@@ -73,6 +74,7 @@ export class Menus {
       }, saved ? 'btn big' : 'btn primary big'),
       button('저장 파일 불러오기', () => void this.importSave(), 'btn'),
       button('설정', () => this.settings(), 'btn'),
+      ...(fullscreenSupported() ? [button('전체 화면으로 보기 ⛶', () => toggleFullscreen(), 'btn')] : []),
       button('만든 재료·라이선스', () => this.credits(), 'btn ghost'),
     );
     box.append(btns, el('div', { class: 'title-foot' }, '실명·사진 같은 개인 정보는 저장하지 않아요. 기록은 이 브라우저에만 남아요.'));
@@ -199,6 +201,7 @@ export class Menus {
           resume();
         }),
         button('설정', () => this.settings()),
+        ...(fullscreenSupported() ? [button(isFullscreen() ? '전체 화면 끄기' : '전체 화면으로 보기 ⛶', () => (toggleFullscreen(), resume()))] : []),
         button('저장 파일 내보내기 (다른 컴퓨터에서 이어하기)', () => {
           const s = g.saves.read();
           if (s) downloadText(`초등학생시뮬레이터_${s.avatar.nickname}.json`, SaveManager.exportJson(s));
@@ -211,7 +214,14 @@ export class Menus {
         }, 'btn ghost'),
       ),
       el('div', { class: 'keys-hint' }, '저장은 교시가 시작될 때마다 자동으로 돼요. 이어하기는 그 교시 처음부터 시작해요.'),
-      el('div', { class: 'help-grid' },
+      el('div', { class: 'help-grid touch-help' },
+        ...[
+          ['왼쪽 화면 끌기', '이동 (끝까지 밀면 달리기)'], ['오른쪽 화면 끌기', '둘러보기'], ['두 손가락 벌리기', '카메라 가까이·멀리'],
+          ['E 버튼', '조사·줍기·대화 / 대사 넘기기'], ['F 버튼', '사용·내려놓기'], ['␣ 버튼', '점프 / 종이비행기 (꾹 눌렀다 떼기)'],
+          ['소지품 칸 톡', '고르기 (한 번 더: 설명)'], ['대화창 톡', '대사 넘기기'], ['메뉴 버튼', '이 창 열기'],
+        ].map(([k, v]) => el('div', { class: 'help-item' }, el('span', { class: 'key' }, k), v)),
+      ),
+      el('div', { class: 'help-grid kb-help' },
         ...[
           ['WASD', '이동'], ['Shift', '달리기'], ['마우스 / 방향키', '둘러보기'], ['휠', '카메라 거리'], ['E', '조사·줍기·대화'], ['F', '사용·놓기'],
           ['Space', '점프 / 종이비행기 던지기'], ['1~4', '소지품 고르기'], ['Tab', '소지품 설명'], ['E / Q', '대사 넘기기·닫기 / 모두 넘기기'],
@@ -253,14 +263,23 @@ export class Menus {
       s.shake = shake.checked;
       g.applySettings();
     });
+    const autoRes = el('input', { type: 'checkbox' });
+    autoRes.checked = s.autoRes;
+    autoRes.addEventListener('change', () => {
+      s.autoRes = autoRes.checked;
+      g.applySettings();
+    });
     p.body.append(
-      row('마우스 감도', range(0.3, 2, 0.1, s.sensitivity, (v) => (s.sensitivity = v))),
+      row('조작 방식', select<'auto' | 'touch' | 'keyboard'>([['auto', '자동 (만지면 터치, 키보드 쓰면 키보드)'], ['touch', '터치 버튼 (태블릿)'], ['keyboard', '키보드·마우스 (노트북·PC)']], s.controls, (v) => (s.controls = v))),
+      row('둘러보기 감도', range(0.3, 2, 0.1, s.sensitivity, (v) => (s.sensitivity = v))),
+      row('터치 버튼 크기', range(0.8, 1.4, 0.1, s.touchScale, (v) => (s.touchScale = v))),
       row('소리 크기', range(0, 1, 0.05, s.volume, (v) => (s.volume = v))),
       row('그래픽 품질', select<'low' | 'mid' | 'high'>([['low', '낮음 (느린 컴퓨터)'], ['mid', '보통'], ['high', '높음']], s.quality, (v) => (s.quality = v))),
       row('대사 속도', select<'slow' | 'normal' | 'fast'>([['slow', '천천히'], ['normal', '보통'], ['fast', '빠르게']], s.textSpeed, (v) => (s.textSpeed = v))),
       row('퀴즈 학년', select<4 | 5 | 6>([[4, '4학년'], [5, '5학년'], [6, '6학년']], s.grade, (v) => (s.grade = v))),
       row('화면 흔들림', shake),
-      el('div', { class: 'keys-hint' }, `그래픽 '낮음'은 그림자를 끄고 해상도를 줄여요. 지금 ${g.fps || '-'} FPS`),
+      row('느리면 해상도 저절로 낮추기', autoRes),
+      el('div', { class: 'keys-hint' }, `그래픽 '낮음'은 그림자를 끄고 해상도를 줄여요. 크롬북·웨일북·태블릿은 '낮음'을 권해요. 지금 ${g.fps || '-'} FPS`),
       el('div', { class: 'row center' }, button('확인', () => p.close(), 'btn primary')),
     );
   }

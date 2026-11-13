@@ -1,4 +1,15 @@
-// 키보드·마우스 입력. 눌린 순간(pressed)과 누르고 있는 상태(down)를 구분한다.
+// 키보드·마우스·터치 입력. 눌린 순간(pressed)과 누르고 있는 상태(down)를 구분한다.
+// 터치 화면의 조이스틱·버튼(TouchControls)은 같은 키 이름으로 이 입력에 들어온다.
+
+export interface Move {
+  /** 앞(+)·뒤(-) */
+  f: number;
+  /** 오른쪽(+)·왼쪽(-) */
+  r: number;
+  /** 0~1 (키보드는 1, 조이스틱은 미는 만큼) */
+  mag: number;
+  run: boolean;
+}
 
 export class Input {
   private downSet = new Set<string>();
@@ -13,6 +24,10 @@ export class Input {
   captured = false;
   /** 키를 누른 그 순간 창이 열려 있으면 true (Game이 설정) */
   blockKeys: () => boolean = () => false;
+  /** 터치 조이스틱 (-1~1, 위로 밀면 stickY > 0) */
+  stickX = 0;
+  stickY = 0;
+  private virtualDown = new Set<string>();
 
   constructor(private canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', (e) => {
@@ -30,6 +45,7 @@ export class Input {
     window.addEventListener('blur', () => {
       for (const k of this.downSet) this.releasedSet.add(k);
       this.downSet.clear();
+      this.resetVirtual();
     });
     document.addEventListener('pointerlockchange', () => {
       this.pointerLocked = document.pointerLockElement === canvas;
@@ -47,7 +63,12 @@ export class Input {
     });
     window.addEventListener('mouseup', () => (this.dragging = false));
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-    canvas.addEventListener('wheel', (e) => (this.wheel += Math.sign(e.deltaY)), { passive: true });
+    // 마우스 휠은 한 칸씩, 터치패드(크롬북·웨일북) 두 손가락 스크롤은 미끄러지듯. 터치패드 확대(ctrl+휠)는 화면 확대 대신 카메라 거리
+    canvas.addEventListener('wheel', (e) => {
+      if (e.ctrlKey) e.preventDefault();
+      const d = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+      this.wheel += Math.max(-1.5, Math.min(1.5, (e.ctrlKey ? d * 4 : d) / 100));
+    }, { passive: false });
   }
 
   requestLock() {
@@ -65,7 +86,44 @@ export class Input {
   }
 
   down(k: string): boolean {
-    return !this.captured && this.downSet.has(k);
+    return !this.captured && (this.downSet.has(k) || this.virtualDown.has(k));
+  }
+
+  /** 이동 입력: 키보드(WASD·Shift) + 터치 조이스틱 */
+  move(): Move {
+    if (this.captured) return { f: 0, r: 0, mag: 0, run: false };
+    const m = Math.hypot(this.stickX, this.stickY);
+    if (m > 0.18) {
+      const k = Math.min(1, m) / m;
+      return { f: this.stickY * k, r: this.stickX * k, mag: Math.min(1, m), run: m > 0.92 || this.down('Shift') };
+    }
+    const f = (this.down('W') ? 1 : 0) - (this.down('S') ? 1 : 0);
+    const r = (this.down('D') ? 1 : 0) - (this.down('A') ? 1 : 0);
+    return { f, r, mag: f || r ? 1 : 0, run: this.down('Shift') };
+  }
+
+  /** 화면 버튼을 누름 (키를 누른 것과 같다) */
+  virtualPress(k: string) {
+    if (!this.virtualDown.has(k) && !this.blockKeys()) this.pressedSet.add(k);
+    this.virtualDown.add(k);
+  }
+  virtualRelease(k: string) {
+    if (!this.virtualDown.delete(k)) return;
+    this.releasedSet.add(k);
+  }
+  /** 손가락으로 끌어 둘러보기 */
+  addLook(dx: number, dy: number) {
+    this.mouseDX += dx;
+    this.mouseDY += dy;
+  }
+  addZoom(steps: number) {
+    this.wheel += steps;
+  }
+  /** 조작 방식이 바뀔 때 눌려 있던 것 정리 */
+  resetVirtual() {
+    for (const k of this.virtualDown) this.releasedSet.add(k);
+    this.virtualDown.clear();
+    this.stickX = this.stickY = 0;
   }
   pressed(k: string): boolean {
     return !this.captured && this.pressedSet.has(k);

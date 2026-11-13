@@ -113,8 +113,8 @@ export class Robot {
         this.pos.z += (dz / d) * step;
       }
     } else if (this.mode === 'remote' && input) {
-      const f = (input.down('W') ? 1 : 0) - (input.down('S') ? 1 : 0);
-      const r = (input.down('D') ? 1 : 0) - (input.down('A') ? 1 : 0);
+      const mv = input.move();
+      const { f, r } = mv;
       if (f || r) {
         const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
         let mx = fx * f - fz * r, mz = fz * f + fx * r;
@@ -122,7 +122,7 @@ export class Robot {
         mx /= l;
         mz /= l;
         this.turnTo(Math.atan2(mx, mz), dt, 9);
-        const sp = input.down('Shift') ? 2.2 : 1.5;
+        const sp = mv.run ? 2.2 : 1.5 * Math.max(0.5, mv.mag);
         this.pos.x += mx * sp * dt;
         this.pos.z += mz * sp * dt;
       }

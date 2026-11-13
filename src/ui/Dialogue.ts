@@ -13,7 +13,7 @@ export class Dialogue {
   private box = el('div', { class: 'dialogue hidden' });
   private nameEl = el('div', { class: 'd-name' });
   private textEl = el('div', { class: 'd-text' });
-  private nextEl = el('div', { class: 'd-next' }, '▼ E');
+  private nextEl = el('div', { class: 'd-next' }, '▼ ', el('span', { class: 'kb' }, 'E'), el('span', { class: 'tap-only' }, '톡'));
   private queue: { line: Line; done: () => void }[] = [];
   private current: { line: Line; done: () => void; shown: number; t: number; hold: number } | null = null;
   speed = 1; // 글자 속도 배율

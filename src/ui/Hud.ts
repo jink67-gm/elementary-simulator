@@ -23,15 +23,18 @@ export class Hud {
   private toastBox = el('div', { class: 'toasts' });
   private bubbleLayer = el('div', { class: 'bubbles' });
   private help = el('div', { class: 'help' });
-  private lockHint = el('div', { class: 'lock-hint hidden' }, '화면을 클릭하면 마우스로 둘러볼 수 있어요');
+  private lockHint = el('div', { class: 'lock-hint hidden' }, '화면을 클릭하면 마우스·터치패드로 둘러볼 수 있어요 (방향키도 돼요)');
   private bubbles: Bubble[] = [];
   invOpen = false;
+  /** 터치: 소지품 칸을 톡 */
+  onSlotTap: (i: number) => void = () => {};
 
   constructor(parent: HTMLElement) {
     this.objective.append(el('div', { class: 'obj-label' }, '지금 할 일'), this.objText);
     this.clock.append(this.clockPeriod, this.clockTime, this.clockTimer);
     this.help.innerHTML =
-      '<b>WASD</b> 이동 · <b>Shift</b> 달리기 · <b>마우스</b> 둘러보기 · <b>E</b> 조사·줍기·대화 · <b>F</b> 사용·놓기 · <b>1~4</b> 소지품 · <b>Tab</b> 설명 · <b>Esc</b> 메뉴';
+      '<span class="help-kb"><b>WASD</b> 이동 · <b>Shift</b> 달리기 · <b>마우스</b> 둘러보기 · <b>E</b> 조사·줍기·대화 · <b>F</b> 사용·놓기 · <b>1~4</b> 소지품 · <b>Tab</b> 설명 · <b>Esc</b> 메뉴</span>' +
+      '<span class="help-touch">왼쪽 끌기 <b>이동</b> · 오른쪽 끌기 <b>둘러보기</b> · 두 손가락 <b>확대</b> · 소지품 톡 <b>고르기</b></span>';
     this.root.append(this.bubbleLayer, this.objective, this.clock, this.prompt, this.inv, this.invDesc, this.toastBox, this.help, this.lockHint);
     parent.append(this.root);
   }
@@ -79,6 +82,10 @@ export class Hud {
     for (let i = 0; i < SLOT_COUNT; i++) {
       const id = slots[i];
       const slot = el('div', { class: 'slot' + (i === selected ? ' sel' : '') + (id ? '' : ' empty') });
+      slot.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        this.onSlotTap(i);
+      });
       slot.append(el('span', { class: 'slot-key' }, String(i + 1)));
       if (id) {
         const d = itemDef(id);

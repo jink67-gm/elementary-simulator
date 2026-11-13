@@ -18,6 +18,8 @@ import { PLAYER_LOOKS } from '../world/Character';
 import { Hud } from '../ui/Hud';
 import { Dialogue, type Line } from '../ui/Dialogue';
 import { panelsOpen } from '../ui/Panel';
+import { TouchControls } from '../ui/TouchControls';
+import { initialMode, type ControlMode } from './Device';
 import { itemDef, type ItemId } from '../data/items';
 import { itemHalfHeight, makeItemMesh } from '../world/itemMesh';
 import { Ball, PaperPlaneFlight } from '../world/Toys';
@@ -109,6 +111,13 @@ export class Game {
   private slowHinted = false;
   private fpsAcc = 0;
   private fpsFrames = 0;
+  /** 터치 화면 조작 (태블릿·터치 노트북) */
+  touch: TouchControls;
+  controlMode: ControlMode = 'keyboard';
+  /** 화면이 느릴 때 저절로 낮추는 해상도 배율 (0.6~1) */
+  private resScale = 1;
+  private fastSeconds = 0;
+  private resHinted = false;
 
   constructor(private container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: this.settings.quality !== 'low', powerPreference: 'high-performance' });
@@ -126,6 +135,19 @@ export class Game {
     this.hud = new Hud(this.layer);
     this.dialogue = new Dialogue(this.layer);
     this.dialogue.onType = () => this.sfx.talk();
+    this.touch = new TouchControls(this.layer, this.input, () => {
+      this.input.virtualPress('Escape');
+      this.input.virtualRelease('Escape');
+    });
+    const rot = document.createElement('div');
+    rot.className = 'rotate-hint';
+    rot.innerHTML = '<div><span class="rot-icon">📱</span>기기를 <b>가로</b>로 돌려 주세요!<br><small>가로 화면에서 더 넓게 볼 수 있어요.</small></div>';
+    this.layer.append(rot);
+    this.hud.onSlotTap = (i) => {
+      if (panelsOpen() || this.paused || !this.running) return;
+      if (this.inventory.selected === i) this.hud.toggleInventoryDesc();
+      else this.inventory.select(i);
+    };
     this.chargeBar = document.createElement('div');
     this.chargeBar.className = 'charge hidden';
     this.chargeBar.innerHTML = '<div class="charge-fill"></div><span>Space를 떼면 날아가요!</span>';
@@ -191,14 +213,40 @@ export class Game {
     this.resize();
     this.renderer.domElement.addEventListener('click', () => {
       this.sfx.unlock();
-      if (this.running && !this.paused && !panelsOpen()) this.input.requestLock();
+      if (this.running && !this.paused && !panelsOpen() && this.controlMode === 'keyboard') this.input.requestLock();
     });
+    // 조작 방식 자동 전환: 화면을 손가락으로 만지면 터치 버튼, 키보드를 누르거나 마우스를 움직이면 다시 키보드·마우스
+    window.addEventListener('pointerdown', (e) => {
+      this.sfx.unlock();
+      if (e.pointerType === 'touch' && this.settings.controls === 'auto') this.setControlMode('touch');
+    }, true);
+    window.addEventListener('keydown', (e) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+      if (this.settings.controls === 'auto' && !['Escape', 'Tab'].includes(e.code)) this.setControlMode('keyboard');
+    }, true);
+    window.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'mouse' && (Math.abs(e.movementX) + Math.abs(e.movementY) > 6) && this.settings.controls === 'auto') this.setControlMode('keyboard');
+    }, true);
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === this.renderer.domElement;
       if (!locked && this.running && !this.paused && !panelsOpen() && !this.unlockIntended) this.onPauseRequest();
       this.unlockIntended = false;
     });
     window.addEventListener('keydown', () => this.sfx.unlock(), { once: true });
+    this.setControlMode(this.settings.controls === 'auto' ? initialMode() : this.settings.controls, true);
+  }
+
+  /** 터치 버튼 ↔ 키보드·마우스 */
+  setControlMode(m: ControlMode, force = false) {
+    if (m === this.controlMode && !force) return;
+    this.controlMode = m;
+    document.body.classList.toggle('touch', m === 'touch');
+    this.touch.reset();
+    if (m === 'touch' && this.input.pointerLocked) {
+      this.unlockIntended = true;
+      this.input.releaseLock();
+    }
   }
 
   get ui(): UiCtx {
@@ -211,8 +259,11 @@ export class Game {
     this.tpc.shakeEnabled = s.shake;
     this.sfx.setVolume(s.volume);
     this.dialogue.speed = s.textSpeed === 'slow' ? 0.7 : s.textSpeed === 'fast' ? 1.6 : 1;
-    const pr = s.quality === 'low' ? 0.75 : s.quality === 'mid' ? Math.min(1, window.devicePixelRatio) : Math.min(2, window.devicePixelRatio);
-    this.renderer.setPixelRatio(pr);
+    if (!s.autoRes) this.resScale = 1;
+    this.applyPixelRatio();
+    this.touch.gain = 1.7;
+    document.documentElement.style.setProperty('--touch-user', String(s.touchScale));
+    if (s.controls !== 'auto') this.setControlMode(s.controls);
     const shadows = s.quality !== 'low';
     this.renderer.shadowMap.enabled = shadows;
     this.sun.castShadow = shadows;
@@ -281,8 +332,47 @@ export class Game {
     this.sun.position.copy(SUN_OFFSET).add(t);
   }
 
+  private basePixelRatio() {
+    const s = this.settings;
+    const dpr = window.devicePixelRatio || 1;
+    return s.quality === 'low' ? Math.min(0.75, dpr) : s.quality === 'mid' ? Math.min(1, dpr) : Math.min(2, dpr);
+  }
+
+  private applyPixelRatio() {
+    this.renderer.setPixelRatio(Math.max(0.5, this.basePixelRatio() * this.resScale));
+  }
+
+  /** 느린 기기(크롬북·웨일북·태블릿): 몇 초째 버벅이면 해상도를 한 단계 낮추고, 넉넉해지면 되돌린다 */
+  private autoResolution() {
+    if (!this.settings.autoRes || !this.running || this.paused) return;
+    if (this.fps < 24) {
+      this.fastSeconds = 0;
+      if (this.slowSeconds >= 4 && this.resScale > 0.6) {
+        this.resScale = Math.max(0.6, +(this.resScale - 0.15).toFixed(2));
+        this.slowSeconds = 0;
+        this.applyPixelRatio();
+        if (!this.resHinted) {
+          this.resHinted = true;
+          this.hud.toast('화면이 버벅여서 해상도를 조금 낮췄어요.', 'info', 3500);
+        }
+      }
+    } else if (this.fps >= 50 && this.resScale < 1) {
+      if (++this.fastSeconds >= 8) {
+        this.fastSeconds = 0;
+        this.resScale = Math.min(1, +(this.resScale + 0.1).toFixed(2));
+        this.applyPixelRatio();
+      }
+    } else this.fastSeconds = 0;
+  }
+
+  private wasRunning = false;
+
   private loop = () => {
     this.looping = true;
+    if (this.running !== this.wasRunning) {
+      this.wasRunning = this.running;
+      document.body.classList.toggle('playing', this.running);
+    }
     requestAnimationFrame(this.loop);
     // 물리는 프레임당 최대 50ms로 자르고, 이야기·대사 시계는 실제 흐른 시간(최대 250ms)을 쓴다 (느린 컴퓨터에서도 진행 속도 유지)
     const real = Math.min(0.25, this.clock.getDelta());
@@ -296,13 +386,15 @@ export class Game {
       // 느린 컴퓨터: 한 번만 '낮음' 품질을 권한다
       if (this.running && !this.paused) {
         this.slowSeconds = this.fps < 24 ? this.slowSeconds + 1 : 0;
-        if (this.slowSeconds === 6 && this.settings.quality !== 'low' && !this.slowHinted) {
+        this.autoResolution();
+        if (this.slowSeconds === 6 && this.settings.quality !== 'low' && !this.slowHinted && (!this.settings.autoRes || this.resScale <= 0.6)) {
           this.slowHinted = true;
           this.hud.toast('화면이 느리면 Esc → 설정 → 그래픽 품질 「낮음」을 골라 보세요.', 'warn', 6000);
         }
       }
     }
     if (this.running && !this.paused) this.tick(dt, real);
+    else this.touch.update({ visible: false, cine: false, talking: false, eLabel: null, fLabel: null, spaceLabel: '점프' });
     this.followSun();
     this.renderer.render(this.scene, this.camera);
     this.input.endFrame();
@@ -419,7 +511,8 @@ export class Game {
       head.y += 1.2 * this.player.char.scale;
       this.player.char.setHidden(head.distanceTo(this.camera.position) < 0.9);
     } else this.player.char.setHidden(false);
-    this.hud.showLockHint(!input.pointerLocked && !input.captured && !this.cutscene);
+    this.hud.showLockHint(this.controlMode === 'keyboard' && !input.pointerLocked && !input.captured && !this.cutscene);
+    this.updateTouch();
     this.hud.updateBubbles(this.camera, this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight);
 
     // 목표 화살표
@@ -432,6 +525,31 @@ export class Game {
       this.marker.position.set(t.x, t.y + 0.35 + Math.sin(performance.now() / 250) * 0.08, t.z);
       this.marker.rotation.y += dt * 2;
     } else this.marker.visible = false;
+  }
+
+  /** 터치 버튼 이름: 지금 E·F·Space가 하는 일 */
+  private updateTouch() {
+    const f = this.interactions.focus;
+    const talking = this.dialogue.active;
+    const held = this.inventory.held;
+    let eLabel: string | null = null, fLabel: string | null = null, spaceLabel = '점프';
+    if (talking) eLabel = '다음';
+    else if (this.remote) eLabel = '조종 끝';
+    else if (f?.e) eLabel = f.eLabel;
+    if (!talking && !this.remote && !this.cutscene) {
+      if (f?.f) fLabel = f.fLabel;
+      else if (held && !this.player.seat && held !== 'paperPlane') fLabel = '내려놓기';
+    }
+    if (this.remote) spaceLabel = '집게';
+    else if (held === 'paperPlane' && !this.player.seat) spaceLabel = '꾹 눌러 날리기';
+    this.touch.update({
+      visible: this.controlMode === 'touch' && !this.input.captured,
+      cine: this.cutscene,
+      talking,
+      eLabel,
+      fLabel,
+      spaceLabel,
+    });
   }
 
   // ───────── 이야기에서 쓰는 도구들 ─────────

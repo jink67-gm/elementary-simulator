@@ -94,9 +94,12 @@ export class Player {
 
   update(dt: number, input: Input, camYaw: number, colliders: Aabb[], others: Circle[]): { moved: boolean } {
     let mx = 0, mz = 0;
+    let mag = 0, run = false;
     if (!this.frozen) {
-      const f = (input.down('W') ? 1 : 0) - (input.down('S') ? 1 : 0);
-      const r = (input.down('D') ? 1 : 0) - (input.down('A') ? 1 : 0);
+      const mv = input.move();
+      const { f, r } = mv;
+      mag = mv.mag;
+      run = mv.run;
       if (f || r) {
         // 카메라 기준 방향
         const fx = -Math.sin(camYaw), fz = -Math.cos(camYaw);
@@ -116,8 +119,8 @@ export class Player {
         return { moved: false };
       }
     }
-    const run = input.down('Shift');
-    const target = mx || mz ? (run ? 4.6 : 3.0) : 0;
+    // 조이스틱을 살짝 밀면 천천히 걷는다
+    const target = mx || mz ? (run ? 4.6 : 3.0 * Math.max(0.45, Math.min(1, mag * 1.15))) : 0;
     this.speed += (target - this.speed) * (1 - Math.exp(-dt * 12));
     if (mx || mz) {
       const want = Math.atan2(mx, mz);
