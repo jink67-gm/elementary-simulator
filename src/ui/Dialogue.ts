@@ -1,4 +1,5 @@
-// 자막 대화창: 1~2줄, 한 글자씩 표시, Enter/E/클릭으로 넘기기, Q로 모두 넘기기.
+// 자막 대화창: 1~2줄, 한 글자씩 표시. E(또는 Enter·클릭)로 넘기고, 마지막 줄에서 E를 누르면 닫힌다. Q로 모두 넘기기.
+// 저절로 넘어가지 않는다 (읽는 속도는 플레이어가 정한다).
 import { el, button } from './dom';
 
 export interface Line {
@@ -12,6 +13,7 @@ export class Dialogue {
   private box = el('div', { class: 'dialogue hidden' });
   private nameEl = el('div', { class: 'd-name' });
   private textEl = el('div', { class: 'd-text' });
+  private nextEl = el('div', { class: 'd-next' }, '▼ E');
   private queue: { line: Line; done: () => void }[] = [];
   private current: { line: Line; done: () => void; shown: number; t: number; hold: number } | null = null;
   speed = 1; // 글자 속도 배율
@@ -20,7 +22,7 @@ export class Dialogue {
 
   constructor(parent: HTMLElement) {
     const skip = button('모두 넘기기 (Q)', () => this.skipEverything(), 'd-skip');
-    this.box.append(this.nameEl, this.textEl, el('div', { class: 'd-next' }, '▼ Enter'), skip);
+    this.box.append(this.nameEl, this.textEl, this.nextEl, skip);
     this.box.addEventListener('click', () => this.advance());
     parent.append(this.box);
   }
@@ -69,6 +71,7 @@ export class Dialogue {
     this.nameEl.textContent = n.line.who;
     this.nameEl.classList.toggle('narr', n.line.who === '');
     this.textEl.textContent = '';
+    this.nextEl.textContent = '…';
   }
 
   update(dt: number) {
@@ -83,8 +86,9 @@ export class Dialogue {
       if (Math.floor(c.shown) !== before && before % 3 === 0) this.onType();
     } else {
       c.hold += dt;
-      // 자동으로 넘어가기 (읽을 시간 확보)
-      if (c.hold > (1.6 + len * 0.045) / this.speed) this.finish();
+      // 다 나온 뒤에는 E를 기다린다. 마지막 줄이면 「E 닫기」로 안내
+      const last = this.queue.length === 0;
+      this.nextEl.textContent = last ? '▼ E 닫기' : '▼ E 다음';
     }
     // finish()로 다음 줄로 넘어갔으면 이전 줄(c)이 아니라 새 줄을 그린다
     const now = this.current;

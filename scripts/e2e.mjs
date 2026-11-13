@@ -144,6 +144,21 @@ try {
     await selectItem('koreanBook');
     await act('seat', 'KeyF', '국어책');
     await waitFor('국어책 올림', (s) => s.flags.bookOnDesk);
+    // 대화는 E로 넘기고 마지막 줄에서 E로 닫는다 (저절로 넘어가지 않고, 닫은 E로 다시 말 걸지 않는다)
+    await act('npc:seoa', 'KeyE', '서아', { from: [0, 1], dist: 0.8 });
+    await page.waitForFunction(() => !!window.__sim.state().dialogue, null, { timeout: 5000 });
+    const before = await page.evaluate(() => window.__sim.game.npcs.seoa.talkCount);
+    await sleep(6000);
+    if (!(await state()).dialogue) throw new Error('대사가 저절로 넘어감');
+    for (let i = 0; i < 12 && (await state()).dialogue; i++) {
+      await page.keyboard.press('KeyE');
+      await sleep(300);
+    }
+    if ((await state()).dialogue) throw new Error('E로 대화가 안 닫힘');
+    await sleep(800);
+    const after = await page.evaluate(() => window.__sim.game.npcs.seoa.talkCount);
+    if ((await state()).dialogue || after !== before) throw new Error('닫은 E로 다시 말을 걸었음');
+    log('E로 대화 넘기기·닫기 확인');
     for (let i = 0; i < 3; i++) {
       await act('lunchMenu', 'KeyE', '급식표');
       await waitPanel(true);

@@ -275,11 +275,11 @@ export class Game {
 
     // 대화 넘기기 (E·Enter·클릭)
     this.dialogue.update(real);
-    // Enter·클릭은 언제나 대사 넘기기. E는 상호작용할 대상이 없을 때만 대사 넘기기 (걷는 중 대사 때문에 행동이 막히지 않게)
-    if (this.dialogue.active && input.pressed('Enter')) this.dialogue.advance();
-    const eForDialogue = this.dialogue.active && input.pressed('E') && !this.interactions.focus?.e;
-    if (eForDialogue) this.dialogue.advance();
-    const consumedE = eForDialogue;
+    // 대화창이 떠 있으면 E(또는 Enter·클릭)는 언제나 「다음 대사」. 마지막 줄에서 누르면 닫힌다.
+    // 그 E가 바로 앞 친구에게 다시 말 거는 데 쓰이지 않도록 이번 프레임의 E는 대화가 가져간다.
+    const talking = this.dialogue.active;
+    if (talking && (input.pressed('Enter') || input.pressed('E'))) this.dialogue.advance();
+    const consumedE = talking && input.pressed('E');
     if (input.pressed('Q')) this.dialogue.skipEverything();
 
     if (input.pressed('Escape') && !input.captured) {
