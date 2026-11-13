@@ -7,7 +7,6 @@
 // 교실 범위: x -7.0~7.0 (벽 안쪽 면), z -6.0~7.0, 바닥 y 0, 천장 3.
 // 게임 로직이 쓰는 물건(objs, 충돌 상자, 자리)은 SchoolMap이 그대로 만든다. 여기서는 모습만.
 import * as THREE from 'three';
-import { aabb } from './Collision';
 import { HQBuilder } from './hq';
 import { TILE, aoMaterial, paint, pbr, worldUV } from './pbr';
 import { CanvasTex, font } from './canvasTex';
@@ -16,17 +15,14 @@ const H = 3;
 const X0 = -7.0, X1 = 7.0, Z0 = -6.0, Z1 = 7.0;
 
 export class ClassroomBuilder extends HQBuilder {
-  private alu = paint(0xe6e9ec, 0.32, 0.55);
   private wood = pbr('oak', { color: 0xf3e2c8, roughness: 0.62 });
-  private laminateWhite = paint(0xf2eee6, 0.55);
-  private fabric = paint(0xece3cf, 0.98);
 
   build() {
     this.y = 0;
     this.level = 1;
     this.floor();
     this.ceilingHQ();
-    this.windowWall(-7.1, Z0, Z1);
+    this.slidingWindowWall(-7.1, Z0, Z1, 1, { blinds: true, bays: 5 });
     this.wainscot();
     this.corridorSide();
     this.frontWall();
@@ -78,66 +74,6 @@ export class ClassroomBuilder extends HQBuilder {
     // 화재 감지기·스프링클러
     const det = paint(0xfafafa, 0.5);
     for (const [x, z] of [[-2.1, -3.0], [2.1, 3.6]] as [number, number][]) this.add(new THREE.CylinderGeometry(0.07, 0.08, 0.04, 14), det, x, H - 0.02, z, { cast: false });
-  }
-
-  // ───────── 운동장 쪽 창문 벽 ─────────
-  private windowWall(x: number, z0: number, z1: number) {
-    const len = z1 - z0, zc = (z0 + z1) / 2;
-    const plaster = pbr('plaster', { roughness: 0.9 });
-    const sillY = 0.86, topY = 2.64;
-    const sill = this.box(0.2, sillY, len + 0.2, plaster, x, 0, zc, true, TILE.plaster);
-    const header = this.box(0.2, H - topY, len + 0.2, plaster, x, topY, zc, true, TILE.plaster);
-    this.blockers.push(sill, header);
-    this.colliders.push({ ...aabb(x, zc, 0.2, len), level: this.level });
-    // 창 양끝 기둥(벽)
-    for (const [za, zb] of [[z0, z0 + 0.15], [z1 - 0.15, z1]]) this.box(0.2, topY - sillY, zb - za, plaster, x, sillY, (za + zb) / 2, true, TILE.plaster);
-    // 안쪽 창턱 (인조 대리석)
-    this.box(0.3, 0.035, len - 0.3, paint(0xe9e6df, 0.4), x + 0.12, sillY, zc);
-    // 바깥 창턱
-    this.box(0.12, 0.04, len - 0.3, paint(0xbfc1bc, 0.6), x - 0.14, sillY - 0.04, zc, false);
-    // 창틀: 5칸, 칸마다 아래 미닫이 두 장 + 위 고정창
-    const wz0 = z0 + 0.15, wz1 = z1 - 0.15, wl = wz1 - wz0;
-    const bays = 5, bw = wl / bays;
-    const midY = 2.2;
-    this.box(0.1, 0.05, wl, this.alu, x, sillY, (wz0 + wz1) / 2);
-    this.box(0.1, 0.05, wl, this.alu, x, topY - 0.05, (wz0 + wz1) / 2);
-    this.box(0.1, 0.06, wl, this.alu, x, midY - 0.03, (wz0 + wz1) / 2);
-    for (let i = 0; i <= bays; i++) this.box(0.12, topY - sillY, 0.06, this.alu, x, sillY, wz0 + i * bw);
-    const paneH = midY - 0.03 - sillY - 0.05;
-    for (let i = 0; i < bays; i++) {
-      const bz = wz0 + i * bw;
-      // 위 고정창
-      const up = this.add(new THREE.PlaneGeometry(bw - 0.06, topY - 0.05 - (midY + 0.03)), this.glass, x, (midY + 0.03 + topY - 0.05) / 2, bz + bw / 2, { cast: false, receive: false, ry: Math.PI / 2 });
-      up.renderOrder = 2;
-      this.blockers.push(up);
-      // 아래 미닫이 두 장 (안쪽·바깥쪽 레일)
-      for (const k of [0, 1]) {
-        const sx = x + (k ? 0.028 : -0.028);
-        const sw = bw * 0.52;
-        const cz = k ? bz + bw - sw / 2 : bz + sw / 2;
-        const y0 = sillY + 0.05;
-        this.box(0.035, 0.04, sw, this.alu, sx, y0, cz);
-        this.box(0.035, 0.04, sw, this.alu, sx, y0 + paneH - 0.04, cz);
-        this.box(0.035, paneH, 0.04, this.alu, sx, y0, cz - sw / 2 + 0.02);
-        this.box(0.035, paneH, 0.04, this.alu, sx, y0, cz + sw / 2 - 0.02);
-        const p = this.add(new THREE.PlaneGeometry(sw - 0.06, paneH - 0.07), this.glass, sx, y0 + paneH / 2, cz, { cast: false, receive: false, ry: Math.PI / 2 });
-        p.renderOrder = 2;
-        this.blockers.push(p);
-        // 잠금 손잡이
-        this.box(0.03, 0.09, 0.025, this.chrome, sx + 0.03, y0 + paneH * 0.45, k ? cz - sw / 2 + 0.06 : cz + sw / 2 - 0.06, false);
-      }
-      // 롤 블라인드: 칸마다 내려온 길이가 다름
-      const drop = [0.42, 0.95, 0.3, 0.7, 0.18][i];
-      const bx = x + 0.2;
-      const roll = this.add(new THREE.CylinderGeometry(0.04, 0.04, bw - 0.08, 10), this.laminateWhite, bx, topY + 0.1, bz + bw / 2);
-      roll.rotation.x = Math.PI / 2;
-      this.box(0.012, drop, bw - 0.14, this.fabric, bx, topY + 0.06 - drop, bz + bw / 2);
-      this.box(0.02, 0.025, bw - 0.12, this.alu, bx, topY + 0.05 - drop, bz + bw / 2, false); // 아래 무게 막대
-      // 줄
-      this.box(0.006, 0.9, 0.006, paint(0xd8d2c4, 0.9), bx + 0.01, topY - 0.9, bz + bw - 0.12, false);
-    }
-    // 블라인드 박스 (천장 아래 길게)
-    this.box(0.14, 0.12, len - 0.1, this.laminateWhite, x + 0.2, topY + 0.04, zc, false);
   }
 
   /** 나무 징두리 판벽 (벽 아래 0.95m) + 띠 */

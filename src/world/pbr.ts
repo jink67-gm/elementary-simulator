@@ -3,7 +3,7 @@
 // 무늬 크기는 「미터당」으로 맞춘다: worldUV()로 상자·판의 UV를 실제 크기에 맞게 늘린다.
 import * as THREE from 'three';
 
-export type PbrId = 'terrazzo' | 'plaster' | 'oak' | 'laminate' | 'ceiling' | 'cork';
+export type PbrId = 'terrazzo' | 'plaster' | 'oak' | 'laminate' | 'ceiling' | 'cork' | 'floorTile' | 'wallTile';
 const FILES: Partial<Record<PbrId, string>> = {
   terrazzo: 'terrazzo_tiles',
   plaster: 'painted_plaster_wall',
@@ -11,7 +11,7 @@ const FILES: Partial<Record<PbrId, string>> = {
   laminate: 'laminate_floor_02',
 };
 /** 한 장이 덮는 크기(미터) */
-export const TILE: Record<PbrId, number> = { terrazzo: 2.4, plaster: 2.5, oak: 1.2, laminate: 2.4, ceiling: 1.8, cork: 1.0 };
+export const TILE: Record<PbrId, number> = { terrazzo: 2.4, plaster: 2.5, oak: 1.2, laminate: 2.4, ceiling: 1.8, cork: 1.0, floorTile: 1.2, wallTile: 0.8 };
 
 const maps = new Map<PbrId, { map?: THREE.Texture; normalMap?: THREE.Texture; roughnessMap?: THREE.Texture }>();
 export const pbrErrors: string[] = [];
@@ -39,6 +39,8 @@ export async function preloadPbr(anisotropy = 4) {
   );
   maps.set('ceiling', { map: ceilingTex(), roughnessMap: undefined });
   maps.set('cork', { map: corkTex() });
+  maps.set('floorTile', { map: floorTileTex(), roughnessMap: tileRoughTex(512, 2, 6) });
+  maps.set('wallTile', { map: wallTileTex(), roughnessMap: tileRoughTex(512, 4, 4) });
 }
 
 const cache = new Map<string, THREE.MeshStandardMaterial>();
@@ -64,7 +66,7 @@ export function pbr(id: PbrId, o: { color?: number; roughness?: number; metalnes
   cache.set(key, m);
   return m;
 }
-const FALLBACK: Record<PbrId, number> = { terrazzo: 0xc9c9c3, plaster: 0xf3f1ec, oak: 0xb07d4f, laminate: 0xc4a27a, ceiling: 0xf2f0ea, cork: 0xb98a5a };
+const FALLBACK: Record<PbrId, number> = { terrazzo: 0xc9c9c3, plaster: 0xf3f1ec, oak: 0xb07d4f, laminate: 0xc4a27a, ceiling: 0xf2f0ea, cork: 0xb98a5a, floorTile: 0xd9d6cc, wallTile: 0xf4f4f1 };
 
 /** 색만 있는 표준 재질 (도장 금속·플라스틱 등) */
 export function paint(color: number, roughness = 0.6, metalness = 0): THREE.MeshStandardMaterial {
@@ -137,6 +139,63 @@ function ceilingTex() {
       c.stroke();
     }
   });
+}
+
+/** 급식실 바닥 타일: 600mm 자기질 타일 2x2, 옅은 얼룩 + 줄눈 */
+function floorTileTex() {
+  return canvasTex(512, (c, s) => {
+    let seed = 23;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const n = 2, t = s / n;
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) {
+        const v = 214 + Math.floor(rnd() * 8);
+        c.fillStyle = `rgb(${v},${v - 2},${v - 9})`;
+        c.fillRect(i * t, j * t, t, t);
+        for (let k = 0; k < 900; k++) {
+          c.fillStyle = `rgba(${150 + rnd() * 60},${145 + rnd() * 60},${135 + rnd() * 50},0.18)`;
+          c.fillRect(i * t + rnd() * t, j * t + rnd() * t, 1 + rnd() * 3, 1 + rnd() * 3);
+        }
+      }
+    c.fillStyle = '#a9a69d';
+    for (let k = 0; k <= n; k++) {
+      c.fillRect((k * s) / n - 2, 0, 4, s);
+      c.fillRect(0, (k * s) / n - 2, s, 4);
+    }
+  });
+}
+
+/** 벽 타일: 200mm 흰 유광 타일 4x4 + 회색 줄눈 */
+function wallTileTex() {
+  return canvasTex(512, (c, s) => {
+    const n = 4, t = s / n;
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) {
+        const g = c.createLinearGradient(i * t, j * t, i * t + t, j * t + t);
+        g.addColorStop(0, '#fbfbf9');
+        g.addColorStop(1, '#eeeeea');
+        c.fillStyle = g;
+        c.fillRect(i * t, j * t, t, t);
+      }
+    c.fillStyle = '#c3c4bf';
+    for (let k = 0; k <= n; k++) {
+      c.fillRect((k * s) / n - 3, 0, 6, s);
+      c.fillRect(0, (k * s) / n - 3, s, 6);
+    }
+  });
+}
+
+/** 타일 거칠기: 타일 면은 매끈(반사), 줄눈은 거칠게 */
+function tileRoughTex(size: number, n: number, grout: number) {
+  return canvasTex(size, (c, s) => {
+    c.fillStyle = '#4a4a4a';
+    c.fillRect(0, 0, s, s);
+    c.fillStyle = '#f0f0f0';
+    for (let k = 0; k <= n; k++) {
+      c.fillRect((k * s) / n - grout / 2, 0, grout, s);
+      c.fillRect(0, (k * s) / n - grout / 2, s, grout);
+    }
+  }, false);
 }
 
 function corkTex() {

@@ -8,6 +8,8 @@ import type { PosterTheme } from '../core/SaveData';
 import { hasProp, placeInstances, placeOne, type Fit, type Placement } from './props';
 import { CorridorBuilder } from './CorridorHQ';
 import { ClassroomBuilder } from './ClassroomHQ';
+import { GymBuilder } from './GymHQ';
+import { CafeteriaBuilder, STEEL, cafeteriaStool, cafeteriaTable } from './CafeteriaHQ';
 import { buildArtCabinet, buildBin, buildBookshelf, buildRecycling } from './classroomFurniture';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { TILE, isPbrMaterial, paint, pbr, worldUV } from './pbr';
@@ -103,6 +105,8 @@ export class SchoolMap {
     this.buildFirstFloor();
     // 복도 꾸미기: (창문 벽 구간, 교실 쪽 위 유리창 구간, 색깔 아치 위치)
     new ClassroomBuilder(this.root, this.colliders, this.cameraBlockers).build();
+    new CafeteriaBuilder(this.root, this.colliders, this.cameraBlockers).build();
+    new GymBuilder(this.root, this.colliders, this.cameraBlockers).build();
     new CorridorBuilder(this.root, this.colliders, this.cameraBlockers).build({
       baseY: 0,
       level: 1,
@@ -688,24 +692,8 @@ export class SchoolMap {
 
   /** 급식실 (x 2.9~15.1, z 16.1~27) + 조리 창고 + 배식대 + 거대 돈가스 식탁 + 친구들 식탁 */
   private buildCafeteria() {
-    const floorTex = new CanvasTex(256, 256);
-    floorTex.draw((c) => {
-      for (let y = 0; y < 4; y++)
-        for (let x = 0; x < 4; x++) {
-          c.fillStyle = (x + y) % 2 ? '#d7e8ee' : '#c6dde6';
-          c.fillRect(x * 64, y * 64, 64, 64);
-          c.strokeStyle = '#b3cbd4';
-          c.strokeRect(x * 64 + 0.5, y * 64 + 0.5, 63, 63);
-        }
-    });
-    floorTex.tex.wrapS = floorTex.tex.wrapT = THREE.RepeatWrapping;
-    floorTex.tex.repeat.set(6, 5.5);
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(12.2, 11), new THREE.MeshLambertMaterial({ map: floorTex.tex }));
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(9, 0.001, 21.5);
-    floor.receiveShadow = true;
-    this.root.add(floor);
-    this.wallX(2.9, 16.1, 27);
+    // 바닥·천장·창·타일·배식대 둘레 모습은 CafeteriaHQ
+    this.wallX(2.9, 23.3, 27); // z 16.1~23.4는 CafeteriaHQ의 창문 벽
     this.wallX(15.1, 16.1, 27);
     this.wallZ(27.1, 2.9, 15.1);
 
@@ -755,9 +743,13 @@ export class SchoolMap {
     this.objs.foldStack = fold;
 
     // 배식대 + 국통
-    this.box(6, 0.9, 0.8, 0xbfc5cc, 9.6, 0, 25.6, { collide: true });
-    this.box(6, 0.05, 0.9, 0xdfe3e8, 9.6, 0.9, 25.6, { shadow: false });
-    this.box(6.2, 0.06, 0.06, 0x9aa3ad, 9.6, 1.3, 25.2, { shadow: false }); // 손잡이 봉
+    const steel = STEEL();
+    this.box(6, 0.9, 0.8, 0xbfc5cc, 9.6, 0, 25.6, { collide: true }).material = steel;
+    this.box(6, 0.05, 0.9, 0xdfe3e8, 9.6, 0.9, 25.6, { shadow: false }).material = paint(0xd5d9dd, 0.25, 0.8);
+    const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 6.2, 10), paint(0xc9ced3, 0.28, 0.85));
+    rail.rotation.z = Math.PI / 2;
+    rail.position.set(9.6, 0.82, 25.05); // 식판 미끄럼 봉
+    this.root.add(rail);
     const pots = new THREE.Group();
     this.root.add(pots);
     for (let i = 0; i < 3; i++) if (!this.prop('pot_enamel_01', pots, { w: 0.6 }, 7.6 + i * 1.6, 0.95, 25.7)) this.box(0.5, 0.35, 0.5, 0xf2f2f2, 7.6 + i * 1.6, 0.95, 25.7, { parent: pots });
@@ -779,8 +771,10 @@ export class SchoolMap {
     const cart = new THREE.Group();
     cart.position.set(13.9, 0, 25.6);
     this.root.add(cart);
-    this.box(0.7, 0.75, 0.6, 0x9aa3ad, 0, 0, 0, { parent: cart });
-    for (let i = 0; i < 6; i++) this.box(0.42, 0.03, 0.32, 0xd7dde3, 0, 0.75 + i * 0.035, 0, { parent: cart, shadow: false });
+    const cartSteel = steel.clone();
+    this.box(0.7, 0.75, 0.6, 0x9aa3ad, 0, 0, 0, { parent: cart }).material = cartSteel;
+    const trayMat = paint(0xcfd5da, 0.3, 0.6).clone();
+    for (let i = 0; i < 6; i++) this.box(0.42, 0.03, 0.32, 0xd7dde3, 0, 0.75 + i * 0.035, 0, { parent: cart, shadow: false }).material = trayMat;
     this.colliders.push(aabb(13.9, 25.6, 0.7, 0.6));
     this.objs.trayCart = cart;
 
@@ -822,9 +816,8 @@ export class SchoolMap {
 
     // 친구들 식탁 두 개 + 의자 여섯
     const tables: [number, number][] = [[4.9, 17.6], [13.1, 17.6]];
-    const tablesOk = this.props('dining_table', tables.map(([x, z]) => ({ x, z })), { w: 2.2, h: 0.74, d: 1.2 });
     tables.forEach(([x, z], i) => {
-      if (!tablesOk) this.box(2.2, 0.74, 1.2, 0xf2e8cf, x, 0, z);
+      cafeteriaTable(this.root, x, z, 2.2, 1.2, steel);
       this.colliders.push(aabb(x, z, 2.2, 1.2));
       const anchor = new THREE.Object3D();
       anchor.position.set(x, 0.74, z);
@@ -842,14 +835,14 @@ export class SchoolMap {
     ];
     diner.forEach(([x, z, yaw, tx, tz], i) => (this.seats['diner' + i] = { x, z, yaw, deskX: tx, deskZ: tz }));
     const chairs: Placement[] = diner.map(([x, z, yaw]) => ({ x: x + Math.sin(yaw + Math.PI) * 0.05, z: z + Math.cos(yaw + Math.PI) * 0.05, ry: yaw - Math.PI }));
-    if (!this.props('plastic_monobloc_chair_01', chairs, { w: 0.46, h: 0.8, d: 0.46, backToPlusZ: true }))
-      for (const c of chairs) this.box(0.42, 0.42, 0.42, 0x4ea8de, c.x, 0, c.z, { shadow: false });
+    for (const c of chairs) cafeteriaStool(this.root, c.x, c.z, steel); // 주황 둥근 의자 (참고 사진)
 
     // 미끄럼 주의 (배식대 앞)
     this.prop('WetFloorSign_01', this.root, { h: 0.6 }, 7.0, 0, 24.3, 0.5);
 
     // 급식실 문 (미닫이)
     const doorMesh = this.box(2, 2.2, 0.08, 0xd9d9d9, 9, 0, 16.05, { ownMat: true });
+    doorMesh.material = paint(0xb9c3c9, 0.4, 0.5).clone();
     this.cameraBlockers.push(doorMesh);
     const window = this.box(1.2, 0.5, 0.09, 0x9ad0ec, 9, 1.4, 16.05, { ownMat: true, shadow: false });
     const g = new THREE.Group();
@@ -970,32 +963,8 @@ export class SchoolMap {
 
   /** 체육관 (복도 북쪽, x 1~17, z -30~-16.1). 사건 3에서 열린다. 공 위치·발사대·골대는 dodgeLogic.ts와 맞춘다 */
   private buildGym() {
-    const tex = new CanvasTex(512, 448);
-    tex.draw((c, w, h) => {
-      c.fillStyle = '#d9a86c';
-      c.fillRect(0, 0, w, h);
-      for (let i = 0; i < 32; i++) {
-        c.fillStyle = i % 2 ? '#d29e60' : '#dcae74';
-        c.fillRect(0, i * 14, w, 13);
-      }
-      c.strokeStyle = '#ffffff';
-      c.lineWidth = 4;
-      c.strokeRect(20, 20, w - 40, h - 40);
-      c.beginPath();
-      c.moveTo(w / 2, 20);
-      c.lineTo(w / 2, h - 20);
-      c.stroke();
-      c.beginPath();
-      c.arc(w / 2, h / 2, 50, 0, Math.PI * 2);
-      c.stroke();
-    });
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 13.9), new THREE.MeshLambertMaterial({ map: tex.tex }));
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(9, 0.001, -23.05);
-    floor.receiveShadow = true;
-    this.root.add(floor);
+    // 마루·높은 창·무대·천장 등 모습은 GymHQ (북쪽 벽 대신 무대)
     this.wallX(17.1, -30.1, -16.1);
-    this.wallZ(-30.1, 0.9, 17.1);
     this.wallZ(-16.1, 0.9, 7);
     this.wallZ(-16.1, 11, 17.1);
     // 서쪽 벽: 공 창고 입구 (z -28 ~ -24)
@@ -1078,6 +1047,14 @@ export class SchoolMap {
       c.fillText('(아직 비어 있음)', w / 2, 170);
     });
     const bm = this.plane(2.4, 1.5, board.material(), 13.5, 1.6, -29.98);
+    // 이동식 게시판 받침 (무대 앞에 세워 둠)
+    const standMat = paint(0x9aa1a8, 0.4, 0.6);
+    const back = this.box(2.5, 1.6, 0.04, 0x9aa1a8, 13.5, 0.8, -30.02, { shadow: true });
+    back.material = standMat;
+    for (const dx of [-1.2, 1.2]) {
+      this.box(0.05, 0.85, 0.05, 0x9aa1a8, 13.5 + dx, 0, -30.02).material = standMat;
+      this.box(0.08, 0.04, 0.5, 0x9aa1a8, 13.5 + dx, 0, -29.95).material = standMat;
+    }
     this.objs.ruleBoard = bm;
     this.ruleBoardTex = board;
     // 공 수레 (작아진 공 넣는 곳)
@@ -1309,9 +1286,7 @@ export class SchoolMap {
   private finishSecondFloor() {
     this.baseY = 0;
     this.curLevel = 1;
-    this.ceiling(12.2, 11, 9, 21.55);
     this.ceiling(3.7, 4, 12.95, 4.5);
-    this.ceiling(16.2, 14, 9, -23.05, true, WALL_H + 0.01);
     // 5-1(남쪽)·4-1(북쪽): 닫힌 교실의 바깥 벽
     this.wallZ(-16.1, -7.2, 0.9);
     this.wallX(-7.1, -16.1, -6.0);
@@ -1537,7 +1512,6 @@ export class SchoolMap {
       this.root.add(d);
     }
     // 남쪽 강당 동, 북쪽 급식실 동 바깥 (현관 앞에서 보이는 면)
-    facade(14.2, 17.32, -23.1, Math.PI / 2);
     const south = new THREE.Mesh(new THREE.PlaneGeometry(2.4, H), brickMat(0.8, H / 3));
     south.position.set(16.2, FLOOR1_Y + H / 2, -16.05);
     this.root.add(south);
