@@ -7,8 +7,8 @@ const props = new Map<string, GLTF>();
 export const propErrors: string[] = [];
 
 export const PROP_IDS = [
-  'SchoolDesk_01', 'SchoolChair_01', 'metal_office_desk', 'painted_wooden_cabinet', 'Shelf_01',
-  'metal_trash_can', 'plastic_broom', 'dustpan', 'dining_table', 'plastic_monobloc_chair_01',
+  'SchoolDesk_01', 'SchoolChair_01', 'metal_office_desk', 'Shelf_01',
+  'plastic_broom', 'dustpan', 'dining_table', 'plastic_monobloc_chair_01',
   'pot_enamel_01', 'brass_pan_01', 'WetFloorSign_01', 'classic_laptop',
 ];
 

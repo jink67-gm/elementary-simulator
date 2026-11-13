@@ -28,6 +28,7 @@ import type { Circle } from '../world/Collision';
 
 /** 해 방향 (서쪽 위, 고도 약 33°) */
 const SUN_OFFSET = new THREE.Vector3(-25, 16, 5);
+const SKY_FOG = 0xcfe6f5;
 
 export interface StoryHooks {
   start(save: SaveData): void;
@@ -129,8 +130,8 @@ export class Game {
     this.layer.append(this.chargeBar);
 
     // 하늘·빛
-    this.scene.background = skyTexture();
-    this.scene.fog = new THREE.Fog(0xcfe6f5, 45, 140);
+    this.scene.background = this.sky;
+    this.scene.fog = new THREE.Fog(SKY_FOG, 45, 140);
     // 실내 반사·은은한 빛 (한 번만 만드는 환경 지도: 바닥 광택, 유리 반사)
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -255,6 +256,19 @@ export class Game {
 
   private looping = false;
   /** 그림자 지도 범위(±20m)를 플레이어 둘레로 옮긴다. 2m 칸에 맞춰 옮겨 그림자가 떨리지 않게 */
+  private sky = skyTexture();
+  /** 사건 중 하늘·안개 색을 바꾼다 (null = 원래 하늘) */
+  setSkyTint(hex: number | null) {
+    const fog = this.scene.fog as THREE.Fog;
+    if (hex === null) {
+      this.scene.background = this.sky;
+      fog.color.setHex(SKY_FOG);
+    } else {
+      this.scene.background = new THREE.Color(hex);
+      fog.color.setHex(hex);
+    }
+  }
+
   private followSun() {
     const p = this.player.pos;
     const tx = Math.round(p.x / 2) * 2, ty = Math.round(p.y / 2) * 2, tz = Math.round(p.z / 2) * 2;

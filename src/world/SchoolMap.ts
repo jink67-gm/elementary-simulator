@@ -8,6 +8,7 @@ import type { PosterTheme } from '../core/SaveData';
 import { hasProp, placeInstances, placeOne, type Fit, type Placement } from './props';
 import { CorridorBuilder } from './CorridorHQ';
 import { ClassroomBuilder } from './ClassroomHQ';
+import { buildArtCabinet, buildBin, buildBookshelf, buildRecycling } from './classroomFurniture';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { TILE, isPbrMaterial, paint, pbr, worldUV } from './pbr';
 
@@ -473,10 +474,7 @@ export class SchoolMap {
     const shelf = new THREE.Group();
     shelf.position.set(-6.7, 0, -0.6);
     this.root.add(shelf);
-    const shelfModel = this.prop('Shelf_01', shelf, { w: 1.1, h: 1.6, d: 0.4 }, 0.02, 0, -0.55, Math.PI / 2) && this.prop('Shelf_01', shelf, { w: 1.1, h: 1.6, d: 0.4 }, 0.02, 0, 0.55, Math.PI / 2);
-    if (!shelfModel) this.box(0.45, 1.1, 2.2, 0xa0784e, 0, 0, 0, { parent: shelf });
-    const bookColors = [0xe76f51, 0x2a9d8f, 0xe9c46a, 0x264653, 0xf4a261, 0x8ab17d, 0x9d4edd];
-    if (!shelfModel) for (let i = 0; i < 16; i++) this.box(0.3, 0.3, 0.09, bookColors[i % bookColors.length], 0.06, i < 8 ? 0.1 : 0.6, -0.95 + (i % 8) * 0.26, { parent: shelf, shadow: false });
+    buildBookshelf(shelf); // 창 아래 낮은 책장 (classroomFurniture)
     this.colliders.push(aabb(-6.7, -0.6, 0.45, 2.2));
     this.objs.bookshelf = shelf;
 
@@ -568,13 +566,14 @@ export class SchoolMap {
     const cab = new THREE.Group();
     cab.position.set(-6.5, 0, 4.6);
     this.root.add(cab);
-    if (!this.prop('painted_wooden_cabinet', cab, { w: 1.9, h: 1.0, d: 0.8 }, 0, 0, 0, Math.PI / 2)) this.box(0.8, 1.0, 1.9, 0x7fb069, 0, 0, 0, { parent: cab });
-    const binColors = [0xe85d75, 0xf5d547, 0x58c4f6];
+    buildArtCabinet(cab);
+    const binColors = [0xef6f7f, 0xf2c94c, 0x5bb8e8];
+    const binNames = ['자르기·재기', '붙이기', '종이·펜']; // Morning BIN_NAMES와 같게
     ['binCut', 'binStick', 'binPaper'].forEach((name, i) => {
       const b = new THREE.Group();
-      b.position.set(-6.5, 1.0, 4.0 + i * 0.6);
+      b.position.set(-6.5, 0.98, 4.0 + i * 0.6);
       this.root.add(b);
-      this.box(0.5, 0.22, 0.5, binColors[i], 0, 0, 0, { parent: b, ownMat: true });
+      buildBin(b, binColors[i], binNames[i]);
       this.objs[name] = b;
     });
     this.colliders.push(aabb(-6.5, 4.6, 0.8, 1.9));
@@ -584,11 +583,9 @@ export class SchoolMap {
     const trash = new THREE.Group();
     trash.position.set(6.4, 0, 3.2);
     this.root.add(trash);
-    const trashModel = this.prop('metal_trash_can', trash, { w: 1.1, h: 0.75, d: 0.45 }, 0, 0, 0, Math.PI / 2);
-    if (!trashModel) this.box(0.45, 0.7, 0.45, 0x8d99ae, 0, 0, -0.3, { parent: trash });
+    buildRecycling(trash); // 일반·플라스틱·종이 분리수거함
     this.prop('plastic_broom', this.root, { h: 1.1 }, 6.85, 0, 4.3, -Math.PI / 2);
     this.prop('dustpan', this.root, { w: 0.3 }, 6.6, 0, 4.1, -Math.PI / 2);
-    if (!trashModel) this.box(0.45, 0.7, 0.45, 0x4ea8de, 0, 0, 0.3, { parent: trash, ownMat: true });
     this.colliders.push(aabb(6.4, 3.2, 0.5, 1.1));
     this.objs.trash = trash;
 

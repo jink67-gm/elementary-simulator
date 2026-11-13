@@ -57,7 +57,7 @@ B-21,창문,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필
 B-22,교실 출입문,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
 B-23,벽시계,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
 B-24,선풍기·냉난방기,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,,,,미제작,,
-B-25,쓰레기통,학교 공간,B,P2,무료 다운로드,Poly Haven 등 CC0 → gltf-transform,,https://polyhaven.com/a/metal_trash_can,CC0,public/models/props/metal_trash_can.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
+B-25,쓰레기통·분리수거함,학교 공간,B,P2,직접 제작,코드 (src/world/classroomFurniture.ts),,,프로젝트 자체,src/world/classroomFurniture.ts,완료,적용,교실 재질에 안 어울려 Poly Haven metal_trash_can 대신 직접 제작 (2026-11-13)
 B-26,청소도구 보관함,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,https://polyhaven.com/a/plastic_broom,CC0,public/models/props/plastic_broom.glb,완료,적용,게임 화면 확인·e2e 통과 (2026-11-12)
 B-27,복도 벽·바닥·천장 모듈,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)
 B-28,교실 문과 문패,학교 공간,C,P2,코드 제작,Three.js + 헤드리스 Blender(필요 시),,,이 프로젝트,src/ (코드),임시(Phase1 코드),적용(임시),e2e 통과(Phase1)

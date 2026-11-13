@@ -50,7 +50,6 @@ export class HallwayEvent implements StoryEvent {
   private tapeObjs: THREE.Object3D[] = [];
   private blockers: Aabb[] = [];
   private inter: Record<string, Interactable> = {};
-  private savedBg: THREE.Color | null = null;
 
   constructor(private m: Morning) {
     const g = m.g;
@@ -188,9 +187,7 @@ export class HallwayEvent implements StoryEvent {
     for (const b of this.blockers) b.enabled = true;
     g.nav.rebuild(g.map.colliders, 0.3);
     // 보라빛 멈춘 시간
-    if (!this.savedBg) this.savedBg = (g.scene.background as THREE.Color).clone();
-    (g.scene.background as THREE.Color).setHex(0xcdb4db);
-    (g.scene.fog as THREE.Fog).color.setHex(0xcdb4db);
+    g.setSkyTint(0xcdb4db);
     // 친구들: 깨어 있는 넷 + 멈춘 반 친구들
     const awake: [MainNpcId, number, number, number][] = [['harin', 8.0, -10.0, Math.PI / 2], ['seoa', 10.2, -3.5, -Math.PI / 2], ['junho', 8.0, 7.0, Math.PI / 2], ['minjae', 10.2, 9.5, -Math.PI / 2]];
     for (const [id, x, z, yaw] of awake) m.n(id).place(x, z, yaw);
@@ -212,10 +209,7 @@ export class HallwayEvent implements StoryEvent {
   leave() {
     this.deco.visible = false;
     for (const b of this.blockers) b.enabled = false;
-    if (this.savedBg) {
-      (this.g.scene.background as THREE.Color).copy(this.savedBg);
-      (this.g.scene.fog as THREE.Fog).color.copy(this.savedBg);
-    }
+    this.g.setSkyTint(null);
     for (const f of this.g.fillers) if (f.char.pose === 'cheer' || f.char.pose === 'raise') f.char.setPose('stand');
   }
 
@@ -314,10 +308,7 @@ export class HallwayEvent implements StoryEvent {
     if (adults) m.set('adultsHelpedTime');
     g.save.stats.timetableTries = this.st.tries;
     g.sfx.bell();
-    if (this.savedBg) {
-      (g.scene.background as THREE.Color).copy(this.savedBg);
-      (g.scene.fog as THREE.Fog).color.copy(this.savedBg);
-    }
+    g.setSkyTint(null);
     for (const f of g.fillers) f.char.setPose('stand');
     g.cutscene = true;
     g.tpc.override = { pos: new THREE.Vector3(9, 2.6, -6), look: new THREE.Vector3(9, 1.2, 3) };

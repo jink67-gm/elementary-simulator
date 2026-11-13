@@ -46,7 +46,6 @@ export class FinalEvent implements StoryEvent {
   private inter: Record<string, Interactable> = {};
   private consoleTex!: CanvasTex;
   private noteTex!: CanvasTex;
-  private savedBg: THREE.Color | null = null;
   private objs: Record<string, THREE.Object3D> = {};
 
   constructor(private m: Morning) {
@@ -212,9 +211,7 @@ export class FinalEvent implements StoryEvent {
     this.deco.visible = true;
     g.map.setBroadcastDoor(1);
     g.nav.rebuild(g.map.colliders, 0.3);
-    if (!this.savedBg) this.savedBg = (g.scene.background as THREE.Color).clone();
-    (g.scene.background as THREE.Color).setHex(0xf4b6b6);
-    (g.scene.fog as THREE.Fog).color.setHex(0xf4b6b6);
+    g.setSkyTint(0xf4b6b6);
     this.drawConsole(99, '학교 삭제 준비 99%… (멈춤)');
     this.drawNote();
     const pos: [MainNpcId, number, number, number][] = [['seoa', 10.3, 3.0, -Math.PI / 2], ['junho', 7.9, 2.0, Math.PI / 2], ['harin', 10.3, 6.4, -Math.PI / 2], ['minjae', 7.9, 7.6, Math.PI / 2]];
@@ -231,10 +228,7 @@ export class FinalEvent implements StoryEvent {
 
   leave() {
     this.deco.visible = false;
-    if (this.savedBg) {
-      (this.g.scene.background as THREE.Color).copy(this.savedBg);
-      (this.g.scene.fog as THREE.Fog).color.copy(this.savedBg);
-    }
+    this.g.setSkyTint(null);
   }
 
   private async intro(fromLoad: boolean) {
@@ -348,10 +342,7 @@ export class FinalEvent implements StoryEvent {
     m.set('ending' + e);
     g.sfx.success();
     this.drawConsole(e === 'A' ? 0 : 100, e === 'A' ? '초기화 완료' : '개선 기준 적용 완료!');
-    if (this.savedBg) {
-      (g.scene.background as THREE.Color).copy(this.savedBg);
-      (g.scene.fog as THREE.Fog).color.copy(this.savedBg);
-    }
+    g.setSkyTint(null);
     g.cutscene = true;
     g.tpc.override = { pos: new THREE.Vector3(9, 2.4, -1), look: new THREE.Vector3(12, 1.2, 4.5) };
     for (const id of ['seoa', 'junho', 'harin', 'minjae'] as MainNpcId[]) m.n(id).char.setPose(e === 'A' ? 'stand' : 'cheer');
