@@ -839,7 +839,7 @@ export class Morning implements StoryHooks {
   private async arrival() {
     const g = this.g;
     this.phase = 'bag';
-    if (!this.f('pencilReturned') && !this.g.inventory.has('pencilCase')) g.spawnItem('pencil', 'pencilCase', 13.4, FLOOR1_Y, -3.5, 0.4); // 1층 현관 신발장 앞
+    if (!this.f('pencilReturned') && !this.g.inventory.has('pencilCase')) g.spawnItem('pencil', 'pencilCase', 15.2, FLOOR1_Y, -3.55, 0.4); // 1층 현관 신발장 앞
     if (this.f('overslept')) {
       await this.sleep(0.6);
       this.toast('헉, 8시 52분! 아슬아슬하다…', 'warn');

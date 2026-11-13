@@ -8,6 +8,7 @@ import { TILE, aoMaterial, paint, pbr, worldUV } from './pbr';
 import { CEIL_H, FLOOR1_Y } from './rooms';
 import { SCHOOL_NAME } from '../data/school';
 import { TILE_EXT, graniteMat } from './exteriorTex';
+import { makeSlipperPair } from './slipper';
 
 export const LOBBY = { x0: 11.1, x1: 18.0, z0: -4.5, z1: 1.0, doorZ0: -2.6, doorZ1: -0.4 };
 export const OFFICE = { x0: 11.2, x1: 14.8, z0: 1.1, z1: 7.9, doorZ: 3.0 };
@@ -94,10 +95,20 @@ export class FirstFloorBuilder extends HQBuilder {
     const mat = this.add(new THREE.PlaneGeometry(1.4, 2.3), paint(0x3d4b5c, 0.98), 17.15, 0.012, (L.doorZ0 + L.doorZ1) / 2, { cast: false });
     mat.rotation.x = -Math.PI / 2;
 
-    // 학년별 실내화 신발장: 칸이 뚫린 나무 신발장 (5칸 × 4단), 위에 학년 이름표
+    // 벽 색: 북쪽 벽 연노랑, 남쪽 벽(나무 책장 쪽) 민트, 위쪽은 민트 띠 (실제 학교 중앙현관 환경개선처럼)
+    const yellow = paint(0xf6e8a6, 0.85), mint = paint(0x9fdcc9, 0.85), mintBand = paint(0x5fc3aa, 0.75);
+    const wallPanel = (m: THREE.Material, x0: number, x1: number, y0: number, y1: number, z: number, ry: number) =>
+      this.add(new THREE.PlaneGeometry(x1 - x0, y1 - y0), m, (x0 + x1) / 2, (y0 + y1) / 2, z, { cast: false, ry });
+    const nZ = L.z1 - 0.101, sZ = L.z0 + 0.101;
+    wallPanel(yellow, L.x0, L.x1 - 0.2, 0.12, 2.55, nZ, Math.PI);
+    wallPanel(mint, L.x0, 14.0, 0.12, 2.55, sZ, 0);
+    wallPanel(yellow, 14.0, L.x1 - 0.2, 0.12, 2.55, sZ, 0);
+    for (const [z, ry] of [[nZ - 0.001, Math.PI], [sZ + 0.001, 0]] as [number, number][]) wallPanel(mintBand, L.x0, L.x1 - 0.2, 2.55, CEIL_H, z, ry);
+
+    // 신발장 (사물함처럼 문이 닫힌 칸): 내빈용(북쪽, 위에 검정 슬리퍼 두 켤레) · 교직원(남쪽)
     const inner = paint(0xe7dcc8, 0.8), base = paint(0x5c5f63, 0.6);
-    const unit = (x: number, z: number, facing: 1 | -1, label: string) => {
-      const W = 1.2, H = 1.25, D = 0.36, t = 0.022;
+    const unit = (x: number, z: number, facing: 1 | -1, label: string, W: number, kind: 'guest' | 'staff') => {
+      const H = 1.25, D = 0.36, t = 0.022;
       this.colliders.push({ ...aabb(x, z, W, D), level: this.level });
       const front = z + (facing * D) / 2, back = z - (facing * D) / 2;
       this.box(W, 0.07, D, base, x, 0, z, false);
@@ -107,20 +118,29 @@ export class FirstFloorBuilder extends HQBuilder {
       const rows = 4, cols = 5, rowH = (H - 0.07 - t) / rows, colW = (W - 2 * t) / cols;
       for (let r = 1; r < rows; r++) this.box(W - 2 * t, 0.016, D - 0.03, this.wood, x, 0.07 + r * rowH - 0.008, z + facing * 0.012, false);
       for (let c = 1; c < cols; c++) this.box(0.016, H - 0.07 - t, D - 0.03, this.wood, x - W / 2 + t + c * colW, 0.07, z + facing * 0.012, false);
-      for (let r = 0; r < rows; r++)
-        for (let c = 0; c < cols; c++) {
-          if ((r * 5 + c + label.length) % 4 === 1) continue; // 빈 칸 (이미 신고 들어간 친구)
-          const cx = x - W / 2 + t + (c + 0.5) * colW, cy = 0.07 + r * rowH + 0.008;
-          const col = [0x4ea8de, 0xef476f, 0x06d6a0, 0xffd166, 0x9b5de5][(r + c * 2) % 5];
-          for (const dx of [-0.045, 0.045]) {
-            this.box(0.07, 0.045, 0.22, paint(0xf4f4f2, 0.6), cx + dx, cy, front - facing * 0.15, false);
-            this.box(0.072, 0.022, 0.07, paint(col, 0.5), cx + dx, cy + 0.045, front - facing * 0.08, false);
-          }
+      const ry = facing > 0 ? 0 : Math.PI;
+      // 칸마다 닫힌 문 (사물함처럼): 아이보리 철판 문 + 손잡이 + 번호표 + 환기 구멍
+      const doorM = paint(0xece8dd, 0.45, 0.25), handleM = paint(0x3a3f45, 0.4, 0.6), slotM = paint(0x8f948f, 0.6);
+      let n = 1;
+      for (let r = rows - 1; r >= 0; r--)
+        for (let c = 0; c < cols; c++, n++) {
+          const cx = x - W / 2 + t + (c + 0.5) * colW, cy = 0.07 + r * rowH;
+          this.box(colW - 0.014, rowH - 0.014, 0.016, doorM, cx, cy + 0.007, front - facing * 0.004, false);
+          this.box(0.012, 0.07, 0.018, handleM, cx + colW / 2 - 0.045, cy + rowH / 2 - 0.035, front + facing * 0.01, false);
+          for (let v = 0; v < 3; v++) this.box(colW * 0.5, 0.008, 0.004, slotM, cx - 0.01, cy + rowH - 0.07 - v * 0.018, front + facing * 0.006, false);
         }
-      // 학년 이름표
+      if (kind === 'guest' && x < 16.5)
+        // 위에 꺼내 둔 내빈용 검정 슬리퍼 두 켤레 (손님이 바로 신을 수 있게)
+        for (const dx of [-W / 2 + 0.15, -W / 2 + 0.4]) {
+          const pair = makeSlipperPair(0x1d1e21, 0x2c2d30);
+          pair.position.set(x + dx, this.y + H, z - facing * 0.01);
+          pair.rotation.y = ry;
+          this.root.add(pair);
+        }
+      // 이름표
       const tag = new CanvasTex(256, 64);
       tag.draw((c, w, h) => {
-        c.fillStyle = '#2f6b4f';
+        c.fillStyle = kind === 'guest' ? '#24476b' : '#2f6b4f';
         c.fillRect(0, 0, w, h);
         c.fillStyle = '#fff';
         c.font = font(36, true);
@@ -128,28 +148,26 @@ export class FirstFloorBuilder extends HQBuilder {
         c.textBaseline = 'middle';
         c.fillText(label, w / 2, h / 2 + 2);
       });
-      this.add(new THREE.PlaneGeometry(0.44, 0.11), tag.material(), x, H + 0.075, front - facing * 0.01, { cast: false, ry: facing > 0 ? 0 : Math.PI });
-      this.box(0.46, 0.13, 0.015, base, x, H + 0.01, front - facing * 0.02, false);
+      const tx = kind === 'guest' ? x + 0.12 : x;
+      this.add(new THREE.PlaneGeometry(0.4, 0.1), tag.material(), tx, H + 0.07, front - facing * 0.01, { cast: false, ry });
+      this.box(0.42, 0.12, 0.015, base, tx, H + 0.01, front - facing * 0.02, false);
     };
-    const grades = ['1학년', '2학년', '3학년', '4학년', '5학년', '6학년', '손님용'];
-    for (let i = 0; i < 5; i++) unit(11.8 + i * 1.25, L.z0 + 0.28, 1, grades[i]);
-    for (let i = 0; i < 2; i++) unit(15.9 + i * 1.25, L.z1 - 0.28, -1, grades[5 + i]);
+    for (let i = 0; i < 2; i++) unit(15.9 + i * 1.25, L.z1 - 0.28, -1, '내빈용', 1.2, 'guest');
+    for (let i = 0; i < 3; i++) unit(14.6 + i * 1.15, L.z0 + 0.28, 1, '교직원', 1.15, 'staff');
     // 우산꽂이 (문 옆)
     this.add(new THREE.CylinderGeometry(0.16, 0.14, 0.5, 14), paint(0x8d99ae, 0.4, 0.6), 17.72, 0.25, -3.75);
     for (let i = 0; i < 3; i++) this.add(new THREE.CylinderGeometry(0.012, 0.012, 0.75, 6), paint([0x1d3557, 0xe63946, 0xffc300][i], 0.5), 17.68 + i * 0.04, 0.45, -3.78 + i * 0.03);
 
-    // 북쪽 벽: 학교 안내도 (알루미늄 액자) + 우리 학교 소식 게시판 + 긴 의자
+    // 북쪽 벽: 학교 안내도 + 육각형 「우리가 키우는 6가지 힘」 + 물결 쿠션 의자
     const wallZ = L.z1 - 0.1;
-    this.framed(this.guideMap(), 1.5, 0.95, 12.05, 1.62, wallZ);
-    this.framed(this.newsBoard(), 1.9, 1.07, 14.2, 1.6, wallZ);
-    // 긴 의자 (신발 갈아 신을 때 앉는 곳)
-    const bx = 14.2, bz = wallZ - 0.22;
-    this.box(1.6, 0.04, 0.34, this.wood, bx, 0.4, bz, true, TILE.oak);
-    for (const dx of [-0.7, 0.7]) this.box(0.05, 0.4, 0.3, paint(0x6b7076, 0.4, 0.6), bx + dx, 0, bz, false);
-    this.colliders.push({ ...aabb(bx, bz, 1.6, 0.34), level: this.level });
-    // 남쪽 벽 (신발장 위): 안내문 두 장
-    this.poster(['실내화로 갈아 신어요', '바깥 신발은 신발장에', '복도에서는 천천히 걸어요'], 1.0, 0.62, 13.0, 1.72, L.z0 + 0.11, 0, '#2a9d8f');
-    this.poster(['비 오는 날', '우산은 우산꽂이에', '젖은 신발은 털고 들어와요'], 0.9, 0.56, 15.6, 1.72, L.z0 + 0.11, 0, '#457b9d');
+    this.framed(this.guideMap(), 1.5, 0.95, 12.0, 1.62, wallZ);
+    this.hexWall(14.1, 1.75, wallZ);
+    this.cushionBench(14.1, wallZ - 0.22, 1.7, -1);
+    // 남쪽 벽: 나무 모양 책장 두 그루 + 그 사이 초록 쿠션 의자, 교직원 신발장 위 안내문
+    this.treeShelf(11.78, L.z0 + 0.1, 1, true);
+    this.treeShelf(13.62, L.z0 + 0.1, 1);
+    this.cushionBench(12.7, L.z0 + 0.32, 1.25, 1);
+    this.poster(['실내화로 갈아 신어요', '바깥 신발은 신발장에', '복도에서는 천천히 걸어요'], 1.0, 0.62, 15.75, 1.75, L.z0 + 0.11, 0, '#2a9d8f');
     // 천장에 매단 방향 표지판 (들어오는 쪽에서 보이게: 왼쪽 = 북쪽, 오른쪽 = 남쪽)
     this.directionSign(11.55, 2.28, (L.z0 + L.z1) / 2);
   }
@@ -212,77 +230,109 @@ export class FirstFloorBuilder extends HQBuilder {
     return t;
   }
 
-  /** 코르크 게시판: 이번 주 급식 · 6학년 시간표 · 알림 · 그림 */
-  private newsBoard(): CanvasTex {
-    const t = new CanvasTex(960, 540);
-    t.draw((c, w, h) => {
-      c.fillStyle = '#c99a63';
-      c.fillRect(0, 0, w, h);
-      let r = 5;
-      const rnd = () => ((r = (r * 16807) % 2147483647) / 2147483647);
-      for (let i = 0; i < 2600; i++) {
-        c.fillStyle = rnd() < 0.5 ? 'rgba(120,80,40,0.35)' : 'rgba(235,200,150,0.35)';
-        c.fillRect(rnd() * w, rnd() * h, 2, 2);
+  /** 육각형 게시판: 6가지 핵심역량 + 빈 육각 칸(색 배경). 벽에서 조금 떠 있는 판 (북쪽 벽, 남쪽을 바라봄) */
+  private hexWall(xc: number, yc: number, z: number) {
+    const r = 0.25, dx = Math.sqrt(3) * r, dy = 1.5 * r;
+    const items: ([number, number, string, string, string] | [number, number, null, string])[] = [
+      [0, 0, '지식정보처리', '#7cc4f0', '궁금한 것을 찾고\n바르게 쓰는 힘'],
+      [1, 0, '창의적 사고', '#f7d64a', '새로운 생각을\n만들어 내는 힘'],
+      [2, 0, '공동체', '#8fd694', '함께 돕고\n규칙을 지키는 힘'],
+      [3, 0, null, '#f4b6c8'],
+      [4, 0, '자기관리', '#f7b267', '스스로 계획하고\n해내는 힘'],
+      [0.5, -1, null, '#a8d8f0'],
+      [1.5, -1, '의사소통', '#c3a5e8', '내 생각을 말하고\n잘 듣는 힘'],
+      [2.5, -1, '심미적 감성', '#f4a6c1', '아름다움을\n느끼는 마음'],
+      [3.5, -1, null, '#f9e27a'],
+    ];
+    const x0 = xc - 2 * dx;
+    const hexGeo = (rad: number, d: number) => {
+      const g = new THREE.CylinderGeometry(rad, rad, d, 6);
+      g.rotateX(Math.PI / 2);
+      return g;
+    };
+    for (const it of items) {
+      const [cx, cy] = it;
+      const x = x0 + cx * dx, y = yc + cy * dy;
+      const col = new THREE.Color(it[3]);
+      if (it[2] === null) {
+        // 빈 육각 칸: 흰 테두리 + 안쪽 색 (움푹한 느낌)
+        this.add(hexGeo(r, 0.04), paint(0xffffff, 0.6), x, y, z - 0.02, { cast: false });
+        this.add(hexGeo(r * 0.8, 0.02), paint(col.getHex(), 0.7), x, y, z - 0.035, { cast: false });
+        continue;
       }
-      c.fillStyle = '#2f6b4f';
-      c.fillRect(0, 0, w, 64);
-      c.fillStyle = '#fff';
-      c.font = font(36, true);
+      const [, , title, colour, desc] = it as [number, number, string, string, string];
+      this.add(hexGeo(r, 0.05), paint(new THREE.Color(colour).getHex(), 0.6), x, y, z - 0.025, { cast: false });
+      const t = new CanvasTex(256, 256);
+      t.draw((c, w, h) => {
+        c.clearRect(0, 0, w, h);
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillStyle = '#1f2d3d';
+        c.font = font(title.length > 5 ? 34 : 40, true);
+        c.fillText(title, w / 2, h / 2 - 22);
+        c.fillStyle = 'rgba(31,45,61,0.8)';
+        c.font = font(21);
+        desc.split('\n').forEach((l, i) => c.fillText(l, w / 2, h / 2 + 22 + i * 26));
+      });
+      this.add(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshBasicMaterial({ map: t.tex, transparent: true, toneMapped: false, depthWrite: false }), x, y, z - 0.052, { cast: false, receive: false, ry: Math.PI });
+    }
+    // 제목
+    const head = new CanvasTex(1024, 96);
+    head.draw((c, w, h) => {
+      c.clearRect(0, 0, w, h);
+      c.fillStyle = '#2b7a64';
+      c.font = font(56, true);
       c.textAlign = 'center';
       c.textBaseline = 'middle';
-      c.fillText('우리 학교 소식', w / 2, 34);
-      const paper = (x: number, y: number, pw: number, ph: number, head: string, headCol: string, lines: string[], rot: number, size = 22) => {
-        c.save();
-        c.translate(x + pw / 2, y + ph / 2);
-        c.rotate(rot);
-        c.fillStyle = 'rgba(0,0,0,0.18)';
-        c.fillRect(-pw / 2 + 5, -ph / 2 + 6, pw, ph);
-        c.fillStyle = '#ffffff';
-        c.fillRect(-pw / 2, -ph / 2, pw, ph);
-        c.fillStyle = headCol;
-        c.fillRect(-pw / 2, -ph / 2, pw, 44);
-        c.fillStyle = '#fff';
-        c.font = font(25, true);
-        c.textAlign = 'center';
-        c.fillText(head, 0, -ph / 2 + 23);
-        c.fillStyle = '#243447';
-        c.font = font(size);
-        c.textAlign = 'left';
-        lines.forEach((l, i) => c.fillText(l, -pw / 2 + 16, -ph / 2 + 74 + i * (size + 12)));
-        c.fillStyle = '#e63946';
-        c.beginPath();
-        c.arc(0, -ph / 2 + 8, 7, 0, Math.PI * 2);
-        c.fill();
-        c.restore();
-      };
-      paper(24, 88, 330, 250, '이번 주 급식', '#e76f51', ['월  돈가스 ★ · 미역국', '화  카레라이스 · 깍두기', '수  짜장밥 · 탕수육', '목  비빔밥 · 미역국', '금  스파게티 · 마늘빵'], -0.02);
-      paper(382, 92, 300, 262, '6학년 월요일', '#457b9d', ['1교시  국어', '2교시  수학', '3교시  모둠 활동', '4교시  미술', '점심  급식 (12:10)', '5교시  체육'], 0.015, 21);
-      paper(712, 88, 222, 200, '알림', '#2a9d8f', ['실내화 꼭 신기', '복도에서 천천히', '분실물은 교무실'], 0.03);
-      paper(712, 312, 222, 196, '그림 대회', '#9b5de5', ['주제: 우리 학교', '마감: 금요일', '1층 복도 전시'], -0.025);
-      paper(40, 366, 300, 150, '도서관', '#f4a261', ['점심시간에 열어요', '책 2권까지 빌려요'], 0.02);
-      // 아이 그림 (해·집)
-      c.save();
-      c.translate(392, 380);
-      c.rotate(-0.02);
-      c.fillStyle = '#fff';
-      c.fillRect(0, 0, 290, 140);
-      c.fillStyle = '#ffd166';
-      c.beginPath();
-      c.arc(240, 40, 26, 0, Math.PI * 2);
-      c.fill();
-      c.fillStyle = '#ef476f';
-      c.fillRect(40, 70, 90, 60);
-      c.fillStyle = '#118ab2';
-      c.beginPath();
-      c.moveTo(30, 72);
-      c.lineTo(85, 30);
-      c.lineTo(140, 72);
-      c.fill();
-      c.fillStyle = '#06d6a0';
-      c.fillRect(0, 128, 290, 12);
-      c.restore();
+      c.fillText('우리가 키우는 여섯 가지 힘', w / 2, h / 2);
     });
-    return t;
+    this.add(new THREE.PlaneGeometry(1.9, 0.18), new THREE.MeshBasicMaterial({ map: head.tex, transparent: true, toneMapped: false, depthWrite: false }), xc, yc + dy + r + 0.12, z - 0.005, { cast: false, receive: false, ry: Math.PI });
+  }
+
+  /** 초록 쿠션 의자: 밝은 나무 받침 + 초록 방석 + 물결 모양 등받이 쿠션 (facing: +1 = +z 쪽을 봄) */
+  private cushionBench(x: number, z: number, len: number, facing: 1 | -1) {
+    const D = 0.42, birch = paint(0xe8d3b0, 0.6), g1 = paint(0x8cc43f, 0.8), g2 = paint(0x6fae2f, 0.8);
+    this.box(len, 0.36, D, birch, x, 0, z);
+    this.rbox(len - 0.02, 0.08, D - 0.04, g1, x, 0.36, z + facing * 0.01, 0.03);
+    const n = Math.max(3, Math.round(len / 0.3));
+    const w = (len - 0.04) / n;
+    for (let i = 0; i < n; i++) this.rbox(w - 0.02, 0.4, 0.09, i % 2 ? g2 : g1, x - len / 2 + 0.02 + (i + 0.5) * w, 0.42, z - facing * (D / 2 - 0.05), 0.04);
+    this.colliders.push({ ...aabb(x, z, len, D), level: this.level });
+  }
+
+  /** 나무 모양 책장 (벽에 붙음): 줄기 + 가지 + 작은 선반 + 책 + 벽에 그린 잎 (dir: 벽에서 방 쪽 = +z면 1) */
+  private treeShelf(x: number, wallZ: number, dir: 1 | -1, flip = false) {
+    const birch = paint(0xe3c9a0, 0.6), leafA = paint(0x5fae4f, 0.8), leafB = paint(0x3f8f3a, 0.8);
+    const zf = wallZ + dir * 0.06, m = flip ? -1 : 1;
+    this.box(0.13, 2.1, 0.1, birch, x, 0, zf);
+    const branch = (len: number, y: number, ang: number) => {
+      const b = this.box(len, 0.07, 0.08, birch, x + m * Math.cos(ang) * len * 0.5 * Math.sign(ang || 1), y, zf);
+      b.rotation.z = ang;
+    };
+    branch(0.55, 1.15, m * 0.5);
+    branch(0.45, 1.6, -m * 0.55);
+    branch(0.4, 1.95, m * 0.6);
+    const books = [0xe63946, 0x457b9d, 0xf4a261, 0x2a9d8f, 0xffd166, 0x9b5de5];
+    let k = 0;
+    for (const [sx, y, w] of [[m * 0.3, 0.55, 0.42], [-m * 0.28, 0.95, 0.38], [m * 0.32, 1.35, 0.4], [-m * 0.26, 1.75, 0.34]] as [number, number, number][]) {
+      this.box(w, 0.025, 0.2, birch, x + sx, y, wallZ + dir * 0.11);
+      for (let i = 0; i < 3; i++) {
+        const bh = 0.16 + ((k * 7) % 3) * 0.03;
+        this.box(0.035, bh, 0.15, paint(books[k++ % books.length], 0.6), x + sx - w / 2 + 0.08 + i * 0.05, y + 0.025, wallZ + dir * 0.11, false);
+      }
+      // 앞을 보는 그림책 한 권
+      const pb = this.box(0.14, 0.18, 0.015, paint(books[k++ % books.length], 0.6), x + sx + w / 2 - 0.1, y + 0.025, wallZ + dir * 0.17, false);
+      pb.rotation.x = -dir * 0.15;
+    }
+    // 벽에 그린 잎
+    const leafGeo = new THREE.CircleGeometry(0.11, 12);
+    leafGeo.scale(1, 0.55, 1);
+    const spots: [number, number, number][] = [[0.45, 1.25, 0.6], [0.6, 1.5, -0.4], [-0.45, 1.75, 0.5], [-0.55, 1.5, -0.6], [0.4, 2.1, 0.3], [0.1, 2.25, -0.2], [-0.25, 2.15, 0.7], [0.62, 1.95, -0.3]];
+    spots.forEach(([lx, ly, rot], i) => {
+      const leaf = this.add(leafGeo, i % 2 ? leafA : leafB, x + m * lx, ly, wallZ + dir * 0.004, { cast: false, receive: false, ry: dir > 0 ? 0 : Math.PI });
+      leaf.rotation.z = rot;
+    });
+    this.colliders.push({ ...aabb(x, wallZ + dir * 0.12, 0.9, 0.24), level: this.level });
   }
 
   /** 천장에 매단 방향 표지판 (현관에서 복도 쪽을 볼 때 읽힘) */

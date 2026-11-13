@@ -14,6 +14,8 @@
 | 글꼴 | Pretendard (본문, 400·600·700·800, KS X 1001 subset) | https://github.com/orioncactus/pretendard (npm pretendard@1.3.9) | SIL OFL 1.1 | `src/assets/fonts/` · 게임에 포함(인터넷 없이 동작) · 라이선스 `LICENSE-Pretendard.txt` |
 | 글꼴 | Jua (제목·이름·시계) | https://fonts.google.com/specimen/Jua (npm @fontsource/jua@5.2.5) | SIL OFL 1.1 | `src/assets/fonts/` · 라이선스 `LICENSE-Jua.txt` |
 | PBR 재질 | 인조석 바닥·페인트 벽·참나무·마루 (색·노멀·거칠기) | Poly Haven (아래 표) | CC0 | `public/textures/` · 못 불러오면 단색 재질로 대신 |
+| 3D 모델 | 내빈용 슬리퍼 (`src/world/slipper.ts`) | 이 저장소 코드에서 직접 만든 모델 (밑창 Extrude + 발등 덮개) | CC0 (이 프로젝트가 공개) | CC0 슬리퍼 모델을 찾아봤으나(2026-11-13) Poly Haven에는 고무장화뿐, Quaternius·ambientCG에는 없음, Sketchfab·Kenney·Poly Pizza는 작업 환경에서 접속 불가 → 직접 제작 |
+| 그림(텍스처) | 정문 외벽(크림 뿜칠)·벽돌·화강석·보도블록·잔디·흙·타일 기둥·점자블록·시트지 그림 | 코드에서 캔버스로 직접 그림 (`exteriorTex.ts`, `EntranceHQ.ts`) | 이 프로젝트 | 외부 그림 파일 없음 |
 | 그림(텍스처) | 칠판·급식표·게시판·시계·바닥 무늬·돈가스 빵가루 | 코드에서 캔버스로 직접 그림 (`canvasTex.ts`) | 이 프로젝트 | 외부 그림 파일 없음 |
 | 효과음 | 종소리·줍기·성공·페이지 넘김 등 | WebAudio로 직접 합성 (`src/core/Audio.ts`) | 이 프로젝트 | 외부 소리 파일 없음 |
 | 글꼴 | 컴퓨터에 설치된 한글 글꼴 (맑은 고딕 등) | 운영체제 | 각 OS 라이선스 | 글꼴 파일을 배포하지 않음 |

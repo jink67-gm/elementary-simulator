@@ -33,6 +33,7 @@ const shots = {
   lobby_west: [[17.7, Y + 1.6, -1.6], [11, Y + 1.35, -1.6]],
   lobby_boards: [[15.6, Y + 1.55, -3.3], [12.6, Y + 1.5, 1.0]],
   lobby_doors: [[11.9, Y + 1.6, -0.6], [18.5, Y + 1.3, -2.2]],
+  lobby_slippers: [[16.3, Y + 1.75, -1.1], [16.6, Y + 1.0, 0.75]],
 };
 for (const [name, v] of Object.entries(shots)) {
   await page.evaluate((v) => {
