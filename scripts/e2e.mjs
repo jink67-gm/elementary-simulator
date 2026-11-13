@@ -489,9 +489,11 @@ try {
     await noDialogue();
   }
   async function waitRobot(sol) {
-    await waitFor('사건 2 해결 ' + sol, (s) => s.results?.robot === sol && s.period === 'dodgeball', 150000);
+    // 로봇이 스스로 물건을 옮기는 시간은 게임 시간 기준이라, 소프트웨어 렌더링(초당 5~7프레임)에서는 실제로 오래 걸린다
+    const t0 = Date.now();
+    await waitFor('사건 2 해결 ' + sol, (s) => s.results?.robot === sol && s.period === 'dodgeball', 300000);
     await noDialogue();
-    log('사건 2 → ' + sol + ', 사건 3으로 넘어감');
+    log('사건 2 → ' + sol + `, 사건 3으로 넘어감 (${Math.round((Date.now() - t0) / 1000)}초)`);
   }
   const COMP_Z = { books: -4.0, tools: -3.4, paper: -2.8 };
 
