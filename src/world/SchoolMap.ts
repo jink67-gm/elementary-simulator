@@ -743,13 +743,13 @@ export class SchoolMap {
     stack.visible = false;
     this.root.add(stack);
     this.objs.cutletStack = stack;
-    // 식판 수레 (반납창 옆, 식사 쪽)
-    const cart = group(14.3, 22.75);
+    // 식판 수레 (식사 공간 동쪽 벽)
+    const cart = group(14.35, 20.4); // 동쪽 벽 초록 기둥 사이 (조리실 문 앞을 막지 않게)
     const cartSteel = steel.clone();
     this.box(0.7, 0.75, 0.6, 0x9aa3ad, 0, 0, 0, { parent: cart }).material = cartSteel;
     const trayMat = paint(0xcfd5da, 0.3, 0.6).clone();
     for (let i = 0; i < 6; i++) this.box(0.42, 0.03, 0.32, 0xd7dde3, 0, 0.75 + i * 0.035, 0, { parent: cart, shadow: false }).material = trayMat;
-    this.colliders.push(lv0(aabb(14.3, 22.75, 0.7, 0.6)));
+    this.colliders.push(lv0(aabb(14.35, 20.4, 0.7, 0.6)));
     this.objs.trayCart = cart;
 
     // ── 조리실 작업대 + 거대 돈가스 + 안전 절단기 ──
