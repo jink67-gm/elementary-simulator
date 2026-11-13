@@ -97,8 +97,13 @@ async function npcIdle(id) {
   }
 }
 async function selectItem(item) {
+  // 느린 렌더링(초당 5프레임)에서는 줍기가 다음 프레임에 처리되므로 잠깐 기다린다
+  let idx = -1;
+  for (let i = 0; i < 15 && idx < 0; i++) {
+    idx = await page.evaluate((it) => window.__sim.game.inventory.slots.indexOf(it), item);
+    if (idx < 0) await sleep(200);
+  }
   const s = await state();
-  const idx = await page.evaluate((it) => window.__sim.game.inventory.slots.indexOf(it), item);
   if (idx < 0) throw new Error(`소지품에 ${item} 없음: ${s.inventory}`);
   await page.keyboard.press(`Digit${idx + 1}`);
   await sleep(80);
