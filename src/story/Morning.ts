@@ -17,6 +17,7 @@ import { openFolding, openInfo, openRps, openSpeech, SPEECH_CARDS } from '../min
 import { panelsOpen } from '../ui/Panel';
 import { wa } from '../ui/dom';
 import { CutletEvent } from './Cutlet';
+import { FLOOR1_Y } from '../world/SchoolMap';
 import { RobotEvent } from './Robot';
 import { DodgeEvent } from './Dodgeball';
 import { HallwayEvent } from './Hallway';
@@ -25,7 +26,8 @@ import type { Ending } from './finalLogic';
 import type { StoryEvent } from './StoryEvent';
 
 const never = () => new Promise<never>(() => {});
-const SPAWN = { x: 9, z: -11.8 };
+/** 등교 시작: 1층 현관 앞 마당 (서쪽 현관을 바라봄) */
+const SPAWN = { x: 18.6, z: -1.5, y: FLOOR1_Y, yaw: -Math.PI / 2 };
 const ROLE_ITEMS: Record<GroupRole, ItemId> = { speaker: 'roleSpeaker', maker: 'roleMaker', researcher: 'roleResearcher', organizer: 'roleOrganizer' };
 const ROLE_NAMES: Record<GroupRole, string> = { speaker: '발표', maker: '제작', researcher: '자료', organizer: '정리' };
 const WISH_THEME: Record<Wish, PosterTheme> = { lunch: 'food', break: 'rest', sport: 'play', clean: 'friends' };
@@ -516,7 +518,7 @@ export class Morning implements StoryHooks {
 
   private boardText(p: PeriodId): string[] {
     switch (p) {
-      case 'arrival': return ['6학년 3반', '오늘도 무사히 하교하기!'];
+      case 'arrival': return ['6학년 1반', '오늘도 무사히 하교하기!'];
       case 'korean': return ['1교시 국어', '국어책 86쪽 · 인물의 마음 짐작하기'];
       case 'break': return ['쉬는 시간', '복도에서 뛰지 않기!'];
       case 'math': return ['2교시 수학', '태블릿 퀴즈 대결!'];
@@ -694,7 +696,7 @@ export class Morning implements StoryHooks {
     // 플레이어
     if (fromLoad) {
       if (p === 'arrival') {
-        g.player.teleport(SPAWN.x, SPAWN.z, 0);
+        g.player.teleport(SPAWN.x, SPAWN.z, SPAWN.yaw, SPAWN.y);
       } else if (p === 'group') g.player.teleport(1.6, 3.2, Math.PI);
       else if (p === 'lunch') g.player.teleport(8.6, -3, 0);
       else if (p === 'break') g.player.teleport(-1.2, 1.0, Math.PI);
@@ -795,14 +797,14 @@ export class Morning implements StoryHooks {
   private async arrival() {
     const g = this.g;
     this.phase = 'bag';
-    if (!this.f('pencilReturned') && !this.g.inventory.has('pencilCase')) g.spawnItem('pencil', 'pencilCase', 10.15, 0, -6.6, 0.4);
+    if (!this.f('pencilReturned') && !this.g.inventory.has('pencilCase')) g.spawnItem('pencil', 'pencilCase', 13.4, FLOOR1_Y, -3.5, 0.4); // 1층 현관 신발장 앞
     if (this.f('overslept')) {
       await this.sleep(0.6);
       this.toast('헉, 8시 52분! 아슬아슬하다…', 'warn');
     }
     const takenOver = () => this.phase === 'teacher';
     if (!this.f('bagOnDesk')) {
-      g.setObjective('6학년 3반 교실로 가서 내 자리에 가방 걸기 (가방 들고 책상에서 F)', this.inter.seat);
+      g.setObjective('2층 6학년 1반 교실로 가서 내 자리에 가방 걸기 (현관 → 계단 → 가방 들고 책상에서 F)', this.inter.seat);
       await this.until(() => this.f('bagOnDesk'));
     }
     if (takenOver()) return;
@@ -824,6 +826,12 @@ export class Morning implements StoryHooks {
   }
 
   private autoArrival() {
+    // 아직 1층에 있으면 교실 앞으로 데려다준다 (종이 울렸으니)
+    if (this.g.map.levelOf(this.g.player.pos.y) === 0) {
+      this.g.player.teleport(8.6, -4.6, -Math.PI / 2);
+      this.g.tpc.behind(this.g.player.yaw);
+      this.toast('선생님: 「얼른 올라와요~」 교실 앞까지 뛰어왔다!');
+    }
     if (!this.f('bagOnDesk')) {
       this.g.take('bag');
       this.set('bagOnDesk');
@@ -1470,7 +1478,7 @@ export class Morning implements StoryHooks {
           this.set('askedPencil');
           if (!this.g.inventory.has('pencilCase')) this.g.setObjective(this.g.hud.objectiveText + ' · (선택) 준호 필통 찾아 주기', this.g.items.get('pencil')?.obj.position.clone().setY(0.6) ?? null);
         }
-        return say('내 필통 못 봤어? 파란색인데… 복도 신발장에서 신발 갈아 신다가 떨어뜨렸나?');
+        return say('내 필통 못 봤어? 파란색인데… 1층 현관 신발장에서 신발 갈아 신다가 떨어뜨렸나?');
       }
       if (p === 'break') {
         if (!this.f('gotPlane') && !this.g.inventory.has('paperPlane')) {

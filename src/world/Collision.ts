@@ -8,6 +8,8 @@ export interface Aabb {
   /** 문처럼 켜고 끌 수 있는 벽 */
   enabled?: boolean;
   tag?: string;
+  /** 층: 0 = 1층, 1 = 2층, 'both'·없음 = 두 층 모두 (계단 벽 등) */
+  level?: 0 | 1 | 'both';
 }
 
 export interface Circle {

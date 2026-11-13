@@ -29,9 +29,14 @@ export class Player {
     return this.char.root;
   }
 
-  teleport(x: number, z: number, yaw = this.yaw) {
+  /** 바닥 높이 (층·계단). Game이 지도에 맞춰 넣어 준다 */
+  groundAt: (x: number, z: number, y: number) => number = () => 0;
+
+  /** y를 주지 않으면 2층(우리 반 층, y=0) */
+  teleport(x: number, z: number, yaw = this.yaw, y = 0) {
     this.seat = null;
-    this.pos.set(x, 0, z);
+    this.vy = 0;
+    this.pos.set(x, y, z);
     this.yaw = yaw;
     this.char.setPose('stand');
     this.sync();
@@ -107,10 +112,18 @@ export class Player {
       this.pos.z += mz * this.speed * dt;
     }
     // 점프
-    if (!this.frozen && !this.spaceBusy && input.pressed('Space') && this.pos.y <= 0.001) this.vy = 4.2;
-    this.vy -= 12 * dt;
-    this.pos.y = Math.max(0, this.pos.y + this.vy * dt);
-    if (this.pos.y === 0) this.vy = 0;
+    // 바닥(층·계단 높이)에 붙어 걷고, 점프하면 잠깐 떠오른다
+    const ground = this.groundAt(this.pos.x, this.pos.z, this.pos.y);
+    const onGround = this.pos.y <= ground + 0.02;
+    if (!this.frozen && !this.spaceBusy && input.pressed('Space') && onGround) this.vy = 4.2;
+    if (this.vy <= 0 && this.pos.y - ground < 0.45 && this.pos.y - ground > -0.6) {
+      this.pos.y = ground; // 계단 오르내리기
+      this.vy = 0;
+    } else {
+      this.vy -= 12 * dt;
+      this.pos.y = Math.max(ground, this.pos.y + this.vy * dt);
+      if (this.pos.y === ground) this.vy = 0;
+    }
 
     const c: Circle = { x: this.pos.x, z: this.pos.z, r: PLAYER_RADIUS };
     for (const o of others) separateCircles(c, o);

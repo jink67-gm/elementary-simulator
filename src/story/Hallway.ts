@@ -25,7 +25,7 @@ const DOORS: { id: CardId; x: number; z: number; ry: number }[] = [
   { id: 'break', x: 10.97, z: 13.6, ry: -Math.PI / 2 },
 ];
 const TAPES: [number, number, number][] = [
-  [10.75, 1.02, -9.6], // 신발장 위
+  [10.55, 0.03, -14.6], // 계단 입구 앞 바닥
   [7.45, 1.22, 10.5], // 정수기 위
   [9.0, 0.03, 15.3], // 급식실 문 앞 바닥
 ];
@@ -58,7 +58,8 @@ export class HallwayEvent implements StoryEvent {
     this.deco.visible = false;
     this.buildDeco();
     // 교실 앞문·뒷문 막기 (시간이 멈춘 동안 교실 문이 안 열림)
-    this.blockers = [aabb(7.1, -4.6, 0.3, 1.6), aabb(7.1, 5.4, 0.3, 1.6)];
+    // + 계단 입구도 막는다 (시간이 멈춘 동안 2층에 갇힘)
+    this.blockers = [aabb(7.1, -4.6, 0.3, 1.6), aabb(7.1, 5.4, 0.3, 1.6), { ...aabb(11.1, -15.05, 0.3, 2.1), level: 1 }];
     for (const b of this.blockers) {
       b.enabled = false;
       g.map.colliders.push(b);
@@ -349,7 +350,7 @@ export class HallwayEvent implements StoryEvent {
     const c = m.n(id).talkCount++;
     const pick = (a: string[]) => a[c % a.length];
     const lines: Partial<Record<MainNpcId, string>> = {
-      harin: pick(['시계 숫자는 다 엉터리야. 문 너머에 뭐가 있었는지를 봐!', '방송 테이프가 신발장 위에 있던데?']),
+      harin: pick(['시계 숫자는 다 엉터리야. 문 너머에 뭐가 있었는지를 봐!', '방송 테이프가 계단 입구 쪽 바닥에 떨어져 있던데?']),
       seoa: pick([hasExtraHint(m.save) ? '아까 조사한 AI 설명서에 「첫 수업은 국어」라고 있었어.' : '첫 수업이 뭐였는지부터 떠올려 봐.', '쉬는 시간은 1교시랑 2교시 사이였지.']),
       junho: pick(['정수기 위에 테이프 같은 거 있어!', '체육은 아직이었으니까 카드에 없겠지?']),
       minjae: pick(['급식실 문 앞에도 뭐가 떨어져 있던데?', '점심은 무조건 마지막이지. 그건 확실해.']),

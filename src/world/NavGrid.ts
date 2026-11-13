@@ -29,7 +29,7 @@ export class NavGrid {
       for (let c = 0; c < this.cols; c++) {
         const { x, z } = this.center(c, r);
         for (const b of boxes) {
-          if (b.enabled === false) continue;
+          if (b.enabled === false || b.level === 0) continue; // 길찾기는 2층(인물들이 다니는 층)만
           if (x > b.minX - inflate && x < b.maxX + inflate && z > b.minZ - inflate && z < b.maxZ + inflate) {
             this.blocked[r * this.cols + c] = 1;
             break;

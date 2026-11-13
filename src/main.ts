@@ -78,10 +78,10 @@ async function boot() {
         const d = Math.hypot(dx, dz) || 1;
         let x = p.x + (dx / d) * dist, z = p.z + (dz / d) * dist;
         if (id === 'seat') { x = p.x; z = p.z + 0.5; }
-        pl.teleport(x, z, Math.atan2(p.x - x, p.z - z));
+        pl.teleport(x, z, Math.atan2(p.x - x, p.z - z), p.y < -1.8 ? -3.6 : 0);
         return true;
       },
-      teleport: (x: number, z: number) => game.player.teleport(x, z),
+      teleport: (x: number, z: number, y = 0) => game.player.teleport(x, z, undefined, y),
       skipTo: (p: PeriodId) => {
         if (!PERIODS.includes(p)) return false;
         game.save.period = p;

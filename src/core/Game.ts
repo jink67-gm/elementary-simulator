@@ -224,6 +224,7 @@ export class Game {
     if (this.player) this.scene.remove(this.player.object);
     this.player = new Player(PLAYER_LOOKS[save.avatar.look % PLAYER_LOOKS.length]);
     this.scene.add(this.player.object);
+    this.player.groundAt = (x, z, y) => this.map.groundY(x, z, y);
     for (const k of [...this.items.keys()]) this.removeItem(k);
     this.inventory.load(save.inventory);
     this.running = true;
@@ -324,14 +325,16 @@ export class Game {
       this.chargeBar.classList.add('hidden');
     }
 
-    this.player.update(dt, input, this.tpc.yaw, this.map.colliders, npcCircles);
+    // 2층 인물·공은 1층에 있을 때 부딪히지 않는다
+    const level = this.map.levelOf(this.player.pos.y);
+    this.player.update(dt, input, this.tpc.yaw, this.map.collidersFor(level), level === 1 ? npcCircles : []);
     this.playerVel.copy(this.player.pos).sub(this.lastPlayerPos).divideScalar(dt || 1);
 
     for (const n of Object.values(this.npcs)) n.update(dt);
     for (const n of this.fillers) n.update(dt);
-    this.plane.update(dt, this.map.colliders);
-    this.ball.update(dt, this.map.colliders, this.player.pos, this.playerVel);
-    if (this.robot.root.visible) this.robot.update(dt, this.map.colliders, this.remote && !this.cutscene && !input.captured ? input : undefined, this.tpc.yaw);
+    this.plane.update(dt, this.map.collidersFor(1));
+    this.ball.update(dt, this.map.collidersFor(1), this.player.pos, this.playerVel);
+    if (this.robot.root.visible) this.robot.update(dt, this.map.collidersFor(1), this.remote && !this.cutscene && !input.captured ? input : undefined, this.tpc.yaw);
     if (this.remote && !this.cutscene && !input.captured) {
       if (input.pressed('Space') || input.pressed('MouseLeft')) this.remote.onAction();
       else if (input.pressed('E')) this.remote.onExit();
@@ -377,7 +380,9 @@ export class Game {
 
     // 목표 화살표
     if (this.markerTarget && !this.cutscene) {
-      const t = this.markerTarget();
+      let t = this.markerTarget();
+      // 다른 층에 있는 목표면 먼저 계단을 가리킨다
+      if (Math.abs(t.y - this.player.pos.y) > 2.4) t = this.map.stairHint(this.map.levelOf(this.player.pos.y));
       const d = Math.hypot(t.x - this.player.pos.x, t.z - this.player.pos.z);
       this.marker.visible = d > 1.1;
       this.marker.position.set(t.x, t.y + 0.35 + Math.sin(performance.now() / 250) * 0.08, t.z);

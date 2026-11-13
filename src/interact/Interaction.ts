@@ -71,6 +71,7 @@ export class InteractionSystem {
     for (const it of this.list) {
       if (!it.obj.visible && !it.at) continue;
       const p = this.position(it);
+      if (Math.abs(p.y - playerPos.y) > 2.4) continue; // 다른 층
       const dx = p.x - playerPos.x, dz = p.z - playerPos.z;
       const d = Math.hypot(dx, dz);
       const r = it.radius ?? 2;
