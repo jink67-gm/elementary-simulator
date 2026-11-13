@@ -33,6 +33,7 @@ export class FirstFloorBuilder extends HQBuilder {
     c.rotation.x = Math.PI / 2;
     this.blockers.push(c);
     const led = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfffbf2, emissiveIntensity: 1.3, roughness: 0.5 });
+    led.userData.pbr = true; // 천장 등은 한 덩어리로 합쳐 그린다
     for (const [lx, lz] of lamps) {
       this.box(0.66, 0.03, 0.66, this.alu, lx, CEIL_H - 0.032, lz, false);
       this.box(0.6, 0.012, 0.6, led, lx, CEIL_H - 0.042, lz, false);

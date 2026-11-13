@@ -129,6 +129,7 @@ export class CafeteriaWingBuilder extends HQBuilder {
   // ───────── 천장 (방마다, 바닥에서 3m) + LED ─────────
   private ceilings() {
     const led = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfffbf2, emissiveIntensity: 1.3, roughness: 0.5 });
+    led.userData.pbr = true; // 천장 등은 한 덩어리로 합쳐 그린다
     const room = (x0: number, x1: number, z0: number, z1: number, lamps: [number, number][]) => {
       const w = x1 - x0, d = z1 - z0;
       const c = this.add(worldUV(new THREE.PlaneGeometry(w, d), w, d, 0, TILE.ceiling), pbr('ceiling', { roughness: 0.95 }), (x0 + x1) / 2, CEIL_H - 0.002, (z0 + z1) / 2, { cast: true });

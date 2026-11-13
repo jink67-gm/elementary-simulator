@@ -12,7 +12,10 @@ import type { Line } from '../ui/Dialogue';
 import type { Npc } from '../npc/Npc';
 import type { Interactable } from '../interact/Interaction';
 import { SCHEDULE, clockMinutes, formatClock, nextPeriod } from './schedule';
-import { makeItemMesh } from '../world/itemMesh';
+import { itemHalfHeight, makeItemMesh } from '../world/itemMesh';
+import { buildBackpack } from '../world/props/backpack';
+import { buildBook, buildPencilCase, buildPoster, buildTablet, setMiniPosterArt } from '../world/props/items';
+import { drawClassArt } from '../world/props/posterArt';
 import { openTextbookClue, openTextbookFind } from '../minigames/Textbook';
 import { openTablet, WISH_LABELS } from '../minigames/Tablet';
 import { pickQuestions } from '../minigames/quizLogic';
@@ -21,7 +24,7 @@ import { openFolding, openInfo, openRps, openSpeech, SPEECH_CARDS } from '../min
 import { panelsOpen } from '../ui/Panel';
 import { wa } from '../ui/dom';
 import { CutletEvent } from './Cutlet';
-import { FLOOR1_Y } from '../world/SchoolMap';
+import { CLASS_SEATS, FLOOR1_Y } from '../world/SchoolMap';
 import { RobotEvent } from './Robot';
 import { DodgeEvent } from './Dodgeball';
 import { HallwayEvent } from './Hallway';
@@ -59,6 +62,8 @@ export class Morning implements StoryHooks {
   save!: SaveData;
   private ambientT = 0;
   private props: Record<string, THREE.Object3D> = {};
+  private posterStage = -1;
+  private exhibitPosterArt: THREE.Object3D | null = null;
   private inter: Record<string, Interactable> = {};
   private seatPos = new THREE.Vector3();
   private menuViews = 0;
@@ -174,32 +179,93 @@ export class Morning implements StoryHooks {
     };
     const ps = m.seats.player;
     this.seatPos.set(ps.x, 0, ps.z);
-    const bag = add('deskBag', makeItemMesh('bag'), ps.deskX - 0.38, 0.25, ps.deskZ, Math.PI / 2);
-    bag.scale.setScalar(0.9);
-    add('deskBook', makeItemMesh('koreanBook'), ps.deskX - 0.08, 0.67, ps.deskZ + 0.02, 0.1);
-    add('deskTablet', makeItemMesh('tablet'), ps.deskX + 0.15, 0.655, ps.deskZ - 0.02, -0.15);
+    // 책상 옆 가방 고리 + 걸린 가방 (책상 바깥쪽 옆면). 친구들 가방은 하루 종일 걸려 있다
+    const DESK_TOP = 0.66;
+    const hookM = new THREE.MeshStandardMaterial({ color: 0x9aa1a8, roughness: 0.3, metalness: 0.8 });
+    const NPC_BAG: Record<string, [number, number]> = {
+      seoa: [0xe8590c, 0xffe066], harin: [0xf06595, 0xffffff], junho: [0x1c7ed6, 0xff922b], minjae: [0x2f9e44, 0xfab005],
+      filler0: [0x7048e8, 0xffd43b], filler1: [0x495057, 0x63e6be], filler2: [0xc92a2a, 0xffffff],
+    };
+    for (const [px, rz, left, right] of CLASS_SEATS)
+      for (const [side, who] of [[-1, left], [1, right]] as [number, string][]) {
+        const ox = px + side * 0.38 + side * 0.34;
+        const hook = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.004, 6, 10, Math.PI * 1.3), hookM);
+        hook.position.set(ox + side * 0.012, DESK_TOP - 0.06, rz);
+        hook.rotation.set(0, side > 0 ? 0 : Math.PI, Math.PI * 0.85);
+        this.g.scene.add(hook);
+        if (who === 'player') continue;
+        const [col, acc] = NPC_BAG[who] ?? [0x3f6fd8, 0xffc845];
+        const nb = buildBackpack('hung', col, acc);
+        nb.scale.setScalar(0.88);
+        nb.position.set(ox + side * 0.1, DESK_TOP - 0.25, rz);
+        nb.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+        this.g.scene.add(nb);
+      }
+    const bag = add('deskBag', buildBackpack('hung'), ps.deskX - 0.34 - 0.1, DESK_TOP - 0.25, ps.deskZ, -Math.PI / 2);
+    bag.scale.setScalar(0.88);
+    add('deskBook', buildBook('korean'), ps.deskX - 0.05, DESK_TOP + 0.008, ps.deskZ + 0.02, 0.06);
+    add('deskTablet', buildTablet('off'), ps.deskX + 0.17, DESK_TOP + 0.01, ps.deskZ - 0.03, -0.12);
     const ss = m.seats.seoa;
-    add('seoaBook', makeItemMesh('koreanBook'), ss.deskX, 0.67, ss.deskZ, -0.1);
+    add('seoaBook', buildBook('korean', true), ss.deskX, DESK_TOP + 0.008, ss.deskZ, -0.08);
 
-    add('posterSheet', new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.01, 0.6), new THREE.MeshLambertMaterial({ color: 0xfff3b0 })), GROUP_TABLE.x, GROUP_TABLE.top + 0.006, GROUP_TABLE.z);
-    const paperStack = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.06, 0.25), new THREE.MeshLambertMaterial({ color: 0x58c4f6 }));
-    add('colorPaperStack', paperStack, GROUP_TABLE.x - 0.8, GROUP_TABLE.top + 0.031, GROUP_TABLE.z - 0.1);
-    const drawStack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 0.4), new THREE.MeshLambertMaterial({ color: 0xfffaf0 }));
-    add('drawingStack', drawStack, GROUP_TABLE.x + 0.8, GROUP_TABLE.top + 0.031, GROUP_TABLE.z - 0.1);
-    // 전시된 작품
+    // 모둠 책상 위 포스터 (빈 종이 → 역할을 정하면 만드는 중)
+    add('posterSheet', buildPoster(null, 0.9, 0.6, 0), GROUP_TABLE.x, GROUP_TABLE.top + 0.003, GROUP_TABLE.z, Math.PI);
+    add('colorPaperStack', new THREE.Group(), GROUP_TABLE.x - 0.8, GROUP_TABLE.top, GROUP_TABLE.z - 0.1);
+    add('drawingStack', new THREE.Group(), GROUP_TABLE.x + 0.8, GROUP_TABLE.top, GROUP_TABLE.z - 0.1);
+    // 전시된 작품 (게시판에 압정으로 꽂은 종이)
     add('exhibitPlane', makeItemMesh('paperPlane'), -3.6, 2.0, 6.86, Math.PI).scale.setScalar(1.6);
-    const mini = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.6), new THREE.MeshLambertMaterial({ color: 0xffd6a5 }));
-    add('exhibitPoster', mini, -3.0, 2.0, 6.88, Math.PI);
+    const wallPaper = (inner: THREE.Object3D, w: number, l: number) => {
+      const g = new THREE.Group();
+      inner.rotation.x = Math.PI / 2;
+      g.add(inner);
+      const pin = new THREE.MeshStandardMaterial({ color: 0xe63946, roughness: 0.4 });
+      for (const [sx, sy] of [[-1, 1], [1, 1]]) {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(0.012, 8, 6), pin);
+        p.position.set((sx * w) / 2 - sx * 0.03, (sy * l) / 2 - 0.03, 0.012);
+        g.add(p);
+      }
+      return g;
+    };
+    const exPoster = buildPoster(null, 0.45, 0.6, 2);
+    add('exhibitPoster', wallPaper(exPoster, 0.45, 0.6), -3.0, 2.0, 6.9, Math.PI);
+    this.exhibitPosterArt = exPoster;
     // 반 친구들 작품 (분위기)
     for (let i = 0; i < 5; i++) {
-      const p = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5), new THREE.MeshLambertMaterial({ color: [0xcdeac0, 0xffd6e0, 0xcde7f0, 0xfff3b0, 0xe2cfea][i] }));
-      add('classArt' + i, p, -4.9 + i * 0.5 + (i > 2 ? 0.9 : 0), 1.75 + (i % 2) * 0.15, 6.89, Math.PI);
+      const art = new THREE.Group();
+      const lt = new THREE.CanvasTexture(document.createElement('canvas'));
+      const cv = lt.image as HTMLCanvasElement;
+      cv.width = 200;
+      cv.height = 250;
+      drawClassArt(cv.getContext('2d')!, 200, 250, i);
+      lt.colorSpace = THREE.SRGBColorSpace;
+      const sheet = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: lt, roughness: 0.85 }));
+      art.add(sheet);
+      add('classArt' + i, wallPaper(art, 0.4, 0.5), -4.9 + i * 0.5 + (i > 2 ? 0.9 : 0), 1.75 + (i % 2) * 0.15, 6.9, Math.PI);
     }
-    // 수학 시간 친구들 태블릿: 현우가 책상에 놓아 준 것만 보인다 (npcTablet_자리)
+    // 수학 시간 친구들 태블릿: 현우가 책상에 놓아 준 것만 보인다 (npcTablet_자리) — 친구들은 퀴즈 화면
     for (const key of CLASSMATES) {
       const seat = m.seats[key];
-      add('npcTablet_' + key, makeItemMesh('tablet'), seat.deskX + 0.05, 0.665, seat.deskZ - 0.03, 0.1);
+      add('npcTablet_' + key, buildTablet('quiz', 10 + CLASSMATES.indexOf(key)), seat.deskX + 0.05, DESK_TOP + 0.01, seat.deskZ - 0.03, 0.1);
     }
+    // 미술 시간 친구들 책상 위 준비물 (사용 중인 모습)
+    CLASSMATES.forEach((key, i) => {
+      const seat = m.seats[key];
+      const deco = new THREE.Group();
+      const put = (id: Parameters<typeof makeItemMesh>[0], x: number, z: number, ry: number) => {
+        const o = makeItemMesh(id);
+        o.position.set(x, itemHalfHeight(id), z);
+        o.rotation.y = ry;
+        deco.add(o);
+      };
+      put(i % 2 ? 'colorPaper' : 'drawingPaper', 0, 0, 0.2 * (i - 3));
+      put(i % 3 === 0 ? 'markers' : 'colorPaperPack', -0.2, -0.05, 0.3);
+      put(i % 2 ? 'scissors' : 'glueStick', 0.19, 0.04, -0.6);
+      const pc = buildPencilCase((['blueStars', 'pinkHearts', 'mintCheck'] as const)[i % 3], false);
+      pc.position.set(0.2, 0.03, -0.12);
+      pc.rotation.y = 0.4;
+      deco.add(pc);
+      add('artDeco_' + key, deco, seat.deskX, DESK_TOP, seat.deskZ, 0);
+    });
   }
 
   private show(key: string, v: boolean) {
@@ -213,8 +279,20 @@ export class Morning implements StoryHooks {
     this.show('deskBag', this.bagHung());
     this.g.player.setBackpack(!this.bagHung());
     this.show('deskBook', this.f('bookOnDesk') && p !== 'lunch');
+    this.props.deskBook?.userData.setOpen?.(p === 'korean');
     this.show('seoaBook', p === 'korean');
     this.show('deskTablet', this.f('tabletOnDesk') && (p === 'math' || p === 'group'));
+    this.props.deskTablet?.userData.setScreen?.(p === 'math' ? (this.f('quizDone') ? 'quiz' : 'off') : 'lock');
+    for (const key of CLASSMATES) this.show('artDeco_' + key, p === 'art');
+    if (p === 'group' && !this.f('groupDone')) {
+      const theme = this.save.schoolPosterTheme ?? 'friends';
+      const kinds = STICKERS.filter((s) => s.theme === theme).map((s) => s.kind);
+      const stage = this.save.groupRole ? 1 : 0;
+      if (this.posterStage !== stage) {
+        this.posterStage = stage;
+        this.props.posterSheet?.userData.redraw?.({ theme, slogan: THEME_SLOGAN[theme], bg: '#fff3b0', stickers: [0, 1, 2, 3].map((i) => ({ kind: kinds[i % kinds.length] ?? 'star', x: 0.2 + i * 0.2, y: 0.55 + (i % 2) * 0.18 })) }, stage);
+      }
+    }
     for (const key of CLASSMATES) this.show('npcTablet_' + key, p === 'math' && this.tabletHanded(key) && !(key === 'seoa' && this.f('helpedDevice_share')));
     this.syncCartSlots();
     this.show('posterSheet', p === 'group' && !this.f('groupDone'));
@@ -1260,7 +1338,7 @@ export class Morning implements StoryHooks {
     if (!this.f('groupDone')) {
       this.phase = 'pickRole';
       const xs = [-1.05, -0.35, 0.35, 1.05];
-      (['speaker', 'maker', 'researcher', 'organizer'] as GroupRole[]).forEach((r, i) => g.spawnItem('role_' + r, ROLE_ITEMS[r], xs[i], GROUP_TABLE.top + 0.002, GROUP_TABLE.z - 0.45, 0.1 * (i - 1.5)));
+      (['speaker', 'maker', 'researcher', 'organizer'] as GroupRole[]).forEach((r, i) => g.spawnItem('role_' + r, ROLE_ITEMS[r], xs[i], GROUP_TABLE.top + 0.002, GROUP_TABLE.z - 0.45, Math.PI + 0.1 * (i - 1.5))); // 카드 글씨가 교실 쪽(플레이어)에서 바로 읽히게
       g.setObjective('모둠 책상에서 역할 카드 하나 집기 (발표·제작·자료·정리)', this.inter.groupTable);
       await this.until(() => this.save.groupRole !== null || this.f('groupDone'));
     }
@@ -1487,7 +1565,9 @@ export class Morning implements StoryHooks {
       this.g.take('drawingPaper');
       this.g.give('miniPoster');
       this.set('artPoster');
-      (this.props.exhibitPoster as THREE.Mesh<THREE.PlaneGeometry, THREE.MeshLambertMaterial>).material.color.set(res.bg);
+      const art = { theme: res.theme, slogan: res.slogan, bg: res.bg, stickers: res.stickers, footer: `${this.save.avatar.nickname}의 미니 포스터` };
+      setMiniPosterArt(art);
+      this.exhibitPosterArt?.userData.redraw?.(art, 2);
     }
     this.set('crafted');
     const d = this.g.map.seats.player;

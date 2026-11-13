@@ -53,6 +53,7 @@ export class LibraryBuilder extends HQBuilder {
     c.rotation.x = Math.PI / 2;
     this.blockers.push(c);
     const led = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff6e8, emissiveIntensity: 1.2, roughness: 0.5 });
+    led.userData.pbr = true; // 천장 등은 한 덩어리로 합쳐 그린다
     for (const x of [5.4, 9.0, 12.6])
       for (const z of [18.2, 21.6, 25.0]) {
         this.box(0.66, 0.03, 0.66, this.alu, x, CEIL_H - 0.032, z, false);

@@ -1,48 +1,36 @@
 import * as THREE from 'three';
 import { itemDef, type ItemId } from '../data/items';
+import { buildBackpack } from './props/backpack';
+import { ITEM_BUILDERS, type ModelState } from './props/items';
 
-/** 물건의 임시 3D 모델(기본 도형). 정식 모델이 생기면 여기서 GLB로 바꾼다. */
-export function makeItemMesh(id: ItemId): THREE.Object3D {
+/**
+ * 물건의 3D 모델. 실제 소품 모델(props/items.ts)을 쓰고, 없는 것만 기본 도형으로 만든다.
+ * state: 'world' 놓여 있음 / 'held' 손에 듦 / 'pick' 고를 수 있는 상태(역할 카드: 빛·떠오름)
+ */
+export function makeItemMesh(id: ItemId, state: ModelState = 'world'): THREE.Object3D {
   const d = itemDef(id);
-  const mat = new THREE.MeshLambertMaterial({ color: d.color });
   const [w, h, l] = d.size;
   let obj: THREE.Object3D;
-  switch (d.shape) {
-    case 'cylinder': {
-      obj = new THREE.Mesh(new THREE.CylinderGeometry(w, w, h, 12), mat);
-      break;
-    }
-    case 'plane': {
-      // 종이비행기: 납작한 삼각 날개 두 장
-      const g = new THREE.BufferGeometry();
-      const v = new Float32Array([
-        0, 0, l / 2, -w / 2, 0, -l / 2, 0, -h, -l / 2,
-        0, 0, l / 2, 0, -h, -l / 2, w / 2, 0, -l / 2,
-      ]);
-      g.setAttribute('position', new THREE.BufferAttribute(v, 3));
-      g.computeVertexNormals();
-      obj = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color: d.color, side: THREE.DoubleSide }));
-      break;
-    }
-    default:
-      obj = new THREE.Mesh(new THREE.BoxGeometry(w, h, l), mat);
-  }
   if (id === 'bag') {
-    const g = new THREE.Group();
-    g.add(obj);
-    const flap = new THREE.Mesh(new THREE.BoxGeometry(w * 1.02, h * 0.45, 0.04), new THREE.MeshLambertMaterial({ color: 0xffc845 }));
-    flap.position.set(0, h * 0.2, l / 2);
-    g.add(flap);
-    obj = g;
-  }
-  if (id === 'tablet') {
-    const g = new THREE.Group();
-    g.add(obj);
-    const scr = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.88, l * 0.82), new THREE.MeshBasicMaterial({ color: 0x0d1b2a }));
-    scr.rotation.x = -Math.PI / 2;
-    scr.position.y = h / 2 + 0.002;
-    g.add(scr);
-    obj = g;
+    obj = new THREE.Group();
+    const bag = buildBackpack('floor');
+    bag.scale.setScalar(1.1);
+    obj.add(bag);
+  } else if (ITEM_BUILDERS[id]) {
+    obj = ITEM_BUILDERS[id](state);
+  } else if (d.shape === 'plane') {
+    // 종이비행기: 접힌 날개 두 장 + 가운데 접힌 몸통
+    const g = new THREE.BufferGeometry();
+    const v = new Float32Array([
+      0, 0, l / 2, -w / 2, 0, -l / 2, 0, -h, -l / 2,
+      0, 0, l / 2, 0, -h, -l / 2, w / 2, 0, -l / 2,
+    ]);
+    g.setAttribute('position', new THREE.BufferAttribute(v, 3));
+    g.computeVertexNormals();
+    obj = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: d.color, side: THREE.DoubleSide, roughness: 0.85 }));
+  } else {
+    const mat = new THREE.MeshStandardMaterial({ color: d.color, roughness: 0.6 });
+    obj = new THREE.Mesh(d.shape === 'cylinder' ? new THREE.CylinderGeometry(w, w, h, 12) : new THREE.BoxGeometry(w, h, l), mat);
   }
   obj.traverse((o) => {
     if ((o as THREE.Mesh).isMesh) o.castShadow = true;

@@ -477,6 +477,9 @@ export class Game {
     }
 
     this.story.update(real);
+    // 놓인 물건의 작은 움직임 (고를 수 있는 카드가 둥실)
+    const now = performance.now() / 1000;
+    for (const it of this.items.values()) (it.obj.userData.anim as ((t: number) => void) | undefined)?.(now);
 
     // 상호작용
     const facing = this.player.seat ? new THREE.Vector3(-Math.sin(this.tpc.yaw), 0, -Math.cos(this.tpc.yaw)) : this.player.forward();
@@ -582,7 +585,8 @@ export class Game {
   /** 바닥이나 책상에 줍는 물건을 놓는다 */
   spawnItem(key: string, id: ItemId, x: number, y: number, z: number, rotY = 0): THREE.Object3D {
     this.removeItem(key);
-    const obj = makeItemMesh(id);
+    // 역할 카드는 「고를 수 있는 카드」로 (빛나는 받침 + 살짝 떠오름)
+    const obj = makeItemMesh(id, id.startsWith('role') ? 'pick' : 'world');
     obj.position.set(x, y + itemHalfHeight(id), z);
     obj.rotation.y = rotY;
     this.scene.add(obj);

@@ -258,6 +258,7 @@ export class EntranceBuilder extends HQBuilder {
     const soffit = this.add(new THREE.PlaneGeometry(w - 0.1, d - 0.1), paint(0xf6f4ee, 0.9), xc, C.bottom - 0.005, zc, { cast: false });
     soffit.rotation.x = Math.PI / 2;
     const led = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff8e8, emissiveIntensity: 1.5 });
+    led.userData.pbr = true; // 천장 등은 한 덩어리로 합쳐 그린다
     for (const lx of [xc - 0.6, xc + 0.7]) for (const lz of [zc - 2.6, zc, zc + 2.6]) {
       this.box(0.34, 0.05, 1.25, paint(0xdadde0, 0.4, 0.4), lx, C.bottom - 0.06, lz, false);
       this.box(0.26, 0.012, 1.15, led, lx, C.bottom - 0.072, lz, false);

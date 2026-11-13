@@ -5,6 +5,7 @@
 //  C. 방송실 마이크 → 조리사 선생님 허락 → 복도에 테이블 3개 → 친구 3명 초대 → 축제 방송 → festival
 // 두 가지 이상을 섞으면 mixed. 결과는 SaveData.cafeteriaSolution과 플래그로 남는다.
 import * as THREE from 'three';
+import { buildCutlery, buildTray } from '../world/props/items';
 import type { Morning } from './Morning';
 import type { MainNpcId } from '../core/Game';
 import type { ItemId } from '../data/items';
@@ -115,12 +116,15 @@ export class CutletEvent implements StoryEvent {
   // ───────── 소품 ─────────
   private buildDeco() {
     const map = this.g.map;
-    const trayMat = new THREE.MeshLambertMaterial({ color: 0xd7dde3 });
     for (let i = 0; i < DINERS; i++) {
       const s = map.seats['diner' + i];
       const t = new THREE.Group();
-      const base = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.025, 0.32), trayMat);
-      t.add(base);
+      const tr = buildTray(); // 칸 나뉜 스테인리스 식판 + 숟가락·젓가락
+      tr.position.y = -0.0125;
+      t.add(tr);
+      const cut = buildCutlery();
+      cut.position.set(0.17, -0.008, 0.02);
+      t.add(cut);
       t.position.set(s.deskX, (s.y ?? 0) + 0.755, s.deskZ);
       t.rotation.y = s.yaw;
       t.visible = false;

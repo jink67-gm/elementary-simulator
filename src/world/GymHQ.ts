@@ -219,6 +219,7 @@ export class GymBuilder extends HQBuilder {
     }
     // 고천장 등 (둥근 갓 + 빛나는 면)
     const lamp = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff6e6, emissiveIntensity: 1.6 });
+    lamp.userData.pbr = true; // 천장 등은 한 덩어리로 합쳐 그린다
     const shade = paint(0xe9ecef, 0.4, 0.5);
     for (const x of [4.6, 9.0, 13.4])
       for (const z of [-19.9, -23.9, -27.9]) {

@@ -48,6 +48,7 @@ export class CorridorBuilder extends HQBuilder {
     ceil.rotation.x = Math.PI / 2;
     this.blockers.push(ceil);
     const led = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfffbf0, emissiveIntensity: 1.25, roughness: 0.4 });
+    led.userData.pbr = true; // 천장 등은 한 덩어리로 합쳐 그린다
     for (let z = s.z0 + 1.6; z < s.z1 - 0.5; z += 3.2) {
       this.box(1.24, 0.03, 0.34, this.chrome, 9.1, H - 0.035, z, false);
       this.box(1.16, 0.02, 0.26, led, 9.1, H - 0.045, z, false);

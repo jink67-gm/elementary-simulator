@@ -18,7 +18,9 @@ export class HQBuilder {
     protected root: THREE.Object3D,
     protected colliders: Aabb[],
     protected blockers: THREE.Object3D[],
-  ) {}
+  ) {
+    this.glass.userData.pbr = true; // 창유리 수십 장을 한 덩어리로 (그리기 호출 줄이기)
+  }
 
   protected y = 0;
   protected level: 0 | 1 = 1;

@@ -11,6 +11,9 @@ import { ClassroomBuilder } from './ClassroomHQ';
 import { LibraryBuilder } from './LibraryHQ';
 import { FirstFloorBuilder, LOBBY, NURSE, OFFICE } from './FirstFloorHQ';
 import { EntranceBuilder } from './EntranceHQ';
+import { buildTabletCart } from './props/tabletCart';
+import { buildCutleryBin, buildTray } from './props/items';
+import { drawKidPoster } from './props/posterArt';
 import { TILE_EXT, plinthMat, stuccoMat } from './exteriorTex';
 import { GROUP_TABLE, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, lockerCell } from './classroomLayout';
 import { GymBuilder } from './GymHQ';
@@ -410,25 +413,11 @@ export class SchoolMap {
     }
     this.objs.playerDesk = this.objs.desk_player;
 
-    // 태블릿 충전함
-    const cart = new THREE.Group();
+    // 태블릿 충전함 (실제 학교 충전 보관함 모양 — props/tabletCart.ts). 위 거치대에 세워 꽂힌 태블릿 8대: objs.tabletSlots
+    const { cart, slots } = buildTabletCart();
     cart.position.set(6.3, 0, -1.2);
     this.root.add(cart);
-    this.box(0.6, 0.9, 1.1, 0x5c6f82, 0, 0.05, 0, { parent: cart }).material = paint(0x5c6f82, 0.45, 0.3).clone();
-    // 칸마다 세워 꽂힌 태블릿 8대 (학생 8명). 현우가 하나씩 꺼내 가면 사라진다 — objs.tabletSlots
-    const slots = new THREE.Group();
-    cart.add(slots);
-    const slab = paint(0x2b2f3a, 0.35);
-    for (let i = 0; i < 8; i++) {
-      const t = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.26, 0.19), slab);
-      t.position.set(-0.18 + (i % 4) * 0.12, 0.95 + 0.13, -0.24 + Math.floor(i / 4) * 0.48);
-      t.castShadow = true;
-      slots.add(t);
-    }
-    this.box(0.62, 0.02, 1.12, 0x3a3f44, 0, 0.95, 0, { parent: cart, shadow: false });
     this.objs.tabletSlots = slots;
-    const lamp = this.box(0.1, 0.06, 0.02, 0x7cfc8a, -0.3, 0.7, 0.3, { parent: cart, ownMat: true });
-    lamp.rotation.y = Math.PI / 2;
     this.colliders.push(aabb(6.3, -1.2, 0.6, 1.1));
     this.objs.tabletCart = cart;
 
@@ -558,7 +547,24 @@ export class SchoolMap {
     const board2 = this.box(2.0, 1.3, 0.05, 0xc9a26b, 3.6, 1.4, 6.95, { shadow: false });
     board2.material = pbr('cork', { roughness: 0.95 });
     worldUV(board2.geometry, 2.0, 1.3, 0.05, TILE.cork);
-    const poster = this.plane(1.6, 1.2, this.posterTex.material(), 3.6, 2.05, 6.9, Math.PI);
+    // 모둠 포스터: 살짝 들뜬 종이 + 압정 네 개
+    const pg = new THREE.PlaneGeometry(1.6, 1.2, 8, 6);
+    const pp = pg.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < pp.count; i++) {
+      const u = Math.abs(pp.getX(i)) / 0.8, v = Math.abs(pp.getY(i)) / 0.6;
+      pp.setZ(i, Math.pow(Math.max(0, Math.max(u, v) - 0.7) / 0.3, 2) * 0.015 + u * u * 0.006);
+    }
+    pg.computeVertexNormals();
+    const poster = new THREE.Mesh(pg, new THREE.MeshStandardMaterial({ map: this.posterTex.tex, roughness: 0.85, side: THREE.DoubleSide }));
+    poster.position.set(3.6, 2.05, 6.9);
+    poster.rotation.y = Math.PI;
+    this.root.add(poster);
+    const pinM = new THREE.MeshStandardMaterial({ color: 0xe63946, roughness: 0.4 });
+    for (const [px, py] of [[-0.74, 0.54], [0.74, 0.54], [-0.74, -0.54], [0.74, -0.54]]) {
+      const pin = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), pinM);
+      pin.position.set(px, py, 0.015);
+      poster.add(pin);
+    }
     poster.visible = false;
     this.objs.groupPoster = poster;
   }
@@ -728,11 +734,16 @@ export class SchoolMap {
       knob.position.set(px, ct.top + 0.38, pz);
       for (const m of [body, lid, knob]) (m.castShadow = true), pots.add(m);
     });
+    // 배식대 끝: 칸 나뉜 스테인리스 식판 더미 + 수저통
     for (let k = 0; k < 8; k++) {
-      const tray = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.02, 0.32), paint(0xcfd5da, 0.3, 0.6));
-      tray.position.set(11.0, ct.top + 0.01 + k * 0.022, ct.z + 0.25);
+      const tray = buildTray();
+      tray.position.set(11.0, ct.top + k * 0.013, ct.z + 0.25);
+      tray.rotation.y = k % 2 ? 0.02 : -0.015;
       pots.add(tray);
     }
+    const cutlery = buildCutleryBin();
+    cutlery.position.set(10.55, ct.top, ct.z + 0.25);
+    pots.add(cutlery);
     // 크기 조절기로 원래 크기가 된 돈가스 더미 (배식대 식사 쪽)
     const stack = new THREE.Group();
     stack.position.set(8.2, Y + ct.top, ct.z - 0.3);
@@ -749,9 +760,21 @@ export class SchoolMap {
     // 식판 수레 (식사 공간 동쪽 벽)
     const cart = group(14.35, 20.4); // 동쪽 벽 초록 기둥 사이 (조리실 문 앞을 막지 않게)
     const cartSteel = steel.clone();
-    this.box(0.7, 0.75, 0.6, 0x9aa3ad, 0, 0, 0, { parent: cart }).material = cartSteel;
-    const trayMat = paint(0xcfd5da, 0.3, 0.6).clone();
-    for (let i = 0; i < 6; i++) this.box(0.42, 0.03, 0.32, 0xd7dde3, 0, 0.75 + i * 0.035, 0, { parent: cart, shadow: false }).material = trayMat;
+    // 스테인리스 수레: 선반 두 단 + 기둥 + 바퀴, 위에 식판 더미
+    for (const y of [0.1, 0.74]) this.box(0.7, 0.025, 0.6, 0x9aa3ad, 0, y, 0, { parent: cart }).material = cartSteel;
+    for (const [lx, lz] of [[-0.33, -0.28], [0.33, -0.28], [-0.33, 0.28], [0.33, 0.28]]) {
+      this.box(0.03, 0.68, 0.03, 0x9aa3ad, lx, 0.08, lz, { parent: cart }).material = cartSteel;
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.025, 12), paint(0x2b2f36, 0.6));
+      wheel.rotation.x = Math.PI / 2;
+      wheel.position.set(lx, 0.04, lz);
+      cart.add(wheel);
+    }
+    for (let i = 0; i < 9; i++) {
+      const tray = buildTray();
+      tray.position.set(0, 0.765 + i * 0.013, 0);
+      tray.rotation.y = i % 2 ? 0.02 : -0.02;
+      cart.add(tray);
+    }
     this.colliders.push(lv0(aabb(14.35, 20.4, 0.7, 0.6)));
     this.objs.trayCart = cart;
 
@@ -1593,30 +1616,8 @@ export class SchoolMap {
 
   /** 모둠 포스터를 뒤 게시판에 붙인다 */
   setGroupPoster(theme: PosterTheme, slogan: string, bg: string, stickers: { kind: string; x: number; y: number }[]) {
-    const icons: Record<string, [string, string]> = {
-      food: ['#e07a1f', '밥'], ball: ['#3a86ff', '공'], clock: ['#8338ec', '시계'], heart: ['#ff006e', '♥'], star: ['#ffbe0b', '★'],
-    };
-    this.posterTex.draw((c, w, h) => {
-      c.fillStyle = bg;
-      c.fillRect(0, 0, w, h);
-      c.fillStyle = '#222';
-      c.font = font(30, true);
-      c.textAlign = 'center';
-      wrapText(c, slogan, w / 2, 56, w - 40, 38);
-      for (const s of stickers) {
-        const [col, label] = icons[s.kind] ?? ['#999', '?'];
-        c.fillStyle = col;
-        c.beginPath();
-        c.arc(s.x * w, s.y * h, 34, 0, Math.PI * 2);
-        c.fill();
-        c.fillStyle = '#fff';
-        c.font = font(label.length > 1 ? 22 : 34, true);
-        c.fillText(label, s.x * w, s.y * h + 10);
-      }
-      c.fillStyle = '#555';
-      c.font = font(20);
-      c.fillText(`6-1 2모둠 · ${{ food: '맛있는 학교', rest: '쉬는 학교', play: '신나는 학교', friends: '함께하는 학교' }[theme]}`, w / 2, h - 18);
-    });
+    // 학생들이 크레파스로 만든 모둠 포스터 (props/posterArt.ts)
+    this.posterTex.draw((c, w, h) => drawKidPoster(c, w, h, { theme, slogan, bg, stickers, footer: '6-1 2모둠' }, 2));
     this.objs.groupPoster.visible = true;
   }
 }

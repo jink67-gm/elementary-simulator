@@ -45,6 +45,7 @@ export class ClassroomBuilder extends HQBuilder {
     this.blockers.push(ceil);
     // 사각 LED 평판등 3줄 × 4
     const led = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfffbf2, emissiveIntensity: 1.3, roughness: 0.5 });
+    led.userData.pbr = true; // 천장 등은 한 덩어리로 합쳐 그린다
     for (const x of [-4.2, 0, 4.2])
       for (const z of [-4.2, -1.2, 1.8, 4.8]) {
         this.box(0.66, 0.03, 0.66, this.alu, x, H - 0.032, z, false);

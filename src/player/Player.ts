@@ -81,7 +81,7 @@ export class Player {
     this.heldMesh = null;
     this.heldId = id;
     if (id) {
-      this.heldMesh = makeItemMesh(id);
+      this.heldMesh = makeItemMesh(id, 'held');
       this.heldMesh.scale.setScalar(0.9);
       this.heldMesh.rotation.x = id === 'paperPlane' ? -Math.PI / 2 : 0;
       this.char.hand.add(this.heldMesh);
