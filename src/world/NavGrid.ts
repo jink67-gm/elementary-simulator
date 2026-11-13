@@ -4,6 +4,8 @@ import type { Aabb } from './Collision';
 export interface Pt {
   x: number;
   z: number;
+  /** 높이 (층 구분용, 없으면 2층) */
+  y?: number;
 }
 
 export class NavGrid {
@@ -17,6 +19,8 @@ export class NavGrid {
     maxX: number,
     maxZ: number,
     readonly cell = 0.35,
+    /** 이 격자가 맡는 층 (0 = 1층, 1 = 2층). 다른 층 전용 상자는 무시한다 */
+    readonly level: 0 | 1 = 1,
   ) {
     this.cols = Math.ceil((maxX - minX) / cell);
     this.rows = Math.ceil((maxZ - minZ) / cell);
@@ -29,7 +33,7 @@ export class NavGrid {
       for (let c = 0; c < this.cols; c++) {
         const { x, z } = this.center(c, r);
         for (const b of boxes) {
-          if (b.enabled === false || b.level === 0) continue; // 길찾기는 2층(인물들이 다니는 층)만
+          if (b.enabled === false || (b.level !== undefined && b.level !== 'both' && b.level !== this.level)) continue;
           if (x > b.minX - inflate && x < b.maxX + inflate && z > b.minZ - inflate && z < b.maxZ + inflate) {
             this.blocked[r * this.cols + c] = 1;
             break;
@@ -169,5 +173,46 @@ export class NavGrid {
       if (this.isBlocked(c, r)) return false;
     }
     return true;
+  }
+}
+
+/**
+ * 두 층 길찾기: 층마다 격자 하나, 층이 다르면 계단(위·아래 층계참)을 거쳐 잇는다.
+ * 높이는 따라 걷는 쪽(Npc)이 바닥 높이 함수로 맞춘다 (계단 경사 포함).
+ */
+export class LevelNav {
+  readonly grids: [NavGrid, NavGrid];
+  constructor(
+    minX: number,
+    minZ: number,
+    maxX: number,
+    maxZ: number,
+    cell: number,
+    private floorY: (level: 0 | 1) => number,
+    private stair: { top: Pt; topStep: Pt; bottomStep: Pt; bottom: Pt },
+  ) {
+    this.grids = [new NavGrid(minX, minZ, maxX, maxZ, cell, 0), new NavGrid(minX, minZ, maxX, maxZ, cell, 1)];
+  }
+
+  rebuild(boxes: Aabb[], inflate: number) {
+    for (const g of this.grids) g.rebuild(boxes, inflate);
+  }
+
+  levelOf(y: number | undefined): 0 | 1 {
+    return y === undefined ? 1 : y > this.floorY(0) / 2 ? 1 : 0;
+  }
+
+  /** from→to 경로. 층이 다르면 계단을 지난다. 점마다 y(층 바닥 높이)를 붙인다. 못 찾으면 null */
+  findPath(from: Pt, to: Pt): Pt[] | null {
+    const lf = this.levelOf(from.y);
+    const lt = to.y === undefined ? lf : this.levelOf(to.y);
+    const tag = (pts: Pt[] | null, l: 0 | 1) => pts?.map((p) => ({ x: p.x, z: p.z, y: this.floorY(l) })) ?? null;
+    if (lf === lt) return tag(this.grids[lf].findPath(from, to), lf);
+    const st = this.stair;
+    const [aEnd, aStep, bStep, bStart] = lf === 1 ? [st.top, st.topStep, st.bottomStep, st.bottom] : [st.bottom, st.bottomStep, st.topStep, st.top];
+    const a = tag(this.grids[lf].findPath(from, aEnd), lf);
+    const b = tag(this.grids[lt].findPath(bStart, to), lt);
+    if (!a || !b) return null;
+    return [...a, { ...aStep, y: this.floorY(lf) }, { ...bStep, y: this.floorY(lt) }, ...b];
   }
 }

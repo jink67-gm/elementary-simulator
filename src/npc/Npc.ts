@@ -1,7 +1,7 @@
 // NPC: idle / walk / sit / 손들기 / 환호. 격자 A*로 걸어간다.
 import * as THREE from 'three';
 import { createAvatar, type Avatar, type Look } from '../world/Character';
-import type { NavGrid, Pt } from '../world/NavGrid';
+import type { LevelNav, Pt } from '../world/NavGrid';
 import type { Seat } from '../world/SchoolMap';
 
 export interface NpcDef {
@@ -25,7 +25,10 @@ export class Npc {
   talkCount = 0;
   private bobT = Math.random() * 10;
 
-  constructor(public def: NpcDef, private nav: NavGrid) {
+  /** 바닥 높이 (계단 경사 포함). Game이 지도와 연결한다 */
+  static ground: ((x: number, z: number, y: number) => number) | null = null;
+
+  constructor(public def: NpcDef, private nav: LevelNav) {
     this.char = createAvatar(def.look);
     this.char.root.userData.npc = this;
   }
@@ -44,10 +47,11 @@ export class Npc {
     p?.(false);
   }
 
-  place(x: number, z: number, yaw = this.yaw) {
+  /** 순간이동. y = 바닥 높이 (없으면 2층 0) */
+  place(x: number, z: number, yaw = this.yaw, y = 0) {
     this.cancelWalk();
     this.seat = null;
-    this.pos.set(x, 0, z);
+    this.pos.set(x, y, z);
     this.yaw = yaw;
     this.char.setPose('stand');
     this.sync();
@@ -56,7 +60,7 @@ export class Npc {
   sitAt(seat: Seat) {
     this.cancelWalk();
     this.seat = seat;
-    this.pos.set(seat.x, 0, seat.z);
+    this.pos.set(seat.x, seat.y ?? 0, seat.z);
     this.yaw = seat.yaw;
     this.char.setPose('sit');
     this.sync();
@@ -66,14 +70,15 @@ export class Npc {
    * 목적지까지 걸어간다. 도착하면 true, 다른 명령(새 걷기·앉기·순간이동)에 밀리면 false로 끝난다.
    * 길이 없으면 순간이동(진행 막힘 방지).
    */
-  walkTo(x: number, z: number, faceYaw?: number, speed = 2.2): Promise<boolean> {
+  walkTo(x: number, z: number, faceYaw?: number, speed = 2.2, y?: number): Promise<boolean> {
     this.cancelWalk();
     this.seat = null;
     this.speed = speed;
     this.faceYaw = faceYaw ?? null;
-    const path = this.nav.findPath({ x: this.pos.x, z: this.pos.z }, { x, z });
+    // y를 주면 그 층으로 (다른 층이면 계단으로 걸어서), 안 주면 지금 층 안에서
+    const path = this.nav.findPath({ x: this.pos.x, z: this.pos.z, y: this.pos.y }, { x, z, y: y ?? this.pos.y });
     if (!path || path.length === 0) {
-      this.place(x, z, faceYaw ?? this.yaw);
+      this.place(x, z, faceYaw ?? this.yaw, y ?? this.pos.y);
       return Promise.resolve(true);
     }
     this.path = path;
@@ -82,7 +87,7 @@ export class Npc {
   }
 
   async walkToSeat(seat: Seat, speed = 2.2) {
-    if (await this.walkTo(seat.x, seat.z + 0.05, seat.yaw, speed)) this.sitAt(seat);
+    if (await this.walkTo(seat.x, seat.z + 0.05, seat.yaw, speed, seat.y ?? 0)) this.sitAt(seat);
   }
 
   faceTo(x: number, z: number) {
@@ -111,6 +116,7 @@ export class Npc {
         const want = Math.atan2(dx, dz);
         this.turnTo(want, dt, 12);
       }
+      if (Npc.ground) this.pos.y = Npc.ground(this.pos.x, this.pos.z, this.pos.y);
     } else if (this.faceYaw !== null && !this.seat) {
       this.turnTo(this.faceYaw, dt, 8);
     }

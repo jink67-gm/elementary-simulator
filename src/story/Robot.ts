@@ -28,7 +28,8 @@ const COMPARTMENTS: { cat: LostCat; key: string; z: number }[] = [
   { cat: 'paper', key: 'lostPaper', z: -2.8 },
 ];
 const SHELF_FRONT_X = 5.85;
-const ZONE_SPOT: Record<ZoneId, [number, number]> = { desk: [-1.05, 0.4], board: [-3.6, 5.85], locker: [1.5, 5.85] };
+// desk: 내 책상(짝꿍 책상 왼쪽 끝) 바로 옆 통로
+const ZONE_SPOT: Record<ZoneId, [number, number]> = { desk: [-3.15, 1.2], board: [-3.6, 5.85], locker: [1.5, 5.85] };
 
 export const ROBOT_LABEL: Record<RobotSolution, string> = {
   remote: '로봇을 원격 조종해 물건을 보관함에 분류함',

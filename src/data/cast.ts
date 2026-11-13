@@ -50,4 +50,5 @@ export function fillerLook(i: number): Look {
   };
 }
 
-export const FILLER_NAMES = ['지우', '도현', '예린', '시우', '유나', '건우', '수아', '태윤', '나은', '우진'];
+/** 반 친구 NPC (주인공 넷과 함께 6-1 학생 7명). filler2 현우는 태블릿 담당 */
+export const FILLER_NAMES = ['지우', '수빈', '현우'];

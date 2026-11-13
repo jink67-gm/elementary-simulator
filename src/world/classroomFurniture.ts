@@ -35,7 +35,7 @@ function label(text: string, w: number, h: number, bg: string, fg: string) {
 const BOOK_COLORS = [0xd1495b, 0x2a9d8f, 0xe9c46a, 0x3d5a80, 0xf4a261, 0x8ab17d, 0x9d4edd, 0xf1faee, 0x6d597a, 0xe76f51];
 
 /** 책 한 줄 (z0~z1, 바닥 y) — 높이·두께·색이 제각각, 가끔 기울어진 책 */
-function bookRow(g: THREE.Object3D, z0: number, z1: number, y: number, maxH: number, depth: number, x: number, seed: number) {
+export function bookRow(g: THREE.Object3D, z0: number, z1: number, y: number, maxH: number, depth: number, x: number, seed: number) {
   let s = seed;
   const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
   let z = z0 + 0.01;

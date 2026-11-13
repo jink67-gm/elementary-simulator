@@ -11,14 +11,19 @@ import type { ItemId } from '../data/items';
 import type { Npc } from '../npc/Npc';
 import type { Interactable } from '../interact/Interaction';
 import { ownMaterials } from '../interact/Interaction';
-import { CUTLET_D, CUTLET_H, CUTLET_W } from '../world/SchoolMap';
+import { CUTLET_H, CUTLET_W as CUTLET_W_ } from '../world/SchoolMap';
+import { CAFE, FEST_SPOTS, cafe } from '../world/rooms';
 import { DINERS, cutPieces, decideSolution, isFair, splitArea, trayDone, tryAddToTray, type Solution } from './cutletLogic';
 import { openAnnounce, openCutter, openMachine, openSplit } from '../minigames/Cafeteria';
 import { wa } from '../ui/dom';
 import type { StoryEvent } from './StoryEvent';
 
-const TABLE = { x: 9, z: 21.0, top: 0.77 };
-const FEST_SPOTS: [number, number][] = [[10.45, 13.4], [10.45, 12.0], [10.45, 10.6]];
+// 급식실 기준 좌표 (1층 급식실 동): rooms.ts의 CAFE. 높이는 CAFE.y(1층 바닥)를 더한다
+const Y = CAFE.y;
+const TABLE = { x: CAFE.workTable.x, z: CAFE.workTable.z, top: CAFE.workTable.top };
+const PASS = CAFE.passTable;
+/** 이송대 위 조각은 조금 작게 보여 준다 (이송대가 작업대보다 좁다) */
+const PIECE_SCALE = 0.7;
 const STUDENT_IDS: MainNpcId[] = ['minjae', 'seoa', 'junho', 'harin'];
 /** 식탁 자리 0~5에 앉는 사람 (0~2 서쪽 식탁, 3~5 동쪽 식탁) */
 const DINER_OF = ['minjae', 'seoa', 'filler0', 'junho', 'harin', 'filler1'] as const;
@@ -116,7 +121,7 @@ export class CutletEvent implements StoryEvent {
       const t = new THREE.Group();
       const base = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.025, 0.32), trayMat);
       t.add(base);
-      t.position.set(s.deskX, 0.755, s.deskZ);
+      t.position.set(s.deskX, (s.y ?? 0) + 0.755, s.deskZ);
       t.rotation.y = s.yaw;
       t.visible = false;
       this.deco.add(t);
@@ -136,7 +141,7 @@ export class CutletEvent implements StoryEvent {
         leg.position.set(lx, 0.35, lz);
         t.add(leg);
       }
-      t.position.set(x, 0, z);
+      t.position.set(x, Y, z);
       t.visible = false;
       this.deco.add(t);
       this.festTables.push(t);
@@ -146,7 +151,7 @@ export class CutletEvent implements StoryEvent {
         bar.rotation.set(-Math.PI / 2, 0, r);
         mark.add(bar);
       }
-      mark.position.set(x, 0.006, z);
+      mark.position.set(x, Y + 0.006, z);
       mark.visible = false;
       this.deco.add(mark);
       this.festMarks.push(mark);
@@ -183,7 +188,8 @@ export class CutletEvent implements StoryEvent {
     add({
       id: 'cutletTable',
       obj: map.objs.giantCutlet,
-      at: new THREE.Vector3(TABLE.x, 0, TABLE.z),
+      // 작업대 동쪽 끝 (안전 작업 구역 난간에서 손이 닿는 곳)
+      at: cafe(TABLE.x + CAFE.workTable.w / 2 - 0.3, TABLE.z - CAFE.workTable.d / 2 + 0.4),
       radius: 3.1,
       promptY: 1.3,
       bias: 1.5,
@@ -272,7 +278,7 @@ export class CutletEvent implements StoryEvent {
         {
           id: 'festSpot' + i,
           obj: this.festMarks[i],
-          at: new THREE.Vector3(x, 0, z),
+          at: cafe(x, z),
           radius: 1.4,
           promptY: 0.5,
           noGlow: true,
@@ -318,8 +324,9 @@ export class CutletEvent implements StoryEvent {
     map.setBroadcastDoor(1);
     g.nav.rebuild(map.colliders, 0.3);
     // 창고 물건
-    g.spawnItem('cut_unit', 'cutterUnit', 3.35, 0.88, 24.5, 0.2);
-    g.spawnItem('ladle_1', 'ladle', 3.35, 0.88, 25.5, 0.6);
+    const si = CAFE.shelfItems;
+    g.spawnItem('cut_unit', 'cutterUnit', si.x, Y + si.top, si.z, 0.2);
+    g.spawnItem('ladle_1', 'ladle', si.x, Y + si.top, si.z2, 0.6);
     this.placeCast(fromLoad);
     g.setObjective('어떻게든 모두가 점심을 먹을 수 있게 하세요', null);
     void this.intro(fromLoad);
@@ -330,16 +337,16 @@ export class CutletEvent implements StoryEvent {
     const seats = g.map.seats;
     const cook = this.m.n('cook');
     cook.char.root.visible = true;
-    cook.place(9.6, 26.45, Math.PI);
+    cook.place(CAFE.cook.x, CAFE.cook.z, CAFE.cook.yaw, Y);
     DINER_OF.forEach((d, i) => this.npcOf(d).sitAt(seats['diner' + i]));
     g.fillers.forEach((f, i) => {
       if (i < 2) return;
-      f.place(7.75, 9.2 + (i - 2) * 0.7, 0);
+      f.place(10.3, 20.6 + (i - 2) * 0.7, -Math.PI / 2, Y); // 식탁 사이 통로에서 구경
     });
     const t = this.m.n('teacher');
     t.char.root.visible = true;
-    t.place(9.9, 18.2, Math.PI * 0.85);
-    if (fromLoad) g.player.teleport(9, 17.2, 0);
+    t.place(9.9, 18.2, Math.PI * 0.85, Y);
+    if (fromLoad) g.player.teleport(CAFE.entry.x, CAFE.entry.z, 0, Y);
     g.tpc.behind(g.player.yaw);
   }
 
@@ -462,11 +469,15 @@ export class CutletEvent implements StoryEvent {
     map.objs.giantCutlet.getObjectByName('slab')!.visible = false;
     g.sfx.kick();
     g.tpc.shake(0.05, 0.4);
-    for (const p of cutPieces(res.cuts, res.halved)) {
-      const x = TABLE.x - CUTLET_W / 2 + ((p.c0 + p.c1) / 2 / 12) * CUTLET_W;
-      const z = TABLE.z + (p.half ? (p.row ? 1 : -1) * (CUTLET_D / 4) : 0);
-      this.spawnPiece(p.area, x, z, p.c1 - p.c0, p.half);
-    }
+    // 자른 조각은 조리사 선생님이 배식 이송대(안전 구역 안)로 옮겨 준다 → 학생이 집어서 식사 공간으로
+    const pieces = cutPieces(res.cuts, res.halved);
+    const perRow = Math.ceil(pieces.length / 2);
+    pieces.forEach((p, i) => {
+      const col = Math.floor(i / 2), row = i % 2;
+      const x = PASS.x - PASS.w / 2 + 0.15 + ((col + 0.5) * (PASS.w - 0.3)) / perRow;
+      this.spawnPiece(p.area, x, PASS.z + (row ? 0.11 : -0.11), p.c1 - p.c0, p.half);
+    });
+    void this.m.n('cook').walkTo(PASS.x - 1.4, PASS.z + 0.6, Math.PI / 2, 2.2, Y);
     const fine = cutPieces(res.cuts, res.halved).every((p) => p.area <= 5);
     await this.m.say([
       this.m.L('cook', fine ? '와, 잘랐다! 이제 조각을 하나씩 집어서(E) 친구 식판에 담아 주렴(F).' : '잘랐다! 그런데 몇 개는 아직 식판보다 크네. 큰 건 들고 와서 패널에 F, 반으로 나눠 줄게.'),
@@ -481,7 +492,8 @@ export class CutletEvent implements StoryEvent {
     const obj = g.spawnItem(key, 'cutletPiece', x, 0, z, 0);
     obj.clear();
     obj.add(g.map.cutletPieceMesh(cols, half));
-    obj.position.y = TABLE.top + CUTLET_H / 2;
+    obj.position.y = Y + PASS.top + (CUTLET_H / 2) * PIECE_SCALE;
+    obj.scale.setScalar(PIECE_SCALE);
     ownMaterials(obj);
     const it = g.interactions.get('item:' + key);
     if (it) {
@@ -500,9 +512,9 @@ export class CutletEvent implements StoryEvent {
     this.st.carried = null;
     const [a, b] = splitArea(area);
     const cols = Math.max(1, Math.round(area / 2));
-    this.spawnPiece(a, 11.45, 22.15, Math.max(1, Math.ceil(cols / 2)), true);
-    this.spawnPiece(b, 11.45, 22.55, Math.max(1, Math.floor(cols / 2)), true);
-    this.m.toast(`크기 ${a} + ${b}로 나눴어요. 식탁 끝에 놓아 뒀어요.`);
+    this.spawnPiece(a, PASS.x + 0.55, PASS.z - 0.1, Math.max(1, Math.ceil(cols / 2)), true);
+    this.spawnPiece(b, PASS.x + 0.55, PASS.z + 0.12, Math.max(1, Math.floor(cols / 2)), true);
+    this.m.toast(`크기 ${a} + ${b}로 나눴어요. 배식 이송대 끝에 놓아 뒀어요.`);
   }
 
   /** 들고 있는 조각으로 친구 식판에 담기 */
@@ -537,7 +549,7 @@ export class CutletEvent implements StoryEvent {
     this.st.anyServed = true;
     // 식판 위 조각
     const piece = g.map.cutletPieceMesh(Math.max(1, Math.round(area / 2)), true);
-    const k = 0.32 / Math.max(0.32, (Math.max(1, Math.round(area / 2)) / 12) * CUTLET_W);
+    const k = 0.32 / Math.max(0.32, (Math.max(1, Math.round(area / 2)) / 12) * CUTLET_W_);
     piece.scale.set(k, 0.25, k * 0.6);
     piece.position.set((this.trayMeshes[i].children.length - 1) * 0.08 - 0.04, 0.03, 0);
     this.trayMeshes[i].add(piece);
@@ -622,7 +634,8 @@ export class CutletEvent implements StoryEvent {
     const g = this.g;
     const cut = g.map.objs.giantCutlet;
     g.cutscene = true;
-    g.tpc.override = { pos: new THREE.Vector3(9, 4.2, 16.8), look: new THREE.Vector3(9, 0.8, 21) };
+    // 안전 구역 쪽에서 작업대를 내려다본다
+    g.tpc.override = { pos: cafe(13.6, 24.4, 2.6), look: cafe(TABLE.x, TABLE.z, 0.8) };
     g.sfx.rumble();
     for (let i = 0; i <= 30; i++) {
       const k = 1 - (i / 30) * 0.96;
@@ -696,7 +709,7 @@ export class CutletEvent implements StoryEvent {
     const [x, z] = FEST_SPOTS[k];
     npc.char.setPose('stand');
     npc.seat = null;
-    void npc.walkTo(x - 0.75, z, Math.PI / 2, 2.4);
+    void npc.walkTo(x + 0.75, z, -Math.PI / 2, 2.4, Y); // 테이블 동쪽에 서서 서쪽(테이블)을 본다
     this.updateObjective();
   }
 
@@ -707,7 +720,7 @@ export class CutletEvent implements StoryEvent {
     m.set('festivalHeld');
     g.cutscene = true;
     g.sfx.cheer();
-    g.tpc.override = { pos: new THREE.Vector3(8.0, 2.6, 8.4), look: new THREE.Vector3(10.2, 0.9, 12.4) };
+    g.tpc.override = { pos: cafe(10.4, 8.6, 2.6), look: cafe(8.2, 12.4, 0.9) };
     // 축제 테이블에 한입 조각
     const mat = (g.map.cutletPieceMesh(1, true).material as THREE.Material);
     for (const t of this.festTables)
@@ -760,7 +773,7 @@ export class CutletEvent implements StoryEvent {
     g.setObjective('점심 해결!', null);
     await m.sleep(1.2);
     g.cutscene = true;
-    g.tpc.override = { pos: new THREE.Vector3(9, 3.2, 15.8), look: new THREE.Vector3(9, 0.8, 19.5) };
+    g.tpc.override = { pos: cafe(9, 16.6, 2.6), look: cafe(9, 20.5, 0.8) };
     g.sfx.success();
     const ends: Record<Solution, [MainNpcId | 'ai' | 'narr', string][]> = {
       cut_and_share: [
@@ -865,8 +878,8 @@ export class CutletEvent implements StoryEvent {
     return [];
   }
 
-  returnSpot(): [number, number, number] {
-    return [9, 17.2, 0];
+  returnSpot(): [number, number, number, number] {
+    return [CAFE.entry.x, CAFE.entry.z, 0, Y];
   }
 
   recap(): string[] {

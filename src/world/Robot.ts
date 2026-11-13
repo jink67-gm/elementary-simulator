@@ -1,7 +1,7 @@
 // 자동 청소 로봇: 스스로 길을 찾아 다니거나(자동), 플레이어가 원격으로 조종한다(WASD + Space 집게).
 // 모양은 기본 도형으로 만든 둥근 청소기 + 집게 팔.
 import * as THREE from 'three';
-import type { NavGrid, Pt } from './NavGrid';
+import type { LevelNav, Pt } from './NavGrid';
 import { resolveCircle, type Aabb } from './Collision';
 import type { Input } from '../core/Input';
 
@@ -23,7 +23,7 @@ export class Robot {
   private t = 0;
   private blink = 0;
 
-  constructor(private nav: NavGrid) {
+  constructor(private nav: LevelNav) {
     const body = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.36, 0.28, 20), new THREE.MeshLambertMaterial({ color: 0xe9ecef }));
     body.position.y = 0.2;
     body.castShadow = true;

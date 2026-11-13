@@ -1,5 +1,7 @@
 // 1장: 오전 학교생활 (등교 → 1교시 국어 → 쉬는 시간 → 2교시 수학 → 3교시 모둠 → 4교시 미술 → 급식실 전환)
 // 행동 → NPC 반응 → 플래그 → 실패 복구 순서로 설계. 선택지 버튼 대신 실제 월드 행동으로 진행한다.
+import { CAFE, CAFE_FRONT, FLOOR1_Y as F1, cafe } from '../world/rooms';
+import { GROUP_TABLE } from '../world/classroomLayout';
 import * as THREE from 'three';
 import type { Game, MainNpcId, StoryHooks } from '../core/Game';
 import type { GroupRole, PeriodId, PosterTheme, SaveData, Wish } from '../core/SaveData';
@@ -27,7 +29,7 @@ import type { StoryEvent } from './StoryEvent';
 
 const never = () => new Promise<never>(() => {});
 /** 등교 시작: 1층 현관 앞 마당 (서쪽 현관을 바라봄) */
-const SPAWN = { x: 18.6, z: -1.5, y: FLOOR1_Y, yaw: -Math.PI / 2 };
+const SPAWN = { x: 21.4, z: -1.5, y: FLOOR1_Y, yaw: -Math.PI / 2 }; // 현관 유리문(x 18) 앞 마당
 const ROLE_ITEMS: Record<GroupRole, ItemId> = { speaker: 'roleSpeaker', maker: 'roleMaker', researcher: 'roleResearcher', organizer: 'roleOrganizer' };
 const ROLE_NAMES: Record<GroupRole, string> = { speaker: '발표', maker: '제작', researcher: '자료', organizer: '정리' };
 const WISH_THEME: Record<Wish, PosterTheme> = { lunch: 'food', break: 'rest', sport: 'play', clean: 'friends' };
@@ -174,11 +176,11 @@ export class Morning implements StoryHooks {
     const ss = m.seats.seoa;
     add('seoaBook', makeItemMesh('koreanBook'), ss.deskX, 0.67, ss.deskZ, -0.1);
     add('seoaTablet', makeItemMesh('tablet'), ss.deskX + 0.05, 0.655, ss.deskZ, 0.1);
-    add('posterSheet', new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.01, 0.6), new THREE.MeshLambertMaterial({ color: 0xfff3b0 })), 0, 0.655, 4.7);
+    add('posterSheet', new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.01, 0.6), new THREE.MeshLambertMaterial({ color: 0xfff3b0 })), GROUP_TABLE.x, GROUP_TABLE.top + 0.006, GROUP_TABLE.z);
     const paperStack = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.06, 0.25), new THREE.MeshLambertMaterial({ color: 0x58c4f6 }));
-    add('colorPaperStack', paperStack, -0.8, 0.68, 4.6);
+    add('colorPaperStack', paperStack, GROUP_TABLE.x - 0.8, GROUP_TABLE.top + 0.031, GROUP_TABLE.z - 0.1);
     const drawStack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 0.4), new THREE.MeshLambertMaterial({ color: 0xfffaf0 }));
-    add('drawingStack', drawStack, 0.8, 0.68, 4.6);
+    add('drawingStack', drawStack, GROUP_TABLE.x + 0.8, GROUP_TABLE.top + 0.031, GROUP_TABLE.z - 0.1);
     // 전시된 작품
     add('exhibitPlane', makeItemMesh('paperPlane'), -3.6, 2.0, 6.86, Math.PI).scale.setScalar(1.6);
     const mini = new THREE.Mesh(new THREE.PlaneGeometry(0.45, 0.6), new THREE.MeshLambertMaterial({ color: 0xffd6a5 }));
@@ -432,13 +434,14 @@ export class Morning implements StoryHooks {
     const locked: [string, string][] = [
       ['doorRestroom', '화장실… 지금은 괜찮은 것 같다.'],
       ['doorBroadcast', '방송실 — 「관계자 외 출입 금지」. 안에서 기계 소리가 웅웅 난다.'],
-      ['doorLibrary', '도서관은 점심시간에 열어요.'],
+      ['doorScience', '과학실 — 「실험 준비 중」. 비커가 줄 맞춰 서 있다.'],
+      ['door1_1', '1학년 교실에서 받아쓰기 소리가 들린다.'],
       ['doorClass1', '옆 반은 벌써 조용하다… 살금살금 지나가자.'],
       ['doorGym', '체육관: 오늘 체육은 5교시! 지금은 잠겨 있다.'],
       ['cafeteriaDoor', '급식실에서 고소한 냄새가 난다… 아직은 준비 중.'],
     ];
     for (const [id, msg] of locked)
-      add({ id, obj: m.objs[id], at: id === 'cafeteriaDoor' ? new THREE.Vector3(9, 0, 15.7) : undefined, radius: 1.8, promptY: 1.6, prompt: () => ((id === 'cafeteriaDoor' && (this.period === 'lunch' || this.period === 'cutlet')) || (id === 'doorBroadcast' && this.period === 'cutlet') || (id === 'doorGym' && this.period === 'dodgeball') ? null : '문 살펴보기'), onInteract: () => this.toast(msg) }, false);
+      add({ id, obj: m.objs[id], at: id === 'cafeteriaDoor' ? cafe(CAFE.door.x, CAFE.door.z - 0.4) : undefined, radius: 1.8, promptY: 1.6, prompt: () => ((id === 'cafeteriaDoor' && (this.period === 'lunch' || this.period === 'cutlet')) || (id === 'doorBroadcast' && this.period === 'cutlet') || (id === 'doorGym' && this.period === 'dodgeball') ? null : '문 살펴보기'), onInteract: () => this.toast(msg) }, false);
 
     // NPC 대화·건네주기
     for (const id of Object.keys(g.npcs) as MainNpcId[]) {
@@ -607,8 +610,8 @@ export class Morning implements StoryHooks {
   helpReturnToSeat() {
     const ev = this.ev();
     if (ev) {
-      const [x, z, yaw] = ev.returnSpot();
-      this.g.player.teleport(x, z, yaw);
+      const [x, z, yaw, y] = ev.returnSpot();
+      this.g.player.teleport(x, z, yaw, y ?? 0);
       this.g.tpc.behind(this.g.player.yaw);
       return;
     }
@@ -687,7 +690,7 @@ export class Morning implements StoryHooks {
     teacher.char.root.visible = true;
     const cook = this.n('cook');
     cook.char.root.visible = p === 'lunch' || p === 'cutlet';
-    cook.place(9.6, 26.45, Math.PI);
+    cook.place(CAFE.cook.x, CAFE.cook.z, CAFE.cook.yaw, CAFE.y);
     const ev = this.ev();
     if (ev) {
       ev.begin(fromLoad);
@@ -770,14 +773,15 @@ export class Morning implements StoryHooks {
       }
       case 'lunch': {
         const line = [...this.students, ...fillers];
+        // 1층 급식실 문 앞에 두 줄로 (교실에서 계단으로 걸어 내려간다)
         line.forEach((n, i) => {
-          const x = i % 2 ? 9.6 : 8.4;
-          const z = 14.6 - Math.floor(i / 2) * 0.85;
-          if (fromLoad) n.place(x, z, 0);
-          else void n.walkTo(x, z, 0, 2.6);
+          const x = i % 2 ? CAFE_FRONT.x + 0.6 : CAFE_FRONT.x - 0.6;
+          const z = CAFE_FRONT.z - Math.floor(i / 2) * 0.85;
+          if (fromLoad) n.place(x, z, 0, F1);
+          else void n.walkTo(x, z, 0, 2.6, F1);
         });
-        if (fromLoad) teacher.place(10.3, 12.2, Math.PI);
-        else void teacher.walkTo(10.3, 12.2, Math.PI);
+        if (fromLoad) teacher.place(10.3, 12.2, Math.PI, F1);
+        else void teacher.walkTo(10.3, 12.2, Math.PI, 2.2, F1);
         break;
       }
     }
@@ -1093,7 +1097,7 @@ export class Morning implements StoryHooks {
     if (!this.f('groupDone')) {
       this.phase = 'pickRole';
       const xs = [-1.05, -0.35, 0.35, 1.05];
-      (['speaker', 'maker', 'researcher', 'organizer'] as GroupRole[]).forEach((r, i) => g.spawnItem('role_' + r, ROLE_ITEMS[r], xs[i], 0.655, 4.25, 0.1 * (i - 1.5)));
+      (['speaker', 'maker', 'researcher', 'organizer'] as GroupRole[]).forEach((r, i) => g.spawnItem('role_' + r, ROLE_ITEMS[r], xs[i], GROUP_TABLE.top + 0.002, GROUP_TABLE.z - 0.45, 0.1 * (i - 1.5)));
       g.setObjective('모둠 책상에서 역할 카드 하나 집기 (발표·제작·자료·정리)', this.inter.groupTable);
       await this.until(() => this.save.groupRole !== null || this.f('groupDone'));
     }
@@ -1204,7 +1208,8 @@ export class Morning implements StoryHooks {
 
   private startOrganize() {
     // 친구들이 서 있는 자리와 겹치지 않게 책상 서쪽 끝과 바닥에 흩어 둔다
-    const spots: [number, number, number][] = [[-1.1, 0.655, 4.45], [-2.3, 0, 3.4], [-1.1, 0.655, 4.95], [2.7, 0, 3.3], [-2.6, 0, 5.7], [3.0, 0, 5.7]];
+    const onTable = GROUP_TABLE.top + 0.002;
+    const spots: [number, number, number][] = [[-1.1, onTable, 4.45], [-2.3, 0, 3.4], [-1.1, onTable, 4.95], [2.7, 0, 3.3], [-2.6, 0, 5.7], [3.0, 0, 5.7]];
     ORGANIZE.forEach((id, i) => this.g.spawnItem('org_' + id, id, spots[i][0], spots[i][1], spots[i][2], i));
     this.organized = 0;
     this.g.setObjective('정리 0/6: 흩어진 재료를 왼쪽 뒤 미술 재료함의 바구니에 종류별로 넣기 (들고 F)', this.inter.binCut);
@@ -1330,13 +1335,13 @@ export class Morning implements StoryHooks {
   // ───────────────────────── 점심 전환 ─────────────────────────
   private async lunch() {
     const g = this.g;
-    g.setObjective('급식실로 이동하기 (복도 끝)', new THREE.Vector3(9, 1.5, 15.2));
+    g.setObjective('급식실로 이동하기 (계단으로 1층 → 복도 끝)', cafe(CAFE.door.x, CAFE.door.z - 0.9, 1.5));
     this.bark('minjae', '돈가스! 돈가스! 돈가스!');
-    await this.until(() => g.player.pos.z > 11.5 && g.player.pos.x > 7);
+    await this.until(() => g.player.pos.z > 11.5 && g.player.pos.x > 7 && g.player.pos.y < F1 / 2);
     g.cutscene = true;
     g.setObjective('…?', null);
-    g.player.teleport(9, 12.6, 0);
-    g.tpc.override = { pos: new THREE.Vector3(10.6, 2.4, 11.2), look: new THREE.Vector3(9, 1.2, 16.5) };
+    g.player.teleport(9, 12.6, 0, F1);
+    g.tpc.override = { pos: cafe(10.6, 11.2, 2.4), look: cafe(9, 16.5, 1.2) };
     g.sfx.chime();
     await this.say([this.L('ai', '딩동댕동~ 안녕하세요, AI 학교생활 개선 도우미입니다.'), this.L('ai', '접수된 소원 「돈가스 왕 크게」를 적용했습니다.')]);
     // 문이 열린다
@@ -1344,11 +1349,11 @@ export class Morning implements StoryHooks {
       g.map.setCafeteriaDoor(i / 30);
       await this.sleep(0.03);
     }
-    g.tpc.override = { pos: new THREE.Vector3(9, 1.75, 14.4), look: new THREE.Vector3(9, 1.05, 19.6) };
+    g.tpc.override = { pos: cafe(9, 14.4, 1.75), look: cafe(9, 19.6, 1.05) };
     g.sfx.rumble();
     g.tpc.shake(0.1, 2.5);
     await this.say([this.L('ai', '돈가스 크기 1,000% 증가 완료. 맛있게 드세요.')]);
-    this.students.forEach((n) => n.char.lookAt(new THREE.Vector3(9, 1, 19.6)));
+    this.students.forEach((n) => n.char.lookAt(cafe(9, 19.6, 1)));
     await this.say([
       this.L('minjae', '……나 진짜 그렇게 쓰긴 했는데.'),
       this.L('seoa', '식판보다… 아니, 책상보다 크잖아.'),

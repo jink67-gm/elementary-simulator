@@ -21,5 +21,6 @@ export interface StoryEvent {
   update?(dt: number): void;
   recap(): string[];
   /** 막혔을 때 「자리로 돌아가기」 */
-  returnSpot(): [number, number, number];
+  /** 막혔을 때 돌아갈 곳 [x, z, 바라보는 방향, 바닥 높이(없으면 2층)] */
+  returnSpot(): [number, number, number, number?];
 }

@@ -4,6 +4,7 @@
 // 2) 방송실 AI 제어 패널: 소원 ↔ 진짜 바람 짝짓기로 잘못된 해석 고치기
 // 3) 엔딩은 행동으로: 빨간 초기화 버튼 두 번 → A / 개선 기준 바르게 적용 → B / B + 숨은 미션 전부 → C
 // 대결·공격은 없다. 도와준 친구들이 힌트를 더 주지만, 도움 없이도 끝낼 수 있다.
+import { CAFE_FRONT } from '../world/rooms';
 import * as THREE from 'three';
 import type { Morning } from './Morning';
 import type { MainNpcId } from '../core/Game';
@@ -70,8 +71,8 @@ export class FinalEvent implements StoryEvent {
       this.deco.add(mm);
       return mm;
     };
-    // 급식실 앞 키오스크
-    const kiosk = box(0.5, 1.3, 0.4, 0xdee2e6, 10.6, 0, 14.6);
+    // 급식실 앞 키오스크 (1층 복도 끝)
+    const kiosk = box(0.5, 1.3, 0.4, 0xdee2e6, CAFE_FRONT.x + 1.6, CAFE_FRONT.y, CAFE_FRONT.z);
     const ks = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.26), new THREE.MeshBasicMaterial({ color: 0x4ea8de }));
     ks.position.set(-0.26, 0.35, 0);
     ks.rotation.y = -Math.PI / 2;
@@ -163,7 +164,7 @@ export class FinalEvent implements StoryEvent {
         onInteract: () => void this.readRecord(rec),
       });
     comp('teacherLaptop', 'poster', new THREE.Vector3(-4.3, 0, -3.95));
-    comp('kiosk', 'lunch', new THREE.Vector3(10.0, 0, 14.6));
+    comp('kiosk', 'lunch', new THREE.Vector3(CAFE_FRONT.x + 1.0, CAFE_FRONT.y, CAFE_FRONT.z));
     comp('broadcastLaptop', 'wishes', new THREE.Vector3(13.3, 0, 4.9));
     add({
       id: 'aiConsole',
@@ -222,7 +223,7 @@ export class FinalEvent implements StoryEvent {
     t.place(-3.2, -4.0, 0);
     g.player.teleport(9, 1.0, 0);
     g.tpc.behind(g.player.yaw);
-    g.setObjective('컴퓨터 3대에서 기록 모으기 (교실 선생님 노트북 · 급식실 앞 키오스크 · 방송실 노트북)', null);
+    g.setObjective('컴퓨터 3대에서 기록 모으기 (교실 선생님 노트북 · 1층 급식실 앞 키오스크 · 방송실 노트북)', null);
     void this.intro(fromLoad);
   }
 

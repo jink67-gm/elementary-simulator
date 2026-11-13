@@ -6,7 +6,8 @@ import { SaveManager } from './SaveManager';
 import { cloneSave, type SaveData } from './SaveData';
 import { loadSettings, storeSettings, type Settings } from './Settings';
 import { SchoolMap } from '../world/SchoolMap';
-import { NavGrid } from '../world/NavGrid';
+import { LevelNav } from '../world/NavGrid';
+import { STAIR_ENDS, floorY } from '../world/rooms';
 import { Player } from '../player/Player';
 import { ThirdPersonCamera } from '../player/ThirdPersonCamera';
 import { Inventory } from '../player/Inventory';
@@ -65,7 +66,8 @@ export class Game {
   camera = new THREE.PerspectiveCamera(60, 1, 0.05, 120);
   tpc = new ThirdPersonCamera(this.camera);
   map = new SchoolMap();
-  nav = new NavGrid(-7.5, -30.5, 17.5, 27.5, 0.3);
+  /** 두 층 길찾기 (층이 다르면 계단으로) */
+  nav = new LevelNav(-7.5, -35.0, 17.5, 31.0, 0.3, floorY, STAIR_ENDS);
   input: Input;
   sfx = new Sfx();
   saves = new SaveManager();
@@ -168,7 +170,7 @@ export class Game {
       this.npcs[id] = n;
       this.scene.add(n.char.root);
     }
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < FILLER_NAMES.length; i++) {
       const n = new Npc({ id: 'filler' + i, name: FILLER_NAMES[i], look: fillerLook(i) }, this.nav);
       this.fillers.push(n);
       this.scene.add(n.char.root);
@@ -242,6 +244,7 @@ export class Game {
     this.player = new Player(PLAYER_LOOKS[save.avatar.look % PLAYER_LOOKS.length]);
     this.scene.add(this.player.object);
     this.player.groundAt = (x, z, y) => this.map.groundY(x, z, y);
+    Npc.ground = (x, z, y) => this.map.groundY(x, z, y);
     for (const k of [...this.items.keys()]) this.removeItem(k);
     this.inventory.load(save.inventory);
     this.running = true;
@@ -335,7 +338,7 @@ export class Game {
     this.player.frozen = this.cutscene || !!this.remote;
     this.hud.root.classList.toggle('cine', this.cutscene);
     const npcCircles: Circle[] = [...Object.values(this.npcs), ...this.fillers]
-      .filter((n) => n.char.root.visible)
+      .filter((n) => n.char.root.visible && Math.abs(n.pos.y - this.player.pos.y) < 1.5)
       .map((n) => ({ x: n.pos.x, z: n.pos.z, r: n.radius }));
     npcCircles.push(...this.extraCircles);
     if (this.robot.root.visible) npcCircles.push({ x: this.robot.pos.x, z: this.robot.pos.z, r: this.robot.radius });
@@ -368,7 +371,7 @@ export class Game {
 
     // 2층 인물·공은 1층에 있을 때 부딪히지 않는다
     const level = this.map.levelOf(this.player.pos.y);
-    this.player.update(dt, input, this.tpc.yaw, this.map.collidersFor(level), level === 1 ? npcCircles : []);
+    this.player.update(dt, input, this.tpc.yaw, this.map.collidersFor(level), npcCircles);
     this.playerVel.copy(this.player.pos).sub(this.lastPlayerPos).divideScalar(dt || 1);
 
     for (const n of Object.values(this.npcs)) n.update(dt);
