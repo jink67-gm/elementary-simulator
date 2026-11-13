@@ -987,10 +987,15 @@ try {
     await page.evaluate(() => {
       const f = window.__sim.game.save.flags;
       for (const k of Object.keys(f)) delete f[k];
+      f.tabletsHandedOut = true; // 배부는 2교시 단계에서 이미 검사 — 여기서는 배부가 끝난 뒤(이어하기 상태)부터
       window.__sim.game.inventory.load([]);
       window.__sim.skipTo('math');
     });
-    await waitFor('태블릿 단계', (s) => s.phase === 'tablet', 30000);
+    for (let i = 0; i < 240 && (await state()).phase !== 'tablet'; i++) {
+      if ((await state()).dialogue) await page.keyboard.press('KeyE');
+      await sleep(250);
+    }
+    await waitFor('태블릿 단계', (s) => s.phase === 'tablet', 5000);
     await act('tabletCart', 'KeyE', '태블릿');
     await selectItem('tablet');
     await page.keyboard.press('KeyF'); // 아무 데나 내려놓기
