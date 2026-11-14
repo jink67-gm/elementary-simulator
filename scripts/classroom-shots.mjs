@@ -56,6 +56,15 @@ if (!only || only.includes('clean')) {
   await page.evaluate(() => window.__sim.game.map.toggleCleanCabinet());
   await shot('7b_clean_open', [5.4, 1.35, 4.6], [6.25, 0.5, 6.9], 45);
 }
+const check = await page.evaluate(() => {
+  const g = window.__sim.game, m = g.map, s = m.seats.player;
+  const seats = ['player', 'seoa', 'minjae', 'filler2', 'junho', 'harin', 'filler0', 'filler1'].filter((k) => m.seats[k]);
+  const from = { x: s.x, z: s.z, y: 0 };
+  const to = { 앞문_복도: [9, -4.6], 뒷문_복도: [9, 5.4], 사물함17: [3.35, 5.8], 태블릿충전함: [-1.25, 5.8], 청소도구함: [6.25, 6.1], 분리수거함: [-3.5, 6.0] };
+  const paths = Object.fromEntries(Object.entries(to).map(([k, [x, z]]) => [k, (g.nav.findPath(from, { x, z, y: 0 }) ?? []).length]));
+  return { seats: seats.length, paths, groupTableChildren: m.objs.groupTable.children.length };
+});
+console.log(JSON.stringify(check));
 console.log('오류', errors.length, errors.slice(0, 5));
 await browser.close();
 try { process.kill(-server.pid); } catch {}
