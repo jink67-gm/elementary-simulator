@@ -1351,7 +1351,7 @@ export class Morning implements StoryHooks {
     ]);
     if (!this.f('groupDone')) {
       this.phase = 'pickRole';
-      const zs = [-0.51, -0.17, 0.17, 0.51];
+      const zs = [-0.66, -0.47, -0.28, -0.09]; // 내 책상 위에 한 줄로 (앉아 있는 친구와 겹쳐 고르기 어렵지 않게)
       (['speaker', 'maker', 'researcher', 'organizer'] as GroupRole[]).forEach((r, i) => g.spawnItem('role_' + r, ROLE_ITEMS[r], GROUP_TABLE.x + 0.4, GROUP_TABLE.top + 0.002, GROUP_TABLE.z + zs[i], Math.PI / 2 + 0.1 * (i - 1.5))); // 카드 글씨가 내 자리 쪽(동쪽)에서 바로 읽히게
       g.setObjective('모둠 책상에서 역할 카드 하나 집기 (발표·제작·자료·정리)', this.inter.groupTable);
       await this.until(() => this.save.groupRole !== null || this.f('groupDone'));
