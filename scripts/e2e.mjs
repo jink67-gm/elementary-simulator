@@ -90,6 +90,8 @@ async function act(id, key, expect, { stay = false, from, dist = 0.7 } = {}) {
   await frames(3);
   log(`${key === 'KeyE' ? 'E' : 'F'} → ${label}`);
 }
+/** 모둠 책상에 앉은 친구에게 다가가는 방향: 앞줄은 칠판 쪽(-z), 뒷줄은 뒤쪽(+z)에서 (옆자리 친구와 헷갈리지 않게) */
+const sideOf = (id) => (/minjae|junho|filler0/.test(id) ? [0, -1] : [0, 1]);
 async function npcIdle(id) {
   for (let i = 0; i < 100; i++) {
     if (await page.evaluate((n) => window.__sim.game.npcs[n].path.length === 0, id)) return;
@@ -610,7 +612,7 @@ try {
   await step('사건2_C_비상정지', async () => {
     await restartRobot();
     for (const [id, name] of [['seoa', '서아'], ['junho', '준호'], ['harin', '하린']]) {
-      await act('npc:' + id, 'KeyE', name, { from: [0, 1], dist: 0.8 });
+      await act('npc:' + id, 'KeyE', name, { from: sideOf(id), dist: 0.8 });
       await noDialogue();
     }
     await act('robotBody', 'KeyE', '숫자판', { from: [-1, -1], dist: 1.0 });
@@ -634,7 +636,7 @@ try {
       }
       for (const h of rs.hand) {
         await selectItem(h.id);
-        await act(target[h.owner], 'KeyF', '돌려주기', { from: [0, 1], dist: 0.8 });
+        await act(target[h.owner], 'KeyF', '돌려주기', { from: sideOf(target[h.owner]), dist: 0.8 });
       }
     }
     await waitRobot('stopcode');
