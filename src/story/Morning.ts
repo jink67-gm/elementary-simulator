@@ -896,7 +896,7 @@ export class Morning implements StoryHooks {
   /** 앉기 안내가 필요한 때만 (다른 물건과 프롬프트가 겹치지 않게) */
   private needsSeat(): boolean {
     const p = this.period;
-    return p === 'korean' || p === 'math' || (p === 'art' && this.phase === 'craft') || (p === 'arrival' && this.phase === 'teacher');
+    return p === 'korean' || p === 'math' || (p === 'art' && this.phase === 'craft' && this.f('pickedArt')) || (p === 'arrival' && this.phase === 'teacher');
   }
 
   /** 가방이 책상 옆 고리에 걸려 있나 (아니면 등에 메고 있다). 예전 저장은 bagOnDesk로 판단 */
