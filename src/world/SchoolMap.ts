@@ -1442,8 +1442,7 @@ export class SchoolMap {
       this.box(0.25, 0.9, len, C.wall, 14.95, -0.02, zc, { shadow: false });
     }
 
-    // 우리 반 앞쪽: 전자칠판 양옆 흰 보드, 아래 수납장, 태극기, TV, 벽걸이 선풍기
-    // 화이트보드·수납장 모습은 ClassroomHQ
+    // 우리 반 앞쪽 칠판 아래 수납장 충돌 상자 (모습은 ClassroomHQ)
     this.colliders.push({ ...aabb(0, -5.79, 7.4, 0.42), level: 1 });
     // 복도: 소화기, 게시물
     this.box(0.18, 0.5, 0.18, 0xd62828, 7.35, 0, 1.2, { shadow: false });
