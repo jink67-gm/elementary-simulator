@@ -91,7 +91,7 @@ async function act(id, key, expect, { stay = false, from, dist = 0.7 } = {}) {
   log(`${key === 'KeyE' ? 'E' : 'F'} → ${label}`);
 }
 /** 모둠 책상에 앉은 친구에게 다가가는 방향: 앞줄은 칠판 쪽(-z), 뒷줄은 뒤쪽(+z)에서 (옆자리 친구와 헷갈리지 않게) */
-const sideOf = (id) => (/minjae|junho|filler0/.test(id) ? [0, -1] : [0, 1]);
+const sideOf = (id) => (/minjae|junho|filler:?0/.test(id) ? [0, -1] : [0, 1]);
 async function npcIdle(id) {
   for (let i = 0; i < 100; i++) {
     if (await page.evaluate((n) => window.__sim.game.npcs[n].path.length === 0, id)) return;
