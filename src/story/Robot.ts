@@ -23,13 +23,13 @@ import {
 const DOCK = { x: 4.3, z: 4.75 };
 const BIN = { x: 5.3, z: 5.7 };
 const COMPARTMENTS: { cat: LostCat; key: string; z: number }[] = [
-  { cat: 'books', key: 'lostBooks', z: -4.0 },
-  { cat: 'tools', key: 'lostTools', z: -3.4 },
-  { cat: 'paper', key: 'lostPaper', z: -2.8 },
+  { cat: 'books', key: 'lostBooks', z: -2.6 },
+  { cat: 'tools', key: 'lostTools', z: -2.0 },
+  { cat: 'paper', key: 'lostPaper', z: -1.4 },
 ];
-const SHELF_FRONT_X = 5.85;
+const SHELF_FRONT_X = 5.4;
 // desk: 내 책상(짝꿍 책상 왼쪽 끝) 바로 옆 통로
-const ZONE_SPOT: Record<ZoneId, [number, number]> = { desk: [-3.15, 1.2], board: [-3.6, 5.85], locker: [1.5, 5.85] };
+const ZONE_SPOT: Record<ZoneId, [number, number]> = { desk: [-1.35, -0.75], board: [-1.6, 5.7], locker: [3.35, 5.85] };
 
 export const ROBOT_LABEL: Record<RobotSolution, string> = {
   remote: '로봇을 원격 조종해 물건을 보관함에 분류함',
@@ -314,7 +314,7 @@ export class RobotEvent implements StoryEvent {
     const r = this.robot;
     const cp = r.clawPoint();
     const nearBin = Math.hypot(cp.x - BIN.x, cp.z - BIN.z) < 0.85;
-    const comp = COMPARTMENTS.map((c) => ({ ...c, d: Math.hypot(cp.x - 6.53, cp.z - c.z) })).sort((a, b) => a.d - b.d)[0];
+    const comp = COMPARTMENTS.map((c) => ({ ...c, d: Math.hypot(cp.x - 6.08, cp.z - c.z) })).sort((a, b) => a.d - b.d)[0];
     if (!this.st.clawItem) {
       if (nearBin && this.st.bin.length) {
         const it = this.st.bin.shift()!;

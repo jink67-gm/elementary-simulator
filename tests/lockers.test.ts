@@ -9,7 +9,7 @@ describe('사물함 번호 → 위치', () => {
       const key = `${c.x},${c.y}`;
       expect(seen.has(key)).toBe(false);
       seen.add(key);
-      if (n > 1 && n !== 13) expect(lockerCell(n - 1).x - c.x).toBeCloseTo(1); // 왼쪽(+x)에서 오른쪽(-x)으로
+      if (n > 1 && n !== 13) expect(lockerCell(n - 1).x - c.x).toBeCloseTo(0.5); // 왼쪽(+x)에서 오른쪽(-x)으로
     }
     expect(seen.size).toBe(24);
   });
@@ -19,9 +19,9 @@ describe('사물함 번호 → 위치', () => {
     expect(a.col).toBe(4);
     expect(b.row).toBe(1);
     expect(b.col).toBe(7);
-    expect(Math.abs(a.x - b.x)).toBeCloseTo(3);
+    expect(Math.abs(a.x - b.x)).toBeCloseTo(1.5);
   });
-  it('17번은 로봇 사건의 「사물함」 구역(x 1.5) 앞에 있다', () => {
-    expect(lockerCell(MY_LOCKER).x).toBeCloseTo(1.5);
+  it('17번은 로봇 사건의 「사물함」 구역(x 3.35) 앞에 있다', () => {
+    expect(lockerCell(MY_LOCKER).x).toBeCloseTo(3.35);
   });
 });

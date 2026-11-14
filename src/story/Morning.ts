@@ -3,7 +3,7 @@
 import { ChatPicker, type ChatNpc, type ChatPeriod, type ChatStage } from '../data/chatter';
 import type { Gesture } from '../world/Character';
 import { CAFE, CAFE_FRONT, FLOOR1_Y as F1, cafe } from '../world/rooms';
-import { GROUP_TABLE } from '../world/classroomLayout';
+import { CLASS_SEATING, CLEAN_CABINET, CLOCK_POS, DESK, EXHIBIT, GROUP_TABLE, LOCKERS, TABLET_CART, classSeat, onDesk } from '../world/classroomLayout';
 import * as THREE from 'three';
 import type { Game, MainNpcId, StoryHooks } from '../core/Game';
 import type { GroupRole, PeriodId, PosterTheme, SaveData, Wish } from '../core/SaveData';
@@ -24,7 +24,7 @@ import { openFolding, openInfo, openRps, openSpeech, SPEECH_CARDS } from '../min
 import { panelsOpen } from '../ui/Panel';
 import { wa } from '../ui/dom';
 import { CutletEvent } from './Cutlet';
-import { CLASS_SEATS, FLOOR1_Y } from '../world/SchoolMap';
+import { FLOOR1_Y } from '../world/SchoolMap';
 import { RobotEvent } from './Robot';
 import { DodgeEvent } from './Dodgeball';
 import { HallwayEvent } from './Hallway';
@@ -180,40 +180,47 @@ export class Morning implements StoryHooks {
     const ps = m.seats.player;
     this.seatPos.set(ps.x, 0, ps.z);
     // 책상 옆 가방 고리 + 걸린 가방 (책상 바깥쪽 옆면). 친구들 가방은 하루 종일 걸려 있다
-    const DESK_TOP = 0.66;
+    const DESK_TOP = DESK.top;
     const hookM = new THREE.MeshStandardMaterial({ color: 0x9aa1a8, roughness: 0.3, metalness: 0.8 });
     const NPC_BAG: Record<string, [number, number]> = {
       seoa: [0xe8590c, 0xffe066], harin: [0xf06595, 0xffffff], junho: [0x1c7ed6, 0xff922b], minjae: [0x2f9e44, 0xfab005],
       filler0: [0x7048e8, 0xffd43b], filler1: [0x495057, 0x63e6be], filler2: [0xc92a2a, 0xffffff],
     };
-    for (const [px, rz, left, right] of CLASS_SEATS)
-      for (const [side, who] of [[-1, left], [1, right]] as [number, string][]) {
-        const ox = px + side * 0.38 + side * 0.34;
-        const hook = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.004, 6, 10, Math.PI * 1.3), hookM);
-        hook.position.set(ox + side * 0.012, DESK_TOP - 0.06, rz);
-        hook.rotation.set(0, side > 0 ? 0 : Math.PI, Math.PI * 0.85);
-        this.g.scene.add(hook);
-        if (who === 'player') continue;
-        const [col, acc] = NPC_BAG[who] ?? [0x3f6fd8, 0xffc845];
-        const nb = buildBackpack('hung', col, acc);
-        nb.scale.setScalar(0.88);
-        nb.position.set(ox + side * 0.1, DESK_TOP - 0.25, rz);
-        nb.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
-        this.g.scene.add(nb);
-      }
-    const bag = add('deskBag', buildBackpack('hung'), ps.deskX - 0.34 - 0.1, DESK_TOP - 0.25, ps.deskZ, -Math.PI / 2);
+    // 가방 고리는 책상 바깥 옆면(모둠 앞·뒤 쪽)에 있다. 걸린 가방은 통로 쪽을 본다
+    const bagAt = (st: { deskX: number; deskZ: number; side: number }): [number, number, number, number] => [st.deskX, DESK_TOP - 0.25, st.deskZ + st.side * (DESK.w / 2 + 0.1), st.side > 0 ? 0 : Math.PI];
+    for (const [pod, sx, row, who] of CLASS_SEATING) {
+      const st = classSeat(pod, sx, row);
+      const hook = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.004, 6, 10, Math.PI * 1.3), hookM);
+      hook.position.set(st.deskX, DESK_TOP - 0.06, st.deskZ + row * (DESK.w / 2 + 0.012));
+      hook.rotation.set(0, row > 0 ? -Math.PI / 2 : Math.PI / 2, Math.PI * 0.85);
+      this.g.scene.add(hook);
+      if (who === 'player') continue;
+      const [col, acc] = NPC_BAG[who] ?? [0x3f6fd8, 0xffc845];
+      const nb = buildBackpack('hung', col, acc);
+      nb.scale.setScalar(0.88);
+      const [bx, by, bz, bry] = bagAt(st);
+      nb.position.set(bx, by, bz);
+      nb.rotation.y = bry;
+      this.g.scene.add(nb);
+    }
+    const [pbx, pby, pbz, pbry] = bagAt({ deskX: ps.deskX, deskZ: ps.deskZ, side: ps.side ?? -1 });
+    const bag = add('deskBag', buildBackpack('hung'), pbx, pby, pbz, pbry);
     bag.scale.setScalar(0.88);
-    add('deskBook', buildBook('korean'), ps.deskX - 0.05, DESK_TOP + 0.008, ps.deskZ + 0.02, 0.06);
-    add('deskTablet', buildTablet('off'), ps.deskX + 0.17, DESK_TOP + 0.01, ps.deskZ - 0.03, -0.12);
+    const desk = (key: string, obj: THREE.Object3D, seat: typeof ps, lx: number, lz: number, ry: number, dy = 0.008) => {
+      const [x, z, r] = onDesk(seat, lx, lz, ry);
+      return add(key, obj, x, DESK_TOP + dy, z, r);
+    };
+    desk('deskBook', buildBook('korean'), ps, -0.05, 0.02, 0.06);
+    desk('deskTablet', buildTablet('off'), ps, 0.17, -0.03, -0.12, 0.01);
     const ss = m.seats.seoa;
-    add('seoaBook', buildBook('korean', true), ss.deskX, DESK_TOP + 0.008, ss.deskZ, -0.08);
+    desk('seoaBook', buildBook('korean', true), ss, 0, 0, -0.08);
 
     // 모둠 책상 위 포스터 (빈 종이 → 역할을 정하면 만드는 중)
-    add('posterSheet', buildPoster(null, 0.9, 0.6, 0), GROUP_TABLE.x, GROUP_TABLE.top + 0.003, GROUP_TABLE.z, Math.PI);
-    add('colorPaperStack', new THREE.Group(), GROUP_TABLE.x - 0.8, GROUP_TABLE.top, GROUP_TABLE.z - 0.1);
-    add('drawingStack', new THREE.Group(), GROUP_TABLE.x + 0.8, GROUP_TABLE.top, GROUP_TABLE.z - 0.1);
+    add('posterSheet', buildPoster(null, 0.84, 0.56, 0), GROUP_TABLE.x - 0.06, GROUP_TABLE.top + 0.003, GROUP_TABLE.z, Math.PI / 2); // 글씨가 내 자리(동쪽)에서 바로 읽히게
+    add('colorPaperStack', new THREE.Group(), GROUP_TABLE.x, GROUP_TABLE.top, GROUP_TABLE.z - 0.3);
+    add('drawingStack', new THREE.Group(), GROUP_TABLE.x, GROUP_TABLE.top, GROUP_TABLE.z + 0.3);
     // 전시된 작품 (게시판에 압정으로 꽂은 종이)
-    add('exhibitPlane', makeItemMesh('paperPlane'), -3.6, 2.0, 6.86, Math.PI).scale.setScalar(1.6);
+    add('exhibitPlane', makeItemMesh('paperPlane'), EXHIBIT.x, 2.2, 6.86, Math.PI).scale.setScalar(1.6);
     const wallPaper = (inner: THREE.Object3D, w: number, l: number) => {
       const g = new THREE.Group();
       inner.rotation.x = Math.PI / 2;
@@ -227,7 +234,7 @@ export class Morning implements StoryHooks {
       return g;
     };
     const exPoster = buildPoster(null, 0.45, 0.6, 2);
-    add('exhibitPoster', wallPaper(exPoster, 0.45, 0.6), -3.0, 2.0, 6.9, Math.PI);
+    add('exhibitPoster', wallPaper(exPoster, 0.45, 0.6), EXHIBIT.x + 0.6, 2.2, 6.9, Math.PI);
     this.exhibitPosterArt = exPoster;
     // 반 친구들 작품 (분위기)
     for (let i = 0; i < 5; i++) {
@@ -240,12 +247,12 @@ export class Morning implements StoryHooks {
       lt.colorSpace = THREE.SRGBColorSpace;
       const sheet = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: lt, roughness: 0.85 }));
       art.add(sheet);
-      add('classArt' + i, wallPaper(art, 0.4, 0.5), -4.9 + i * 0.5 + (i > 2 ? 0.9 : 0), 1.75 + (i % 2) * 0.15, 6.9, Math.PI);
+      add('classArt' + i, wallPaper(art, 0.4, 0.5), EXHIBIT.x - 1.3 + i * 0.5 + (i > 2 ? 0.9 : 0) - (i > 2 ? 0.0 : 0), 2.2 + (i % 2) * 0.08, 6.9, Math.PI);
     }
     // 수학 시간 친구들 태블릿: 현우가 책상에 놓아 준 것만 보인다 (npcTablet_자리) — 친구들은 퀴즈 화면
     for (const key of CLASSMATES) {
       const seat = m.seats[key];
-      add('npcTablet_' + key, buildTablet('quiz', 10 + CLASSMATES.indexOf(key)), seat.deskX + 0.05, DESK_TOP + 0.01, seat.deskZ - 0.03, 0.1);
+      desk('npcTablet_' + key, buildTablet('quiz', 10 + CLASSMATES.indexOf(key)), seat, 0.05, -0.03, 0.1, 0.01);
     }
     // 미술 시간 친구들 책상 위 준비물 (사용 중인 모습)
     CLASSMATES.forEach((key, i) => {
@@ -264,7 +271,7 @@ export class Morning implements StoryHooks {
       pc.position.set(0.2, 0.03, -0.12);
       pc.rotation.y = 0.4;
       deco.add(pc);
-      add('artDeco_' + key, deco, seat.deskX, DESK_TOP, seat.deskZ, 0);
+      desk('artDeco_' + key, deco, seat, 0, 0, 0, 0);
     });
   }
 
@@ -278,10 +285,10 @@ export class Morning implements StoryHooks {
     const after = (q: PeriodId) => SCHEDULE[p].start >= SCHEDULE[q].start;
     this.show('deskBag', this.bagHung());
     this.g.player.setBackpack(!this.bagHung());
-    this.show('deskBook', this.f('bookOnDesk') && p !== 'lunch');
+    this.show('deskBook', this.f('bookOnDesk') && (p === 'arrival' || p === 'korean' || p === 'break')); // 모둠·미술 시간에는 책상 서랍에 넣어 둔다
     this.props.deskBook?.userData.setOpen?.(p === 'korean');
     this.show('seoaBook', p === 'korean');
-    this.show('deskTablet', this.f('tabletOnDesk') && (p === 'math' || p === 'group'));
+    this.show('deskTablet', this.f('tabletOnDesk') && p === 'math');
     this.props.deskTablet?.userData.setScreen?.(p === 'math' ? (this.f('quizDone') ? 'quiz' : 'off') : 'lock');
     for (const key of CLASSMATES) this.show('artDeco_' + key, p === 'art');
     if (p === 'group' && !this.f('groupDone')) {
@@ -488,7 +495,7 @@ export class Morning implements StoryHooks {
       radius: 1.5,
       promptY: 0.6,
       prompt: () => null,
-      usePrompt: (item) => (item === 'scraps' ? '종이류 분리수거함에 버리기' : null),
+      usePrompt: (item) => (item === 'scraps' ? '「종이」 분리수거함에 버리기' : null),
       onUse: () => {
         g.take('scraps');
         g.sfx.place();
@@ -497,11 +504,24 @@ export class Morning implements StoryHooks {
       },
     });
     add({
+      id: 'cleanCabinet',
+      obj: m.objs.cleanCabinet,
+      radius: 1.5,
+      promptY: 0.7,
+      at: new THREE.Vector3(CLEAN_CABINET.x, 0.5, CLEAN_CABINET.z - 0.5),
+      prompt: () => (m.cleanOpen ? '청소도구함 닫기' : '청소도구함 열어 보기'),
+      onInteract: () => {
+        m.toggleCleanCabinet();
+        g.sfx.place();
+        if (m.cleanOpen) this.toast('왼쪽엔 수건·세제·분무기, 오른쪽엔 빗자루와 대걸레가 있다.');
+      },
+    });
+    add({
       id: 'exhibit',
       obj: m.objs.exhibitBoard,
       radius: 2.0,
       promptY: 0,
-      at: new THREE.Vector3(-3.6, 1.2, 6.2),
+      at: new THREE.Vector3(EXHIBIT.x, 1.2, 6.2),
       prompt: () => null,
       usePrompt: (item) => (this.period === 'art' && !this.f('exhibited') && (item === 'paperPlane' || item === 'miniPoster') ? '뒤 게시판에 작품 전시하기' : null),
       onUse: (item) => {
@@ -516,9 +536,9 @@ export class Morning implements StoryHooks {
     add({
       id: 'groupTable',
       obj: m.objs.groupTable,
-      radius: 2.2,
-      bias: 0.5, // 큰 책상이라 중심까지 거리가 멀다
-      promptY: 0.8,
+      radius: 1.7,
+      bias: 0.5,
+      promptY: 0.3,
       prompt: () => this.groupTablePrompt(),
       onInteract: () => void this.groupTableAction(),
     });
@@ -683,6 +703,9 @@ export class Morning implements StoryHooks {
       this.ambientT = 6 + Math.random() * 5;
       this.ambient();
     }
+    // 사물함 번호표: 기본은 숨김 — 사물함을 찾아야 할 때나 가까이 갔을 때만 보인다
+    const pp = this.g.player.pos;
+    this.g.map.setLockerNumbers(Math.abs(pp.y) < 1 && ((this.period === 'arrival' && !this.f('tookBook') && pp.x < 7 && pp.z > 1.5) || (Math.abs(pp.x - LOCKERS.x) < LOCKERS.w / 2 + 0.8 && pp.z > 4.6 && pp.z < 7 && pp.x < 7)));
     this.ev()?.hint(this.t);
     this.ev()?.update?.(dt);
     if (this.period === 'break') this.g.hud.setTimer(Math.max(0, SCHEDULE.break.softLimitSec - this.t));
@@ -792,7 +815,7 @@ export class Morning implements StoryHooks {
     if (fromLoad) {
       if (p === 'arrival') {
         g.player.teleport(SPAWN.x, SPAWN.z, SPAWN.yaw, SPAWN.y);
-      } else if (p === 'group') g.player.teleport(1.6, 3.2, Math.PI);
+      } else if (p === 'group') g.player.teleport(-1.1, 0.2, -Math.PI / 2);
       else if (p === 'lunch') g.player.teleport(8.6, -3, 0);
       else if (p === 'break') g.player.teleport(-1.2, 1.0, Math.PI);
       else g.player.sitAt(seats.player);
@@ -803,7 +826,7 @@ export class Morning implements StoryHooks {
       case 'arrival':
         this.n('seoa').sitAt(seats.seoa);
         this.n('minjae').place(-1.1, 2.6, Math.PI / 2);
-        this.n('junho').place(3.4, -0.5, 0.6);
+        this.n('junho').place(4.3, -1.6, 0.6);
         this.n('harin').place(-3.3, 5.8, Math.PI);
         teacher.place(9.6, 12, Math.PI);
         teacher.char.root.visible = false;
@@ -846,17 +869,8 @@ export class Morning implements StoryHooks {
         else void teacher.walkTo(-4.6, -5.4, 0);
         break;
       case 'group': {
-        const spots: Record<string, [number, number, number]> = {
-          seoa: [-0.6, 3.75, 0],
-          minjae: [0.6, 3.75, 0],
-          junho: [1.75, 4.7, -Math.PI / 2],
-          harin: [-0.6, 5.65, Math.PI],
-        };
-        for (const [id, [x, z, yaw]] of Object.entries(spots)) {
-          const n = this.n(id as MainNpcId);
-          if (fromLoad) n.place(x, z, yaw);
-          else void n.walkTo(x, z, yaw);
-        }
+        // 모둠 활동은 맞붙인 학생 책상 자리 그대로 (별도 모둠 책상 없음)
+        for (const id of ['seoa', 'minjae', 'junho', 'harin'] as const) seatOrWalk(this.n(id), id);
         fillers.forEach((f, i) => seatOrWalk(f, 'filler' + i));
         // 모둠 시간: 선생님은 교사용 책상 옆에서 지켜본다 (자료 조사 담당이 전자칠판에 다가갈 수 있게)
         if (fromLoad) teacher.place(-3.0, -4.9, 0.3);
@@ -1045,7 +1059,7 @@ export class Morning implements StoryHooks {
     // 종치기 10초 전
     this.phase = 'lastMinute';
     g.setObjective('…', null);
-    const clock = new THREE.Vector3(0, 2.75, -5.95);
+    const clock = new THREE.Vector3(CLOCK_POS.x, CLOCK_POS.y, CLOCK_POS.z);
     [...this.students, ...g.fillers].forEach((n) => n.char.lookAt(clock));
     await this.say([
       this.L('narr', '(9시 39분 50초. 반 전체가 동시에 시계를 본다.)'),
@@ -1185,7 +1199,7 @@ export class Morning implements StoryHooks {
   /** 수학 게임 발표: 학생마다 다른 작은 반응을, 조금씩 어긋난 시간에 (모두 같은 동작 금지) */
   private async mathReactions() {
     const g = this.g;
-    const cart = new THREE.Vector3(6.3, 1.0, -1.2);
+    const cart = new THREE.Vector3(TABLET_CART.x, 1.0, TABLET_CART.z);
     const seatHead = (k: string) => {
       const s = g.map.seats[k];
       return new THREE.Vector3(s.x, 1.1, s.z);
@@ -1220,9 +1234,9 @@ export class Morning implements StoryHooks {
     const tk = this.token;
     const h = g.fillers[2];
     const seats = g.map.seats;
-    const order = ['harin', 'filler1', 'seoa', 'minjae', 'filler0', 'junho'];
+    const order = ['seoa', 'minjae', 'junho', 'harin', 'filler1', 'filler0'];
     // 1. 일어나서 충전함으로
-    await h.walkTo(5.55, -1.2, Math.PI / 2, 2.0);
+    await h.walkTo(TABLET_CART.x, TABLET_CART.z - 0.85, 0, 2.0);
     if (tk !== this.token) return;
     h.char.gesture('place', 0.7);
     await this.sleep(0.7);
@@ -1248,10 +1262,10 @@ export class Morning implements StoryHooks {
       filler0: ['고마워!', 'tablet'],
       junho: ['좋았어, 준비 완료!', 'lean'],
     };
-    // 2. 책상마다 (책상 앞쪽 통로에 서서 내려놓기)
+    // 2. 책상마다 (책상 옆 통로에 서서 내려놓기)
     for (const key of order) {
       const s = seats[key];
-      await h.walkTo(s.deskX, s.deskZ - 0.62, 0, 2.0);
+      await h.walkTo(s.standX ?? s.deskX, s.standZ ?? s.deskZ - 0.62, (s.side ?? -1) > 0 ? Math.PI : 0, 2.0);
       if (tk !== this.token) return;
       h.char.gesture('place', 0.6);
       await this.sleep(0.45);
@@ -1271,7 +1285,7 @@ export class Morning implements StoryHooks {
     }
     // 3. 자기 자리로 — 플레이어 것은 빠뜨린 채
     const mine = seats.filler2;
-    await h.walkTo(mine.deskX, mine.deskZ - 0.62, 0, 2.0);
+    await h.walkTo(mine.standX ?? mine.deskX, mine.standZ ?? mine.deskZ - 0.62, (mine.side ?? -1) > 0 ? Math.PI : 0, 2.0);
     if (tk !== this.token) return;
     h.char.gesture('place', 0.6);
     await this.sleep(0.45);
@@ -1324,21 +1338,21 @@ export class Morning implements StoryHooks {
     const g = this.g;
     await this.say([
       this.L('teacher', '모둠별로 「우리 학교를 더 재미있게 바꾸는 방법」을 포스터로 만들어 봐요.'),
-      this.L('teacher', '2모둠은 교실 뒤 모둠 책상으로!'),
+      this.L('teacher', '맞붙인 책상 그대로 모둠끼리 앉아서 해요. 1모둠부터 역할을 정해 볼까요?'),
     ]);
     this.phase = 'gather';
-    g.setObjective('교실 뒤 모둠 책상으로 가기', this.inter.groupTable);
-    await this.until(() => g.player.pos.distanceTo(new THREE.Vector3(0, 0, 4.7)) < 2.8 || this.f('groupDone'));
+    g.setObjective('우리 모둠(1모둠) 책상으로 가기', this.inter.groupTable);
+    await this.until(() => g.player.pos.distanceTo(new THREE.Vector3(GROUP_TABLE.x, 0, GROUP_TABLE.z)) < 1.9 || this.f('groupDone'));
     if (!this.f('groupDone')) await this.say([
       this.L('minjae', '나 발표! 나 발표할래!'),
-      this.L('junho', '나도 발표하고 싶은데?'),
-      this.L('harin', '그럼 만드는 건 누가 해?'),
+      this.L('filler2', '나도 발표하고 싶은데?'),
+      this.L('seoa', '그럼 만드는 건 누가 해?'),
       this.L('seoa', `역할 카드 있잖아. ${this.me}가 먼저 하나 골라.`),
     ]);
     if (!this.f('groupDone')) {
       this.phase = 'pickRole';
-      const xs = [-1.05, -0.35, 0.35, 1.05];
-      (['speaker', 'maker', 'researcher', 'organizer'] as GroupRole[]).forEach((r, i) => g.spawnItem('role_' + r, ROLE_ITEMS[r], xs[i], GROUP_TABLE.top + 0.002, GROUP_TABLE.z - 0.45, Math.PI + 0.1 * (i - 1.5))); // 카드 글씨가 교실 쪽(플레이어)에서 바로 읽히게
+      const zs = [-0.51, -0.17, 0.17, 0.51];
+      (['speaker', 'maker', 'researcher', 'organizer'] as GroupRole[]).forEach((r, i) => g.spawnItem('role_' + r, ROLE_ITEMS[r], GROUP_TABLE.x + 0.4, GROUP_TABLE.top + 0.002, GROUP_TABLE.z + zs[i], Math.PI / 2 + 0.1 * (i - 1.5))); // 카드 글씨가 내 자리 쪽(동쪽)에서 바로 읽히게
       g.setObjective('모둠 책상에서 역할 카드 하나 집기 (발표·제작·자료·정리)', this.inter.groupTable);
       await this.until(() => this.save.groupRole !== null || this.f('groupDone'));
     }
@@ -1351,7 +1365,7 @@ export class Morning implements StoryHooks {
       if (role === 'organizer') this.startOrganize();
     }
     await this.until(() => this.f('groupDone'));
-    await this.say([this.L('teacher', '2모둠 포스터 멋지다! 뒤 게시판에 붙여 둘게요.')]);
+    await this.say([this.L('teacher', '1모둠 포스터 멋지다! 뒤 게시판에 붙여 둘게요.')]);
     this.applyGroupPoster();
     g.sfx.success();
     await this.sleep(2);
@@ -1368,12 +1382,12 @@ export class Morning implements StoryHooks {
     const rps = (this.save.stats.rpsGames ?? 0) > 0;
     const lines: Line[] =
       role === 'speaker'
-        ? [this.L('minjae', '에이~ 그럼 나 제작! 제일 크게 그릴 거야.'), this.L('junho', '난 정리할게. 정리는 빨리 끝내고 쉬는 거야.'), this.L('harin', '자료는 내가 찾을게!')]
+        ? [this.L('minjae', '에이~ 그럼 나 제작! 제일 크게 그릴 거야.'), this.L('filler2', '난 정리할게. 정리는 빨리 끝내고 쉬는 거야.'), this.L('seoa', '자료는 내가 찾을게!')]
         : [
-            this.L('minjae', '그럼 발표는… 준호야, 가위바위보!'),
-            this.L('junho', rps ? '민재 너 아까 쉬는 시간에 바위만 냈잖아ㅋㅋ' : '좋아, 가위바위보!'),
-            this.L('narr', '(민재가 바위를 냈다. 준호가 보를 냈다.)'),
-            this.L('junho', '발표는 내가! 민재는 남은 거 하자.'),
+            this.L('minjae', '그럼 발표는… 현우야, 가위바위보!'),
+            this.L('filler2', rps ? '민재 너 아까 쉬는 시간에 바위만 냈잖아ㅋㅋ' : '좋아, 가위바위보!'),
+            this.L('narr', '(민재가 바위를 냈다. 현우가 보를 냈다.)'),
+            this.L('filler2', '발표는 내가! 민재는 남은 거 하자.'),
           ];
     await this.say(lines);
   }
@@ -1396,7 +1410,7 @@ export class Morning implements StoryHooks {
       this.set('speechGood', res.good);
       this.g.player.char.setPose('stand');
       await this.say([
-        this.L('teacher', '2모둠 발표 들어 볼까요?'),
+        this.L('teacher', '1모둠 발표 들어 볼까요?'),
         ...res.order.map((i) => this.L('me', SPEECH_CARDS[i])),
         this.L(res.good ? 'teacher' : 'minjae', res.good ? '처음-가운데-끝이 딱 맞네요! 박수~' : '순서가 좀 웃긴데 그게 더 재밌다ㅋㅋ'),
       ]);
@@ -1407,14 +1421,14 @@ export class Morning implements StoryHooks {
       if (!res) return;
       this.save.schoolPosterTheme = res.theme;
       this.g.map.setGroupPoster(res.theme, res.slogan, res.bg, res.stickers);
-      await this.say([this.L('harin', '와 진짜 예쁘다!'), this.L('minjae', '내가 그린 것보다 낫네… 인정.')]);
+      await this.say([this.L('seoa', '와 진짜 예쁘다!'), this.L('minjae', '내가 그린 것보다 낫네… 인정.')]);
       this.finishGroup(false, true);
     } else if (role === 'researcher' && this.researchDone.size >= 3) {
       await this.say([
         this.L('me', '게시판엔 「쉬는 시간이 짧아요」 의견이 제일 많았고, 옛날엔 급식 대신 도시락이었대.'),
         this.L('me', '그리고 AI 도우미 안내에 「소원은 문자 그대로 처리됩니다」래.'),
         this.L('seoa', '문자 그대로…? 좀 불안한데.'),
-        this.L('harin', '좋아, 포스터에 다 넣자!'),
+        this.L('filler2', '좋아, 포스터에 다 넣자!'),
       ]);
       this.save.schoolPosterTheme = 'rest';
       this.finishGroup(false);
@@ -1450,11 +1464,12 @@ export class Morning implements StoryHooks {
   private startOrganize() {
     // 친구들이 서 있는 자리와 겹치지 않게 책상 서쪽 끝과 바닥에 흩어 둔다
     const onTable = GROUP_TABLE.top + 0.002;
-    const spots: [number, number, number][] = [[-1.1, onTable, 4.45], [-2.3, 0, 3.4], [-1.1, onTable, 4.95], [2.7, 0, 3.3], [-2.6, 0, 5.7], [3.0, 0, 5.7]];
+    const T = GROUP_TABLE;
+    const spots: [number, number, number][] = [[T.x + 0.33, onTable, T.z - 0.45], [T.x - 1.5, 0, T.z + 1.5], [T.x + 0.33, onTable, T.z + 0.45], [T.x + 1.6, 0, T.z + 1.7], [T.x - 0.4, 0, T.z - 1.6], [T.x + 1.9, 0, T.z - 1.3]];
     ORGANIZE.forEach((id, i) => this.g.spawnItem('org_' + id, id, spots[i][0], spots[i][1], spots[i][2], i));
     this.organized = 0;
-    this.g.setObjective('정리 0/6: 흩어진 재료를 왼쪽 뒤 미술 재료함의 바구니에 종류별로 넣기 (들고 F)', this.inter.binCut);
-    this.bark('junho', '정리 담당이면 쉬는 거 아니었어? …아 그건 나였지');
+    this.g.setObjective('정리 0/6: 흩어진 재료를 창가 미술 재료함 위 바구니에 종류별로 넣기 (들고 F)', this.inter.binCut);
+    this.g.bark(this.g.fillers[2], '정리 담당이면 쉬는 거 아니었어? …아 그건 내 생각이었지');
   }
 
   private putInBin(item: ItemId, kind: 'cut' | 'stick' | 'paper') {
@@ -1491,11 +1506,11 @@ export class Morning implements StoryHooks {
     const g = this.g;
     await this.say([
       this.L('teacher', '4교시는 미술! 종이비행기를 접거나 미니 포스터를 꾸며 봐요.'),
-      this.L('teacher', '재료는 뒤 모둠 책상에 있어요. 하나만 골라 가요~'),
+      this.L('teacher', '재료는 모둠 책상 가운데에 뒀어요. 하나만 골라요~'),
     ]);
     this.phase = 'craft';
-    g.spawnItem('stack', 'colorPaper', -0.8, 0.71, 4.6);
-    g.spawnItem('stack2', 'drawingPaper', 0.8, 0.71, 4.6);
+    g.spawnItem('stack', 'colorPaper', GROUP_TABLE.x - 0.05, GROUP_TABLE.top + 0.03, GROUP_TABLE.z - 0.3);
+    g.spawnItem('stack2', 'drawingPaper', GROUP_TABLE.x - 0.05, GROUP_TABLE.top + 0.03, GROUP_TABLE.z + 0.3);
     g.setObjective('모둠 책상에서 색종이(비행기) 또는 미니 도화지(포스터) 가져오기', this.inter.groupTable);
     await this.until(() => this.f('pickedArt') || this.phase !== 'craft');
     if (this.phase === 'craft') g.setObjective('내 책상에서 만들기 (재료 들고 F)', this.inter.seat);
@@ -1512,7 +1527,7 @@ export class Morning implements StoryHooks {
     this.g.removeItem('stack2');
     await this.speedClean();
     if (this.g.inventory.has('scraps') || this.g.hasWorldItem('scraps')) {
-      g.setObjective('종이 조각을 분리수거함(파란 통)에 버리기 (들고 F)', this.inter.trash);
+      g.setObjective('종이 조각을 뒤쪽 「종이」 분리수거함(아이보리)에 버리기 (들고 F)', this.inter.trash);
       const start = this.t;
       await this.until(() => (!this.g.inventory.has('scraps') && !this.g.hasWorldItem('scraps')) || this.t > start + 45);
       if (this.g.inventory.has('scraps') || this.g.hasWorldItem('scraps')) {
@@ -1571,7 +1586,8 @@ export class Morning implements StoryHooks {
     }
     this.set('crafted');
     const d = this.g.map.seats.player;
-    this.g.spawnItem('scraps', 'scraps', d.deskX + 0.2, 0.65, d.deskZ + 0.05);
+    const [sx, sz] = onDesk(d, 0.2, 0.05);
+    this.g.spawnItem('scraps', 'scraps', sx, DESK.top - 0.01, sz);
     this.achievement(item === 'colorPaper' ? '종이비행기 완성!' : '미니 포스터 완성!');
   }
 

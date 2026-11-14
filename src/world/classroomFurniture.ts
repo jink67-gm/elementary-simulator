@@ -6,6 +6,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { CanvasTex, font } from './canvasTex';
 import { mergeChildrenByColor } from './merge';
 import { TILE, paint, pbr, worldUV } from './pbr';
+import { mdf } from './classroomSet';
 
 /** 밑면 높이 y에 상자 하나 */
 function part(g: THREE.Object3D, w: number, h: number, d: number, mat: THREE.Material, x: number, y: number, z: number, tile = 0, round = 0) {
@@ -90,16 +91,15 @@ export function buildBookshelf(g: THREE.Group) {
 /** 미술 재료 수납장: 흰 몸통 + 나무 문 4짝 + 나무 상판 (높이 0.98). 앞면 +x, 길이 1.9(z) */
 export function buildArtCabinet(g: THREE.Group) {
   const body = paint(0xf3efe7, 0.5).clone();
-  const oak = pbr('oak', { color: 0xf3e2c8, roughness: 0.55 }).clone();
-  const chrome = paint(0xc9ced3, 0.3, 0.8).clone();
-  const L = 1.9, D = 0.6, Hh = 0.95, xb = -0.45, xf = xb + D, xc = (xb + xf) / 2;
+  const oak = mdf().clone();
+  const L = 1.9, D = 0.45, Hh = 0.82, xb = -0.45, xf = xb + D, xc = (xb + xf) / 2;
   part(g, D - 0.04, 0.08, L - 0.04, paint(0x2f3337, 0.6).clone(), xc, 0, 0);
   part(g, D, Hh - 0.08, L, body, xc, 0.08, 0);
   const n = 4, dw = L / n;
   for (let i = 0; i < n; i++) {
     const z = -L / 2 + dw * (i + 0.5);
     part(g, 0.02, Hh - 0.14, dw - 0.02, oak, xf + 0.01, 0.1, z, TILE.oak);
-    part(g, 0.03, 0.14, 0.02, chrome, xf + 0.035, 0.6, z + (i % 2 ? -1 : 1) * (dw / 2 - 0.07));
+    part(g, 0.008, 0.13, 0.022, paint(0x4a3f33, 0.8), xf + 0.022, 0.56, z + (i % 2 ? -1 : 1) * (dw / 2 - 0.03));
   }
   part(g, D + 0.03, 0.03, L + 0.03, oak, xc + 0.015, Hh, 0, TILE.oak);
   const tag = label('미술 재료', 0.36, 0.08, '#ffffff', '#7a5230');

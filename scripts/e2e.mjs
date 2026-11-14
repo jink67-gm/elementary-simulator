@@ -305,11 +305,11 @@ try {
 
   await step('3교시_모둠_제작', async () => {
     await waitFor('모이기', (s) => s.phase === 'gather', 30000);
-    await page.evaluate(() => window.__sim.teleport(1.2, 3.3));
+    await page.evaluate(() => window.__sim.teleport(-1.1, 0.2));
     await waitFor('역할 고르기', (s) => s.phase === 'pickRole', 30000);
-    await act('item:role_maker', 'KeyE', '제작', { from: [0, -1] });
+    await act('item:role_maker', 'KeyE', '제작', { from: [1, 0] });
     await waitFor('역할', (s) => s.role === 'maker');
-    await act('groupTable', 'KeyE', '포스터');
+    await act('groupTable', 'KeyE', '포스터', { from: [1, 0] });
     await waitPanel(true);
     for (const k of ['Digit1', 'Digit1', 'Digit2', 'Digit3', 'ArrowRight', 'KeyB']) await page.keyboard.press(k);
     await page.keyboard.press('Enter');
@@ -548,7 +548,7 @@ try {
     await noDialogue();
     log('사건 2 → ' + sol + `, 사건 3으로 넘어감 (${Math.round((Date.now() - t0) / 1000)}초)`);
   }
-  const COMP_Z = { books: -4.0, tools: -3.4, paper: -2.8 };
+  const COMP_Z = { books: -2.6, tools: -2.0, paper: -1.4 };
 
   await step('사건2_A_원격_조종', async () => {
     await restartRobot();
@@ -580,13 +580,13 @@ try {
       // 일부러 한 번은 틀린 칸
       if (n === 0) {
         const wrong = rs.claw.cat === 'books' ? 'tools' : 'books';
-        await page.evaluate((z) => window.__sim.game.robot.place(5.95, z, Math.PI / 2), COMP_Z[wrong]);
+        await page.evaluate((z) => window.__sim.game.robot.place(5.5, z, Math.PI / 2), COMP_Z[wrong]);
         await frames(2);
         await page.keyboard.press('Space');
         await frames(3);
         if (!(await robotSt()).claw) throw new Error('틀린 칸인데 놓아짐');
       }
-      await page.evaluate((z) => window.__sim.game.robot.place(5.95, z, Math.PI / 2), COMP_Z[rs.claw.cat]);
+      await page.evaluate((z) => window.__sim.game.robot.place(5.5, z, Math.PI / 2), COMP_Z[rs.claw.cat]);
       await frames(2);
       await page.keyboard.press('Space');
       await frames(3);
@@ -923,9 +923,9 @@ try {
   await step('다른_역할_자료조사', async () => {
     await page.evaluate(() => { window.__sim.game.running = true; window.__sim.game.hud.show(true); document.querySelector('.screen')?.remove(); window.__sim.game.save.groupRole = null; window.__sim.game.save.flags.groupDone = false; window.__sim.skipTo('group'); });
     await waitFor('모이기', (s) => s.phase === 'gather', 30000);
-    await page.evaluate(() => window.__sim.teleport(1.2, 3.3));
+    await page.evaluate(() => window.__sim.teleport(-1.1, 0.2));
     await waitFor('역할 고르기', (s) => s.phase === 'pickRole', 30000);
-    await act('item:role_researcher', 'KeyE', '자료', { from: [0, -1] });
+    await act('item:role_researcher', 'KeyE', '자료', { from: [1, 0] });
     await waitFor('역할', (s) => s.role === 'researcher');
     for (const id of ['bulletin', 'board', 'bookshelf']) {
       await act(id, 'KeyE', '조사');
@@ -933,15 +933,15 @@ try {
       await page.keyboard.press('Enter');
       await waitPanel(false);
     }
-    await act('groupTable', 'KeyE', '알려 주기', { from: [0, -1] });
+    await act('groupTable', 'KeyE', '알려 주기', { from: [1, 0] });
     await waitFor('모둠 끝', (s) => s.flags.groupDone && s.flags.foundAIManual, 60000);
   });
 
   await step('다른_역할_정리', async () => {
     await page.evaluate(() => { window.__sim.game.save.groupRole = null; window.__sim.game.save.flags.groupDone = false; window.__sim.skipTo('group'); });
-    await page.evaluate(() => window.__sim.teleport(1.2, 3.3));
+    await page.evaluate(() => window.__sim.teleport(-1.1, 0.2));
     await waitFor('역할 고르기', (s) => s.phase === 'pickRole', 30000);
-    await act('item:role_organizer', 'KeyE', '정리', { from: [0, -1] });
+    await act('item:role_organizer', 'KeyE', '정리', { from: [1, 0] });
     await waitFor('역할', (s) => s.role === 'organizer');
     const bins = { scissors: 'binCut', ruler: 'binCut', glueStick: 'binStick', tape: 'binStick', colorPaperPack: 'binPaper', markers: 'binPaper' };
     // 일부러 틀린 바구니에 한 번
@@ -960,11 +960,11 @@ try {
 
   await step('다른_역할_발표', async () => {
     await page.evaluate(() => { window.__sim.game.save.groupRole = null; window.__sim.game.save.flags.groupDone = false; window.__sim.skipTo('group'); });
-    await page.evaluate(() => window.__sim.teleport(1.2, 3.3));
+    await page.evaluate(() => window.__sim.teleport(-1.1, 0.2));
     await waitFor('역할 고르기', (s) => s.phase === 'pickRole', 30000);
-    await act('item:role_speaker', 'KeyE', '발표', { from: [0, -1] });
+    await act('item:role_speaker', 'KeyE', '발표', { from: [1, 0] });
     await waitFor('역할', (s) => s.role === 'speaker');
-    await act('groupTable', 'KeyE', '발표');
+    await act('groupTable', 'KeyE', '발표', { from: [1, 0] });
     await waitPanel(true);
     for (const k of ['Digit2', 'Digit3', 'Digit1']) await page.keyboard.press(k);
     await waitPanel(false);

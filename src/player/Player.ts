@@ -71,7 +71,8 @@ export class Player {
     const s = this.seat;
     this.seat = null;
     // 의자 옆 통로 쪽으로 반 걸음
-    this.pos.set(s.x, 0, s.z + 0.35);
+    const dx = s.x - s.deskX, dz = s.z - s.deskZ, l = Math.hypot(dx, dz) || 1;
+    this.pos.set(s.x + (dx / l) * 0.35, 0, s.z + (dz / l) * 0.35);
     this.char.setPose('stand');
   }
 

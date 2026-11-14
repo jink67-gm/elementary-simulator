@@ -87,7 +87,8 @@ export class Npc {
   }
 
   async walkToSeat(seat: Seat, speed = 2.2) {
-    if (await this.walkTo(seat.x, seat.z + 0.05, seat.yaw, speed, seat.y ?? 0)) this.sitAt(seat);
+    const dx = seat.x - seat.deskX, dz = seat.z - seat.deskZ, l = Math.hypot(dx, dz) || 1;
+    if (await this.walkTo(seat.x + (dx / l) * 0.05, seat.z + (dz / l) * 0.05, seat.yaw, speed, seat.y ?? 0)) this.sitAt(seat);
   }
 
   faceTo(x: number, z: number) {

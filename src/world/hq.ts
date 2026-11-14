@@ -51,8 +51,9 @@ export class HQBuilder {
    * 큰 창이 있는 바깥 벽 (x 벽, z0~z1): 창 아래 벽·인방, 창턱, 알루미늄 미닫이(아래 두 장) + 위 고정창,
    * 롤 블라인드(선택). dir = 방 안쪽 방향(+1: +x 쪽이 방)
    */
-  protected slidingWindowWall(x: number, z0: number, z1: number, dir: 1 | -1, o: { blinds?: boolean; bays?: number; sillY?: number } = {}) {
+  protected slidingWindowWall(x: number, z0: number, z1: number, dir: 1 | -1, o: { blinds?: boolean; bays?: number; sillY?: number; frame?: THREE.Material } = {}) {
     const H = 3;
+    const fr = o.frame ?? this.alu;
     const len = z1 - z0, zc = (z0 + z1) / 2;
     const plaster = pbr('plaster', { roughness: 0.9 });
     const sillY = o.sillY ?? 0.86, topY = 2.64;
@@ -71,10 +72,10 @@ export class HQBuilder {
     const wz0 = z0 + 0.15, wz1 = z1 - 0.15, wl = wz1 - wz0;
     const bays = o.bays ?? Math.max(1, Math.round(wl / 2.5)), bw = wl / bays;
     const midY = 2.2;
-    this.box(0.1, 0.05, wl, this.alu, x, sillY, (wz0 + wz1) / 2);
-    this.box(0.1, 0.05, wl, this.alu, x, topY - 0.05, (wz0 + wz1) / 2);
-    this.box(0.1, 0.06, wl, this.alu, x, midY - 0.03, (wz0 + wz1) / 2);
-    for (let i = 0; i <= bays; i++) this.box(0.12, topY - sillY, 0.06, this.alu, x, sillY, wz0 + i * bw);
+    this.box(0.1, 0.05, wl, fr, x, sillY, (wz0 + wz1) / 2);
+    this.box(0.1, 0.05, wl, fr, x, topY - 0.05, (wz0 + wz1) / 2);
+    this.box(0.1, 0.06, wl, fr, x, midY - 0.03, (wz0 + wz1) / 2);
+    for (let i = 0; i <= bays; i++) this.box(0.12, topY - sillY, 0.06, fr, x, sillY, wz0 + i * bw);
     const paneH = midY - 0.03 - sillY - 0.05;
     for (let i = 0; i < bays; i++) {
       const bz = wz0 + i * bw;
@@ -88,10 +89,10 @@ export class HQBuilder {
         const sw = bw * 0.52;
         const cz = k ? bz + bw - sw / 2 : bz + sw / 2;
         const y0 = sillY + 0.05;
-        this.box(0.035, 0.04, sw, this.alu, sx, y0, cz);
-        this.box(0.035, 0.04, sw, this.alu, sx, y0 + paneH - 0.04, cz);
-        this.box(0.035, paneH, 0.04, this.alu, sx, y0, cz - sw / 2 + 0.02);
-        this.box(0.035, paneH, 0.04, this.alu, sx, y0, cz + sw / 2 - 0.02);
+        this.box(0.035, 0.04, sw, fr, sx, y0, cz);
+        this.box(0.035, 0.04, sw, fr, sx, y0 + paneH - 0.04, cz);
+        this.box(0.035, paneH, 0.04, fr, sx, y0, cz - sw / 2 + 0.02);
+        this.box(0.035, paneH, 0.04, fr, sx, y0, cz + sw / 2 - 0.02);
         const p = this.add(new THREE.PlaneGeometry(sw - 0.06, paneH - 0.07), this.glass, sx, y0 + paneH / 2, cz, { cast: false, receive: false, ry });
         p.renderOrder = 2;
         this.blockers.push(p);
@@ -105,7 +106,7 @@ export class HQBuilder {
       const roll = this.add(new THREE.CylinderGeometry(0.04, 0.04, bw - 0.08, 10), this.laminateWhite, bx, topY + 0.1, bz + bw / 2);
       roll.rotation.x = Math.PI / 2;
       this.box(0.012, drop, bw - 0.14, this.fabric, bx, topY + 0.06 - drop, bz + bw / 2);
-      this.box(0.02, 0.025, bw - 0.12, this.alu, bx, topY + 0.05 - drop, bz + bw / 2, false); // 아래 무게 막대
+      this.box(0.02, 0.025, bw - 0.12, fr, bx, topY + 0.05 - drop, bz + bw / 2, false); // 아래 무게 막대
       // 줄
       this.box(0.006, 0.9, 0.006, paint(0xd8d2c4, 0.9), bx + dir * 0.01, topY - 0.9, bz + bw - 0.12, false);
     }

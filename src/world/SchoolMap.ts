@@ -15,11 +15,13 @@ import { buildTabletCart } from './props/tabletCart';
 import { buildCutleryBin, buildTray } from './props/items';
 import { drawKidPoster } from './props/posterArt';
 import { TILE_EXT, plinthMat, stuccoMat } from './exteriorTex';
-import { GROUP_TABLE, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, lockerCell } from './classroomLayout';
+import { ART_CAB, BOOKSHELF, CLASS_DOORS, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, PODS, POSTER_BOARD, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, classSeat, lockerCell } from './classroomLayout';
+import { buildCleaningCabinet, buildFabricRecycling, buildLockerCarcass, buildOfficeChair, buildStudentChair, buildStudentDesk, buildTeacherPC, buildTrashBin, lockerDoorGeo, lockerHandle, mdf } from './classroomSet';
+import { compact } from './props/kit';
 import { GymBuilder } from './GymHQ';
 import { CafeteriaWingBuilder, STEEL, cafeteriaTable } from './CafeteriaWing';
 import { CAFE, FLOOR1_Y, SLAB, STAIR, STOREY } from './rooms';
-import { buildArtCabinet, buildBin, buildBookshelf, buildRecycling } from './classroomFurniture';
+import { buildArtCabinet, buildBin, buildBookshelf } from './classroomFurniture';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { TILE, isPbrMaterial, paint, pbr, worldUV } from './pbr';
 
@@ -31,6 +33,12 @@ export interface Seat {
   yaw: number;
   deskX: number;
   deskZ: number;
+  /** 책상 모델 회전 (없으면 0: 의자가 +z 쪽) */
+  rot?: number;
+  /** 책상 바깥 옆면 방향(z)과 그 옆에 서는 곳 (교실 모둠 책상) */
+  side?: number;
+  standX?: number;
+  standZ?: number;
 }
 
 const WALL_H = 3;
@@ -41,13 +49,6 @@ export { FLOOR1_Y, STAIR } from './rooms';
 export const CUTLET_W = 5.2;
 export const CUTLET_D = 2.8;
 export const CUTLET_H = 0.2;
-/** 6-1 짝꿍 책상 4쌍: [가운데 x, z, 왼쪽 자리 주인, 오른쪽 자리 주인]. 학생 8명 = 책상 8개 = 의자 8개 */
-export const CLASS_SEATS: [number, number, string, string][] = [
-  [-2.1, -0.6, 'harin', 'filler1'],
-  [2.1, -0.6, 'junho', 'filler2'],
-  [-2.1, 1.2, 'player', 'seoa'],
-  [2.1, 1.2, 'minjae', 'filler0'],
-];
 
 
 const C = {
@@ -91,7 +92,7 @@ export class SchoolMap {
   robotColliders: Aabb[] = [];
 
   /** 소품 모델 여러 개 놓기. 모델이 없으면 false */
-  private props(id: string, places: Placement[], fit: Fit): boolean {
+  protected props(id: string, places: Placement[], fit: Fit): boolean {
     const g = placeInstances(id, places, fit);
     if (!g) return false;
     this.root.add(g);
@@ -133,11 +134,10 @@ export class SchoolMap {
       transoms: [
         { z0: -15.6, z1: -11.8, clear: false },
         { z0: -10.2, z1: -6.4, clear: false },
-        { z0: -3.4, z1: 4.2, clear: true },
-        { z0: 9.6, z1: 15.6, clear: false },
+                { z0: 9.6, z1: 15.6, clear: false },
       ],
       arches: [-9.6, -0.2, 7.0, 15.4],
-      openDoors: [{ z0: -5.4, z1: -3.8 }, { z0: 4.6, z1: 6.2 }],
+      openDoors: [], // 6-1 문은 SchoolMap.buildSlidingDoor (열리고 닫히는 미닫이)
     });
     new CorridorBuilder(this.root, this.colliders, this.cameraBlockers).build({
       baseY: FLOOR1_Y,
@@ -319,29 +319,47 @@ export class SchoolMap {
   }
 
   private buildClassroom() {
-    // 바닥·천장·창문 벽·판벽 등 모습은 ClassroomHQ가 짓는다
-    // 벽: 앞(칠판) z=-6, 뒤(사물함) z=7, 창문 x=-7, 복도쪽 x=7 (앞문·뒷문)
+    // 바닥·천장·창문 벽·판벽·붙박이 가구 모습은 ClassroomHQ가 짓는다. 여기서는 벽·충돌·게임이 쓰는 물건.
+    // 벽: 앞(칠판) z=-6, 뒤(사물함·게시판, 문 없음) z=7, 창문 x=-7, 복도 쪽 x=7 (앞문·뒷문 모두 여기)
     this.wallZ(-6.1, -7.2, 7.2);
     this.wallZ(7.1, -7.2, 7.2);
-    this.wallX(7.1, -6, -5.4);
-    this.wallX(7.1, -3.8, 4.6);
-    this.wallX(7.1, 6.2, 7);
-    // 문 위 벽
-    this.box(0.2, 0.8, 1.6, C.wall, 7.1, 2.2, -4.6);
-    this.box(0.2, 0.8, 1.6, C.wall, 7.1, 2.2, 5.4);
+    this.wallX(7.1, -6, CLASS_DOORS[0].z0);
+    this.wallX(7.1, CLASS_DOORS[1].z1, 7);
+    // 두 문 사이: 기둥 벽 + 복도가 보이는 유리창 두 칸 (창 아래·위만 벽)
+    let zPrev = CLASS_DOORS[0].z1;
+    for (const [a, b] of HALL_WINDOWS) {
+      this.wallX(7.1, zPrev, a);
+      this.box(0.2, HALL_WIN_Y.sill, b - a, C.wall, 7.1, 0, (a + b) / 2, { collide: true, wall: true });
+      this.box(0.22, 0.12, b - a, C.wallTrim, 7.1, 0, (a + b) / 2, { shadow: false });
+      this.box(0.2, WALL_H - HALL_WIN_Y.top, b - a, C.wall, 7.1, HALL_WIN_Y.top, (a + b) / 2, { wall: true });
+      zPrev = b;
+    }
+    this.wallX(7.1, zPrev, CLASS_DOORS[1].z0);
+    // 문 위 벽 + 미닫이 문 (가까이 가면 좌우로 열린다)
+    CLASS_DOORS.forEach((d, i) => {
+      this.box(0.2, 0.8, d.z1 - d.z0, C.wall, 7.1, 2.2, (d.z0 + d.z1) / 2);
+      this.buildSlidingDoor(i, d.z0, d.z1);
+    });
 
+    for (const P of [WEST_PILLAR, EAST_PILLAR]) this.colliders.push(aabb(P.x, P.z, P.w, P.d));
     // 전자칠판 + 시계
     const boardFrame = this.box(3.8, 1.8, 0.08, 0x30343b, 0, 0.75, -5.96, { shadow: false });
     boardFrame.material = paint(0x1c1f23, 0.35, 0.2).clone(); // 강조 효과용 자기 재질
     boardFrame.name = 'board';
     this.objs.board = boardFrame;
     this.plane(3.6, 1.575, this.boardTex.material(), 0, 1.65, -5.91);
-    const clock = new THREE.Mesh(new THREE.CircleGeometry(0.24, 32), this.clockTex.material());
-    clock.position.set(0, 2.75, -5.95);
+    // 벽시계: 복도 쪽 가운데 기둥 (게임 시간과 연동 — setClock)
+    const clock = new THREE.Mesh(new THREE.CircleGeometry(0.27, 40), this.clockTex.material());
+    clock.position.set(CLOCK_POS.x - 0.012, CLOCK_POS.y, CLOCK_POS.z);
+    clock.rotation.y = -Math.PI / 2;
     this.root.add(clock);
+    const clockRim = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.022, 10, 40), paint(0x2f3337, 0.45));
+    clockRim.position.set(CLOCK_POS.x - 0.006, CLOCK_POS.y, CLOCK_POS.z);
+    clockRim.rotation.y = -Math.PI / 2;
+    this.root.add(clockRim);
     this.objs.clock = clock;
 
-    // 선생님 책상
+    // 선생님 책상 (앞 왼쪽, 창가): 책상 + 컴퓨터(모니터·키보드·필기구) + 의자
     const tdesk = new THREE.Group();
     tdesk.position.set(-4.6, 0, -4.7);
     this.root.add(tdesk);
@@ -351,7 +369,16 @@ export class SchoolMap {
     }
     const drawer = this.box(0.44, 0.18, 0.04, 0xd0a674, -0.45, 0.45, 0.37, { parent: tdesk, ownMat: true });
     this.objs.teacherDrawer = drawer;
-    if (!this.prop('classic_laptop', tdesk, { w: 0.36 }, 0.3, 0.78, -0.05)) this.box(0.25, 0.3, 0.02, 0x222222, 0.3, 0.8, -0.2, { parent: tdesk }); // 모니터
+    if (!this.prop('classic_laptop', tdesk, { w: 0.36 }, 0.42, 0.78, -0.05)) this.box(0.25, 0.3, 0.02, 0x222222, 0.42, 0.8, -0.2, { parent: tdesk });
+    const pc = buildTeacherPC();
+    pc.scale.setScalar(0.8);
+    pc.position.set(-0.26, 0.78, -0.02);
+    pc.rotation.y = Math.PI; // 화면이 선생님(칠판 쪽)을 본다
+    tdesk.add(pc);
+    const tchair = buildOfficeChair();
+    tchair.position.set(0.62, 0, -0.72);
+    tchair.rotation.y = Math.PI - 0.5;
+    tdesk.add(tchair);
     this.colliders.push(aabb(-4.6, -4.7, 1.5, 0.75));
     this.objs.teacherDesk = tdesk;
 
@@ -382,172 +409,164 @@ export class SchoolMap {
     const menuMesh = this.plane(0.9, 1.17, menu.material(), 4.6, 1.6, -5.9);
     this.objs.lunchMenu = menuMesh;
 
-    // 학생 책상 8개 = 학생 8명 (플레이어 + NPC 7명). 짝꿍 책상 4쌍, 자리 주인은 CLASS_SEATS
-    const deskTop = this.mat(C.desk);
-    const modelDesks = hasProp('SchoolDesk_01') && hasProp('SchoolChair_01');
-    const deskPlaces: Placement[] = [];
-    for (const [px, rz, left, right] of CLASS_SEATS) {
-      for (const [side, who] of [[-1, left], [1, right]] as [number, string][]) {
-        const sx = px + side * 0.38;
-        const g = new THREE.Group();
-        g.position.set(sx, 0, rz);
-        this.root.add(g);
-        if (modelDesks) deskPlaces.push({ x: sx, z: rz });
-        else {
-          const top = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.05, 0.48), deskTop);
-          top.position.y = 0.62;
-          top.castShadow = top.receiveShadow = true;
-          g.add(top);
-          for (const [lx, lz] of [[-0.3, -0.2], [0.3, -0.2], [-0.3, 0.2], [0.3, 0.2]]) this.box(0.04, 0.6, 0.04, C.deskLeg, lx, 0, lz, { parent: g });
-          this.box(0.4, 0.04, 0.38, C.chair, 0, 0.3, 0.45, { parent: g });
-          this.box(0.4, 0.38, 0.04, C.chair, 0, 0.34, 0.64, { parent: g });
-        }
-        this.seats[who] = { x: sx, z: rz + 0.45, yaw: Math.PI, deskX: sx, deskZ: rz };
-        this.objs['desk_' + who] = g;
-      }
-      this.colliders.push(aabb(px, rz, 1.45, 0.5, 'desk'));
+    // 학생 책상 8개 + 의자 8개 = 학생 8명 (플레이어 + NPC 7명). 일반 책상 4개를 맞붙인 모둠 둘 (CLASS_SEATING)
+    // 밝은 나무 상판 + 회색 금속 틀 + 회색 계열 의자 (classroomSet) — 8벌을 재질별로 한 덩어리로 합친다
+    const desks = new THREE.Group();
+    this.root.add(desks);
+    for (const [pod, sx, row, who] of CLASS_SEATING) {
+      const s = classSeat(pod, sx, row);
+      const g = new THREE.Group();
+      g.position.set(s.deskX, 0, s.deskZ);
+      g.rotation.y = s.rot;
+      desks.add(g);
+      g.add(buildStudentDesk(DESK.w, DESK.d, DESK.top));
+      const ch = buildStudentChair();
+      ch.position.z = DESK.d / 2 + 0.25;
+      g.add(ch);
+      this.seats[who] = s;
+      const anchor = new THREE.Group();
+      anchor.position.set(s.deskX, 0, s.deskZ);
+      this.root.add(anchor);
+      this.objs['desk_' + who] = anchor;
     }
-    if (modelDesks) {
-      this.props('SchoolDesk_01', deskPlaces, { w: 0.68, h: 0.66, d: 0.48 });
-      this.props('SchoolChair_01', deskPlaces.map((p) => ({ x: p.x, z: p.z + 0.5 })), { w: 0.4, h: 0.78, d: 0.42, backToPlusZ: true });
-    }
+    compact(desks);
+    for (const p of PODS) this.colliders.push(aabb(p.x, p.z, DESK.d * 2, DESK.w * 2, 'desk'));
     this.objs.playerDesk = this.objs.desk_player;
+    // 모둠 활동 자리 = 1모둠 책상 가운데 (별도 모둠 책상 없음). 상호작용 기준점만 둔다
+    const gt = new THREE.Group();
+    gt.position.set(GROUP_TABLE.x, GROUP_TABLE.top, GROUP_TABLE.z);
+    this.root.add(gt);
+    this.objs.groupTable = gt;
 
-    // 태블릿 충전함 (실제 학교 충전 보관함 모양 — props/tabletCart.ts). 위 거치대에 세워 꽂힌 태블릿 8대: objs.tabletSlots
+    // ── 뒤 벽: (복도 쪽) 청소도구함 → 사물함 → 태블릿 충전함 → 쓰레기통 → 분리수거함 (창가 쪽) ──
+    // 태블릿 충전함 (props/tabletCart.ts). 위 거치대에 세워 꽂힌 태블릿 8대: objs.tabletSlots
     const { cart, slots } = buildTabletCart();
-    cart.position.set(6.3, 0, -1.2);
+    cart.position.set(TABLET_CART.x, 0, TABLET_CART.z);
+    cart.rotation.y = -Math.PI / 2; // 앞면이 교실 쪽(-z)
     this.root.add(cart);
     this.objs.tabletSlots = slots;
-    this.colliders.push(aabb(6.3, -1.2, 0.6, 1.1));
+    this.colliders.push(aabb(TABLET_CART.x, TABLET_CART.z, 1.1, 0.6));
     this.objs.tabletCart = cart;
 
-    // 학급 문고
-    const shelf = new THREE.Group();
-    shelf.position.set(-6.7, 0, -0.6);
-    this.root.add(shelf);
-    buildBookshelf(shelf); // 창 아래 낮은 책장 (classroomFurniture)
-    this.colliders.push(aabb(-6.7, -0.6, 0.45, 2.2));
-    this.objs.bookshelf = shelf;
-
-    // 사물함 (뒤 벽, 12칸 × 2단) — 17번이 내 것
+    // 사물함 (12칸 × 2단, 연한 우드 MDF, 원형 매립 손잡이, 번호 없음) — 17번이 내 것
     const lockers = new THREE.Group();
     this.root.add(lockers);
-    // 흰 몸통 + 받침 + 색 문(파스텔) + 손잡이 홈 + 번호표
-    const carcass = this.box(12.0, 1.04, 0.5, C.locker, 0, 0.1, 6.65, { parent: lockers });
-    carcass.material = paint(0xf2eee6, 0.55);
-    this.box(12.0, 0.1, 0.46, C.wallTrim, 0, 0, 6.67, { parent: lockers, shadow: false });
-    const doorColors = [0xa8d5ba, 0x9ad0ec, 0xf6d186, 0xf4b6c2];
-    const notch = paint(0x5c6166, 0.6);
+    this.objs.lockers = lockers;
+    const carcass = buildLockerCarcass(LOCKERS.w, LOCKERS.d, LOCKERS.top, LOCKER_COLS);
+    carcass.position.set(LOCKERS.x, 0, LOCKERS.z);
+    lockers.add(carcass);
+    const doorMat = mdf();
+    const doorsG = new THREE.Group();
+    lockers.add(doorsG);
+    const doorGeo = lockerDoorGeo(LOCKER_DOOR.w, LOCKER_DOOR.h);
     for (let num = 1; num <= LOCKER_COUNT; num++) {
       if (num === MY_LOCKER) continue; // 내 사물함 문은 아래에서 따로 (열리는 문)
       const c = lockerCell(num);
-      const d = this.box(LOCKER_DOOR.w, LOCKER_DOOR.h, 0.025, 0x8fb3d9, c.x, c.y + 0.04, LOCKER_FRONT_Z, { parent: lockers, shadow: false });
-      d.material = paint(doorColors[(c.col + c.row * 2) % doorColors.length], 0.5);
-      const h = this.box(0.14, 0.025, 0.012, 0x555555, c.x - 0.3, c.y + 0.12, LOCKER_FRONT_Z - 0.018, { parent: lockers, shadow: false });
-      h.material = notch;
+      const d = new THREE.Mesh(doorGeo, doorMat);
+      d.position.set(c.x, c.y + 0.04 + LOCKER_DOOR.h / 2, LOCKER_FRONT_Z);
+      d.castShadow = d.receiveShadow = true;
+      doorsG.add(d);
+      lockerHandle(doorsG, c.x - LOCKER_DOOR.w / 2 + 0.07, c.y + 0.04 + LOCKER_DOOR.h / 2, LOCKER_FRONT_Z);
     }
+    compact(doorsG);
+    // 번호표: 기본은 숨김 — 필요할 때만 보인다 (setLockerNumbers)
+    const numbers = new THREE.Group();
+    numbers.visible = false;
+    lockers.add(numbers);
+    this.objs.lockerNumbers = numbers;
     for (let row = 0; row < 2; row++) {
-      const lab = new CanvasTex(1536, 32);
+      const lab = new CanvasTex(1536, 40);
       lab.draw((c, w, h) => {
         c.clearRect(0, 0, w, h);
-        c.font = font(22, true);
+        c.font = font(26, true);
         c.textAlign = 'center';
         for (let col = 0; col < LOCKER_COLS; col++) {
           const num = row * LOCKER_COLS + col + 1;
-          if (num === MY_LOCKER) continue;
-          // 번호판은 뒤집혀(π) 붙으므로 텍스처 u=(col+0.5)/12 가 월드 x = 5.5 - col (= lockerCell(num).x)
+          // 번호판은 뒤집혀(π) 붙으므로 텍스처 u=(col+0.5)/12 가 월드 x = lockerCell(num).x
           const cx = ((col + 0.5) * w) / LOCKER_COLS;
-          c.fillStyle = '#ffffff';
-          c.fillRect(cx - 22, 3, 44, 26);
+          c.fillStyle = num === MY_LOCKER ? '#ffd43b' : '#ffffff';
+          c.beginPath();
+          c.roundRect(cx - 34, 3, 68, 34, 8);
+          c.fill();
           c.fillStyle = '#333';
-          c.fillText(String(num), cx, 24);
+          c.fillText(String(num), cx, 30);
         }
       });
       const lm = lab.material();
       lm.transparent = true;
       lm.alphaTest = 0.5;
-      const plate = new THREE.Mesh(new THREE.PlaneGeometry(12, 0.25), lm);
-      plate.position.set(0, lockerCell(row * LOCKER_COLS + 1).y + 0.38, LOCKER_FRONT_Z - 0.016);
+      const plate = new THREE.Mesh(new THREE.PlaneGeometry(LOCKERS.w, (LOCKERS.w * 40) / 1536), lm);
+      plate.position.set(LOCKERS.x, lockerCell(row * LOCKER_COLS + 1).y + 0.04 + LOCKER_DOOR.h - 0.09, LOCKER_FRONT_Z - 0.03);
       plate.rotation.y = Math.PI;
-      lockers.add(plate);
+      numbers.add(plate);
     }
-    // 내 사물함 문 (경첩 축)
+    // 내 사물함 문 (경첩 축): 경첩은 문의 -x 쪽 모서리 (교실에서 보면 오른쪽), 문 아래 모서리 높이
     const hinge = new THREE.Group();
-    // 경첩은 문의 -x 쪽 모서리 (교실에서 보면 오른쪽), 문 아래 모서리 높이
     const mine = lockerCell(MY_LOCKER);
-    hinge.position.set(mine.x - LOCKER_DOOR.w / 2, mine.y + 0.04, LOCKER_FRONT_Z - 0.005);
+    hinge.position.set(mine.x - LOCKER_DOOR.w / 2, mine.y + 0.04, LOCKER_FRONT_Z);
     this.root.add(hinge);
-    const door = this.box(LOCKER_DOOR.w, LOCKER_DOOR.h, 0.03, 0xffb703, LOCKER_DOOR.w / 2, 0, 0, { parent: hinge, ownMat: true });
-    door.position.y = LOCKER_DOOR.h / 2;
-    // 번호표는 다른 칸과 같은 크기 (0.34 × 0.2)
-    const tag = new CanvasTex(136, 80);
-    tag.draw((c, w, h) => {
-      c.fillStyle = '#fff';
-      c.fillRect(0, 0, w, h);
-      c.fillStyle = '#333';
-      c.font = font(64, true);
-      c.textAlign = 'center';
-      c.fillText(String(MY_LOCKER), w / 2, 63);
-    });
-    const tagMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.2), tag.material());
-    tagMesh.position.set(LOCKER_DOOR.w / 2, 0.34, -0.02);
-    tagMesh.rotation.y = Math.PI;
-    hinge.add(tagMesh);
+    const door = new THREE.Mesh(doorGeo, doorMat.clone());
+    door.material.userData = {};
+    door.position.set(LOCKER_DOOR.w / 2, LOCKER_DOOR.h / 2, 0);
+    door.castShadow = true;
+    hinge.add(door);
+    lockerHandle(hinge, 0.07, LOCKER_DOOR.h / 2, 0);
     this.objs.lockerDoor = hinge;
     this.objs.locker17 = door;
-    this.colliders.push(aabb(0, 6.65, 12, 0.5));
+    this.colliders.push(aabb(LOCKERS.x, LOCKERS.z, LOCKERS.w, LOCKERS.d));
 
-    // 모둠 책상: 나무 상판 + 스테인리스 테두리 틀(상판 아래, 안쪽으로 들임) + 다리. 면이 겹치지 않게 높이를 나눈다
-    const T = GROUP_TABLE;
-    const gt = new THREE.Group();
-    gt.position.set(T.x, 0, T.z);
-    this.root.add(gt);
-    const gtTop = this.box(T.w, T.thick, T.d, 0xf0d9b5, 0, T.top - T.thick, 0, { parent: gt });
-    gtTop.material = pbr('oak', { color: 0xf6e7cf, roughness: 0.5 }).clone();
-    worldUV(gtTop.geometry, T.w, T.thick, T.d, TILE.oak);
-    const frameMat = paint(0x9aa0a6, 0.4, 0.4).clone();
-    const railY = T.top - T.thick - 0.035, inX = T.w / 2 - 0.1, inZ = T.d / 2 - 0.08;
-    for (const sz of [-1, 1]) this.box(inX * 2, 0.035, 0.03, 0x555555, 0, railY, sz * inZ, { parent: gt }).material = frameMat;
-    for (const sx of [-1, 1]) this.box(0.03, 0.035, inZ * 2 - 0.03, 0x555555, sx * inX, railY, 0, { parent: gt }).material = frameMat;
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) this.box(0.05, railY, 0.05, C.deskLeg, sx * inX, 0, sz * inZ, { parent: gt }).material = frameMat;
-    this.colliders.push(aabb(T.x, T.z, T.w, T.d));
-    this.objs.groupTable = gt;
+    // 청소도구함 (뒷문 가까이, 낮은 양문형). 문은 E로 여닫는다
+    const cc = CLEAN_CABINET;
+    const hasBroom = hasProp('plastic_broom');
+    const { cabinet, doors: cleanDoors } = buildCleaningCabinet(cc.w, cc.h, cc.d, !hasBroom);
+    cabinet.position.set(cc.x, 0, cc.z);
+    this.root.add(cabinet);
+    // 빗자루(모델)는 안 오른쪽 칸에 세워 둔다 — 자루가 윗면 수납구 위로 올라온다
+    if (hasBroom) this.prop('plastic_broom', cabinet, { h: 1.12 }, -cc.w / 4 - 0.1, 0.09, 0.07, 0.4);
+    this.colliders.push(aabb(cc.x, cc.z, cc.w, cc.d));
+    this.objs.cleanCabinet = cabinet;
+    this.cleanDoors = cleanDoors;
 
-    // 미술 재료함 + 정리 바구니 3개
+    // 파란 쓰레기통(흰 스윙 뚜껑) + 천 3칸 분리수거함(캔·종이·플라스틱)
+    const bin = buildTrashBin();
+    bin.position.set(TRASH.x, 0, TRASH.z);
+    this.root.add(bin);
+    this.objs.trashBin = bin;
+    this.colliders.push(aabb(TRASH.x, TRASH.z, 0.42, 0.36));
+    const trash = buildFabricRecycling();
+    trash.position.set(RECYCLE.x, 0, RECYCLE.z);
+    this.root.add(trash);
+    this.colliders.push(aabb(RECYCLE.x, RECYCLE.z, RECYCLE.w, 0.38));
+    this.objs.trash = trash;
+
+    // ── 창가(서): 긴 수납장 줄 속의 학급 문고(열린 책장)와 미술 재료함 + 정리 바구니 3개 ──
+    const shelf = new THREE.Group();
+    shelf.position.set(BOOKSHELF.x, 0, BOOKSHELF.z);
+    this.root.add(shelf);
+    buildBookshelf(shelf);
+    this.objs.bookshelf = shelf;
     const cab = new THREE.Group();
-    cab.position.set(-6.5, 0, 4.6);
+    cab.position.set(ART_CAB.x, 0, ART_CAB.z);
     this.root.add(cab);
     buildArtCabinet(cab);
     const binColors = [0xef6f7f, 0xf2c94c, 0x5bb8e8];
     const binNames = ['자르기·재기', '붙이기', '종이·펜']; // Morning BIN_NAMES와 같게
     ['binCut', 'binStick', 'binPaper'].forEach((name, i) => {
       const b = new THREE.Group();
-      b.position.set(-6.5, 0.98, 4.0 + i * 0.6);
+      b.position.set(WINDOW_CAB.x, WINDOW_CAB.h + 0.03, ART_CAB.z - 0.6 + i * 0.6);
+      b.scale.setScalar(0.92);
       this.root.add(b);
       buildBin(b, binColors[i], binNames[i]);
       this.objs[name] = b;
     });
-    this.colliders.push(aabb(-6.5, 4.6, 0.8, 1.9));
     this.objs.artCabinet = cab;
-
-    // 쓰레기통·분리수거함
-    const trash = new THREE.Group();
-    trash.position.set(6.4, 0, 3.2);
-    this.root.add(trash);
-    buildRecycling(trash); // 일반·플라스틱·종이 분리수거함
-    this.prop('plastic_broom', this.root, { h: 1.1 }, 6.85, 0, 4.3, -Math.PI / 2);
-    this.prop('dustpan', this.root, { w: 0.3 }, 6.6, 0, 4.1, -Math.PI / 2);
-    this.colliders.push(aabb(6.4, 3.2, 0.5, 1.1));
-    this.objs.trash = trash;
+    this.colliders.push(aabb(WINDOW_CAB.x, (WINDOW_CAB.z0 + WINDOW_CAB.z1) / 2, WINDOW_CAB.d, WINDOW_CAB.z1 - WINDOW_CAB.z0));
 
     // 뒤 게시판 (작품 전시 + 모둠 포스터)
-    const exhibit = this.box(3.2, 1.3, 0.05, 0xc9a26b, -3.6, 1.4, 6.95, { shadow: false, ownMat: true });
-    exhibit.material = pbr('cork', { roughness: 0.95 }).clone();
-    worldUV(exhibit.geometry, 3.2, 1.3, 0.05, TILE.cork);
+    const B = BACK_BOARD;
+    const exhibit = this.box(B.w - 0.16, B.h - 0.16, 0.04, 0x1f6b4a, B.x, B.y + 0.08, 6.96, { shadow: false, ownMat: true });
+    exhibit.material = paint(0x1f7a52, 0.95).clone();
     this.objs.exhibitBoard = exhibit;
-    const board2 = this.box(2.0, 1.3, 0.05, 0xc9a26b, 3.6, 1.4, 6.95, { shadow: false });
-    board2.material = pbr('cork', { roughness: 0.95 });
-    worldUV(board2.geometry, 2.0, 1.3, 0.05, TILE.cork);
     // 모둠 포스터: 살짝 들뜬 종이 + 압정 네 개
     const pg = new THREE.PlaneGeometry(1.6, 1.2, 8, 6);
     const pp = pg.getAttribute('position') as THREE.BufferAttribute;
@@ -557,7 +576,8 @@ export class SchoolMap {
     }
     pg.computeVertexNormals();
     const poster = new THREE.Mesh(pg, new THREE.MeshStandardMaterial({ map: this.posterTex.tex, roughness: 0.85, side: THREE.DoubleSide }));
-    poster.position.set(3.6, 2.05, 6.9);
+    poster.scale.setScalar(0.82);
+    poster.position.set(POSTER_BOARD.x, 2.06, 6.9);
     poster.rotation.y = Math.PI;
     this.root.add(poster);
     const pinM = new THREE.MeshStandardMaterial({ color: 0xe63946, roughness: 0.4 });
@@ -568,6 +588,83 @@ export class SchoolMap {
     }
     poster.visible = false;
     this.objs.groupPoster = poster;
+  }
+
+  /** 청소도구함 문 (E로 여닫기) */
+  private cleanDoors: THREE.Group[] = [];
+  cleanOpen = false;
+  toggleCleanCabinet() {
+    this.cleanOpen = !this.cleanOpen;
+  }
+  /** 사물함 번호표 보이기/숨기기 (기본 모델에는 번호가 없다) */
+  setLockerNumbers(v: boolean) {
+    this.objs.lockerNumbers.visible = v;
+  }
+
+  /** 6-1 미닫이 문: 나무 틀 + 유리 + 레일. 문짝 두 장이 벽 앞(복도 쪽)에서 좌우로 밀린다 */
+  private classDoors: { leaves: THREE.Group[]; zc: number; w: number; open: number }[] = [];
+  private buildSlidingDoor(i: number, z0: number, z1: number) {
+    const oak = pbr('oak', { roughness: 0.65 });
+    const w = z1 - z0, zc = (z0 + z1) / 2, lw = w / 2 + 0.02, H = 2.08, x = 7.235;
+    const glass = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.16, roughness: 0.05, depthWrite: false });
+    const leaves: THREE.Group[] = [];
+    for (const s of [-1, 1]) {
+      const leaf = new THREE.Group();
+      leaf.position.set(x, 0, zc + (s * lw) / 2);
+      const part = (h: number, d: number, y: number, z: number, mat: THREE.Material = oak, t = 0.04) => {
+        const m = new THREE.Mesh(worldUV(new THREE.BoxGeometry(t, h, d), t, h, d, TILE.oak), mat);
+        m.position.set(0, y + h / 2, z);
+        m.castShadow = m.receiveShadow = true;
+        leaf.add(m);
+        return m;
+      };
+      // 울거미 (세로 틀 둘 + 가로 틀 셋) + 아래 나무 판 + 위 유리
+      part(H, 0.09, 0.01, -lw / 2 + 0.045);
+      part(H, 0.09, 0.01, lw / 2 - 0.045);
+      part(0.1, lw - 0.18, 0.01, 0);
+      part(0.09, lw - 0.18, 0.95, 0);
+      part(0.09, lw - 0.18, H - 0.08, 0);
+      part(0.84, lw - 0.18, 0.11, 0, oak, 0.022);
+      const gp = part(H - 0.08 - 1.04, lw - 0.18, 1.04, 0, glass, 0.008);
+      gp.castShadow = false;
+      gp.renderOrder = 2;
+      // 세로 매립 손잡이 (문 맞닿는 쪽), 양면
+      for (const sx of [-1, 1]) part(0.22, 0.03, 0.92, -s * (lw / 2 - 0.045), paint(0x8a8f96, 0.35, 0.7), 0.05).position.x = sx * 0.002;
+      this.root.add(leaf);
+      this.objs[`classDoor${i}${s > 0 ? 'b' : 'a'}`] = leaf;
+      leaves.push(leaf);
+    }
+    // 문틀(복도 쪽) + 위 레일 덮개 + 바닥 레일
+    const fx = 7.215;
+    const frame = (wd: number, h: number, d: number, y: number, z: number, mat: THREE.Material = oak, px = fx) => {
+      const m = new THREE.Mesh(worldUV(new THREE.BoxGeometry(wd, h, d), wd, h, d, TILE.oak), mat);
+      m.position.set(px, y + h / 2, z);
+      m.castShadow = m.receiveShadow = true;
+      this.root.add(m);
+    };
+    frame(0.03, 2.1, 0.09, 0, z0 - 0.045);
+    frame(0.03, 2.1, 0.09, 0, z1 + 0.045);
+    frame(0.13, 0.1, w * 2 + 0.2, 2.1, zc, oak, 7.265); // 위 레일 덮개 (문이 밀려 들어가는 길이까지)
+    frame(0.1, 0.008, w * 2 + 0.1, 0.002, zc, paint(0x9aa0a6, 0.35, 0.8), 7.26); // 바닥 레일
+    this.classDoors.push({ leaves, zc, w: lw, open: 0 });
+  }
+
+  /** 미닫이 문·청소도구함 문 움직임. pts = 사람들 위치 (문 가까이 오면 열린다) */
+  updateClassroom(dt: number, pts: { x: number; y: number; z: number }[]) {
+    for (const d of this.classDoors) {
+      const near = pts.some((p) => Math.abs(p.y) < 1 && Math.abs(p.x - 7.1) < 1.7 && Math.abs(p.z - d.zc) < 1.5);
+      const target = near ? 1 : 0;
+      if (d.open === target) continue;
+      d.open = Math.max(0, Math.min(1, d.open + Math.sign(target - d.open) * dt * 2.4));
+      const k = d.open * d.open * (3 - 2 * d.open);
+      d.leaves[0].position.z = d.zc - d.w / 2 - k * (d.w - 0.1);
+      d.leaves[1].position.z = d.zc + d.w / 2 + k * (d.w - 0.1);
+    }
+    const ct = this.cleanOpen ? 1.75 : 0;
+    this.cleanDoors.forEach((h, i) => {
+      const target = i === 0 ? -ct : ct;
+      h.rotation.y += (target - h.rotation.y) * Math.min(1, dt * 6);
+    });
   }
 
   private buildHallway() {
@@ -883,7 +980,7 @@ export class SchoolMap {
     this.robotColliders.push(aabb(5.3, 5.7, 0.8, 0.6));
     // 분실물 보관함 (앞 오른쪽, 칸 3개)
     const shelf = new THREE.Group();
-    shelf.position.set(6.55, 0, -3.4);
+    shelf.position.set(6.1, 0, -2.0);
     corner.add(shelf);
     this.box(0.5, 0.06, 1.8, 0xb08968, 0, 0.5, 0, { parent: shelf });
     this.box(0.5, 0.5, 0.05, 0xb08968, 0, 0, -0.9, { parent: shelf });
@@ -912,7 +1009,7 @@ export class SchoolMap {
       void tray;
     });
     this.objs.lostShelf = shelf;
-    this.robotColliders.push(aabb(6.55, -3.4, 0.5, 1.8));
+    this.robotColliders.push(aabb(6.1, -2.0, 0.5, 1.8));
     // 고깔 상자
     const cones = new THREE.Group();
     cones.position.set(4.4, 0, 5.9);
@@ -1348,37 +1445,6 @@ export class SchoolMap {
     // 우리 반 앞쪽: 전자칠판 양옆 흰 보드, 아래 수납장, 태극기, TV, 벽걸이 선풍기
     // 화이트보드·수납장 모습은 ClassroomHQ
     this.colliders.push({ ...aabb(0, -5.79, 7.4, 0.42), level: 1 });
-    const flag = new CanvasTex(192, 128);
-    flag.draw((c, w, h) => {
-      c.fillStyle = '#6b4226';
-      c.fillRect(0, 0, w, h);
-      c.fillStyle = '#ffffff';
-      c.fillRect(10, 10, w - 20, h - 20);
-      c.fillStyle = '#cd2e3a';
-      c.beginPath();
-      c.arc(w / 2, h / 2, 22, Math.PI, 0);
-      c.fill();
-      c.fillStyle = '#0047a0';
-      c.beginPath();
-      c.arc(w / 2, h / 2, 22, 0, Math.PI);
-      c.fill();
-      c.fillStyle = '#111';
-      for (const [x, y, a] of [[40, 34, 0.6], [w - 40, 34, -0.6], [40, h - 34, -0.6], [w - 40, h - 34, 0.6]] as [number, number, number][]) {
-        c.save();
-        c.translate(x, y);
-        c.rotate(a);
-        for (let k = 0; k < 3; k++) c.fillRect(-12, -9 + k * 7, 24, 4);
-        c.restore();
-      }
-    });
-    this.plane(0.66, 0.44, flag.material(), 0, 2.72, -5.94);
-    this.objs.clock.position.set(-1.6, 2.7, -5.95);
-    // TV (얇은 검은 테두리 + 반짝이는 화면)
-    const tv = new THREE.Mesh(new RoundedBoxGeometry(1.3, 0.76, 0.06, 2, 0.015), paint(0x15171a, 0.4, 0.2));
-    tv.position.set(6.0, 2.33, -5.93);
-    tv.castShadow = true;
-    this.root.add(tv);
-    this.plane(1.24, 0.7, paint(0x1d2733, 0.12, 0.1), 6.0, 2.33, -5.897);
     // 복도: 소화기, 게시물
     this.box(0.18, 0.5, 0.18, 0xd62828, 7.35, 0, 1.2, { shadow: false });
     this.box(0.18, 0.5, 0.18, 0xd62828, 10.85, 0, -7.3, { shadow: false });

@@ -468,6 +468,7 @@ export class Game {
 
     for (const n of Object.values(this.npcs)) n.update(dt);
     for (const n of this.fillers) n.update(dt);
+    this.map.updateClassroom(dt, [this.player.pos, ...Object.values(this.npcs).map((n) => n.pos), ...this.fillers.map((n) => n.pos)]);
     this.plane.update(dt, this.map.collidersFor(1));
     this.ball.update(dt, this.map.collidersFor(1), this.player.pos, this.playerVel);
     if (this.robot.root.visible) this.robot.update(dt, this.map.collidersFor(1), this.remote && !this.cutscene && !input.captured ? input : undefined, this.tpc.yaw);
