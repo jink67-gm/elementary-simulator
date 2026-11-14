@@ -216,7 +216,7 @@ export class Morning implements StoryHooks {
     desk('seoaBook', buildBook('korean', true), ss, 0, 0, -0.08);
 
     // 모둠 책상 위 포스터 (빈 종이 → 역할을 정하면 만드는 중)
-    add('posterSheet', buildPoster(null, 0.84, 0.56, 0), GROUP_TABLE.x - 0.06, GROUP_TABLE.top + 0.003, GROUP_TABLE.z, Math.PI / 2); // 글씨가 내 자리(동쪽)에서 바로 읽히게
+    add('posterSheet', buildPoster(null, 0.84, 0.56, 0), GROUP_TABLE.x - 0.2, GROUP_TABLE.top + 0.003, GROUP_TABLE.z, Math.PI / 2); // 글씨가 내 자리(동쪽)에서 바로 읽히게
     add('colorPaperStack', new THREE.Group(), GROUP_TABLE.x, GROUP_TABLE.top, GROUP_TABLE.z - 0.3);
     add('drawingStack', new THREE.Group(), GROUP_TABLE.x, GROUP_TABLE.top, GROUP_TABLE.z + 0.3);
     // 전시된 작품 (게시판에 압정으로 꽂은 종이)
@@ -1351,8 +1351,8 @@ export class Morning implements StoryHooks {
     ]);
     if (!this.f('groupDone')) {
       this.phase = 'pickRole';
-      const zs = [-0.66, -0.47, -0.28, -0.09]; // 내 책상 위에 한 줄로 (앉아 있는 친구와 겹쳐 고르기 어렵지 않게)
-      (['speaker', 'maker', 'researcher', 'organizer'] as GroupRole[]).forEach((r, i) => g.spawnItem('role_' + r, ROLE_ITEMS[r], GROUP_TABLE.x + 0.4, GROUP_TABLE.top + 0.002, GROUP_TABLE.z + zs[i], Math.PI / 2 + 0.1 * (i - 1.5))); // 카드 글씨가 내 자리 쪽(동쪽)에서 바로 읽히게
+      const cardAt: [number, number][] = [[0.4, -0.68], [0.4, -0.48], [0.4, -0.28], [0.4, -0.08]]; // 내 책상 위에 한 줄로 (옆자리 친구 대신 카드가 골라지게)
+      (['speaker', 'maker', 'researcher', 'organizer'] as GroupRole[]).forEach((r, i) => g.spawnItem('role_' + r, ROLE_ITEMS[r], GROUP_TABLE.x + cardAt[i][0], GROUP_TABLE.top + 0.002, GROUP_TABLE.z + cardAt[i][1], Math.PI / 2 + 0.06 * (i - 1.5))); // 카드 글씨가 내 자리 쪽(동쪽)에서 바로 읽히게
       g.setObjective('모둠 책상에서 역할 카드 하나 집기 (발표·제작·자료·정리)', this.inter.groupTable);
       await this.until(() => this.save.groupRole !== null || this.f('groupDone'));
     }

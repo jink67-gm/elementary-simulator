@@ -309,7 +309,7 @@ try {
     await waitFor('모이기', (s) => s.phase === 'gather', 30000);
     await page.evaluate(() => window.__sim.teleport(-1.1, 0.2));
     await waitFor('역할 고르기', (s) => s.phase === 'pickRole', 30000);
-    await act('item:role_maker', 'KeyE', '제작', { from: [1, -1] });
+    await act('item:role_maker', 'KeyE', '제작', { from: [1, 0] });
     await waitFor('역할', (s) => s.role === 'maker');
     await act('groupTable', 'KeyE', '포스터', { from: [1, 0] });
     await waitPanel(true);
@@ -927,7 +927,7 @@ try {
     await waitFor('모이기', (s) => s.phase === 'gather', 30000);
     await page.evaluate(() => window.__sim.teleport(-1.1, 0.2));
     await waitFor('역할 고르기', (s) => s.phase === 'pickRole', 30000);
-    await act('item:role_researcher', 'KeyE', '자료', { from: [1, -1] });
+    await act('item:role_researcher', 'KeyE', '자료', { from: [1, 0] });
     await waitFor('역할', (s) => s.role === 'researcher');
     for (const id of ['bulletin', 'board', 'bookshelf']) {
       await act(id, 'KeyE', '조사');
@@ -943,7 +943,7 @@ try {
     await page.evaluate(() => { window.__sim.game.save.groupRole = null; window.__sim.game.save.flags.groupDone = false; window.__sim.skipTo('group'); });
     await page.evaluate(() => window.__sim.teleport(-1.1, 0.2));
     await waitFor('역할 고르기', (s) => s.phase === 'pickRole', 30000);
-    await act('item:role_organizer', 'KeyE', '정리', { from: [1, -1] });
+    await act('item:role_organizer', 'KeyE', '정리', { from: [1, 0] });
     await waitFor('역할', (s) => s.role === 'organizer');
     const bins = { scissors: 'binCut', ruler: 'binCut', glueStick: 'binStick', tape: 'binStick', colorPaperPack: 'binPaper', markers: 'binPaper' };
     // 일부러 틀린 바구니에 한 번
@@ -964,7 +964,7 @@ try {
     await page.evaluate(() => { window.__sim.game.save.groupRole = null; window.__sim.game.save.flags.groupDone = false; window.__sim.skipTo('group'); });
     await page.evaluate(() => window.__sim.teleport(-1.1, 0.2));
     await waitFor('역할 고르기', (s) => s.phase === 'pickRole', 30000);
-    await act('item:role_speaker', 'KeyE', '발표', { from: [1, -1] });
+    await act('item:role_speaker', 'KeyE', '발표', { from: [1, 0] });
     await waitFor('역할', (s) => s.role === 'speaker');
     await act('groupTable', 'KeyE', '발표', { from: [1, 0] });
     await waitPanel(true);
