@@ -440,8 +440,8 @@ export function buildTeacherDeskItems(): THREE.Group {
 }
 
 /** 교사 책상 아래: 컴퓨터 본체(진회색 타워), 멀티탭(6구), 전원선(본체·모니터 → 멀티탭, 가림판 안쪽을 따라 정리).
- *  책상 자기 좌표 (앉는 쪽 -z, 학생 쪽 +z). monitorX/monitorZ = 모니터 받침 위치(책상 위) */
-export function buildTeacherUnderDesk(w: number, d: number, h: number, monitorX: number, monitorZ: number): THREE.Group {
+ *  책상 자기 좌표 (앉는 쪽 -z, 학생 쪽 +z). monitors = 모니터 두 대의 받침 위치(책상 위, x·z) */
+export function buildTeacherUnderDesk(w: number, d: number, h: number, monitors: [number, number][]): THREE.Group {
   const g = new THREE.Group();
   const caseM = std(0x2a2d33, 0.45, 0.35), front = std(0x1c1e22, 0.35, 0.2), vent = std(0x0f1012, 0.8);
   // 본체: 왼쪽 옆판 가까이 (다리 공간 밖), 앞면이 선생님 쪽
@@ -470,12 +470,30 @@ export function buildTeacherUnderDesk(w: number, d: number, h: number, monitorX:
   };
   run([[mx - 0.19, 0.02, mz], [mx - 0.32, 0.006, mz + 0.02], [-w / 2 + 0.08, 0.006, mz + 0.02], [-w / 2 + 0.06, 0.006, mz + 0.3]]);
   run([[tx, 0.2, tz + TD / 2 + 0.005], [tx + 0.02, 0.08, tz + TD / 2 + 0.05], [mx - 0.12, 0.01, mz - 0.03], [mx - 0.095, 0.042, mz]]);
-  // 모니터 선: 상판 뒤쪽 전선 구멍(회색 캡)으로 내려온다
-  const gz = d / 2 - 0.1;
-  add(g, cyl(0.03, 0.03, 0.006, 16), std(0x6c757d, 0.5), monitorX, h + 0.001, gz);
-  add(g, cyl(0.018, 0.018, 0.007, 12), vent, monitorX, h + 0.002, gz);
-  run([[monitorX, h + 0.08, monitorZ + 0.02], [monitorX, h + 0.02, monitorZ + 0.12], [monitorX, h + 0.004, gz - 0.02], [monitorX, h - 0.05, gz]]);
-  run([[monitorX, h - 0.05, gz], [monitorX - 0.05, h - 0.3, gz + 0.02], [mx + 0.05, 0.15, mz + 0.03], [mx + 0.0, 0.042, mz]]);
+  // 본체 뒷면 단자판 (모니터 선이 꽂히는 곳)
+  const backZ = tz + TD / 2 + 0.003;
+  add(g, box(TW - 0.08, 0.16, 0.004), std(0x15171a, 0.5), tx, 0.02 + TH - 0.14, backZ);
+  for (let i = 0; i < 4; i++) add(g, box(0.03, 0.012, 0.004), std(0x5c636a, 0.4, 0.5), tx - 0.04 + (i % 2) * 0.06, 0.02 + TH - 0.1 - Math.floor(i / 2) * 0.03, backZ + 0.003);
+  // 모니터 선 2가닥씩 (영상 = 본체로, 전원 = 멀티탭으로): 모니터 뒤 → 상판 뒤쪽 전선 구멍(회색 캡) → 책상 안쪽 → 본체 뒷면 / 멀티탭
+  const gx = (monitors[0][0] + monitors[1][0]) / 2, gz = d / 2 - 0.1;
+  add(g, cyl(0.04, 0.04, 0.006, 16), std(0x6c757d, 0.5), gx, h + 0.001, gz);
+  add(g, cyl(0.026, 0.026, 0.007, 12), vent, gx, h + 0.002, gz);
+  const video = std(0x1f2a44, 0.55);
+  const runM = (pts: [number, number, number][], m: THREE.Material, r = 0.004) => {
+    const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
+    add(g, new THREE.TubeGeometry(curve, pts.length * 10, r, 5, false), m, 0, 0, 0);
+  };
+  monitors.forEach(([mxx, mzz], k) => {
+    const side = mxx > gx ? 1 : -1;
+    for (const [m2, off] of [[video, -0.012], [cable, 0.012]] as [THREE.Material, number][]) {
+      // 모니터 뒷면 단자(받침 목 뒤) → 받침 뒤로 내려와 상판 위 → 전선 구멍으로 쏙
+      const ex = gx + side * 0.008 + off * 0.4;
+      runM([[mxx + off, h + 0.24, mzz - 0.006], [mxx + off, h + 0.13, mzz + 0.035], [mxx + off, h + 0.009, mzz + 0.09], [(mxx + ex) / 2, h + 0.006, (mzz + 0.09 + gz) / 2], [ex, h + 0.006, gz - 0.035], [ex, h - 0.002, gz], [ex, h - 0.05, gz]], m2);
+    }
+    // 책상 밑: 영상선 → 본체 뒷면 단자, 전원선 → 멀티탭
+    runM([[gx + side * 0.008, h - 0.05, gz], [gx - 0.1, h - 0.18, gz + 0.02 - k * 0.01], [tx + 0.25, 0.75, backZ + 0.12], [tx + 0.05, 0.02 + TH - 0.08, backZ + 0.08], [tx - 0.03 + k * 0.06, 0.02 + TH - 0.1, backZ + 0.008]], video);
+    runM([[gx + side * 0.008, h - 0.05, gz], [gx + 0.05 * side, h - 0.35, gz + 0.03], [mx + 0.08 + k * 0.05, 0.2, mz + 0.04], [mx + 0.0 + k * 0.055, 0.042, mz]], cable);
+  });
   return compact(g);
 }
 

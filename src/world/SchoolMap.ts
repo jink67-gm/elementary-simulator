@@ -376,7 +376,9 @@ export class SchoolMap {
     items.rotation.y = Math.PI; // 화면이 선생님(칠판 쪽)을 본다
     tdesk.add(items);
     // 책상 아래: 컴퓨터 본체·멀티탭·정리된 전선 (모니터 받침 위치 = 물품 묶음 기준 + 0.18×1.15 학생 쪽)
-    tdesk.add(buildTeacherUnderDesk(TD.w, TD.d, TD.h, items.position.x, items.position.z + 0.18 * 1.15));
+    // 모니터 두 대의 받침 위치 (물품 묶음은 π 돌려 1.15배: 묶음 안 x ±0.29, z -0.2)
+    const monXZ = [-0.29, 0.29].map((mxi) => [items.position.x - mxi * 1.15, items.position.z + 0.2 * 1.15] as [number, number]);
+    tdesk.add(buildTeacherUnderDesk(TD.w, TD.d, TD.h, monXZ));
     // 작은 쓰레기통: 책상 아래 본체 앞 (선생님 쪽, 의자 다리 공간 밖)
     const tbin = buildSmallBin();
     tbin.position.set(-TD.w / 2 + 0.24, 0, -TD.d / 2 + 0.12);
