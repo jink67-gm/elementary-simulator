@@ -1542,6 +1542,7 @@ export class Morning implements StoryHooks {
     await this.switchDesks('pods', '재료는 모둠끼리 같이 써요. 책상을 모둠 형태로 바꿔 주세요!');
     await this.say([this.L('teacher', '재료는 모둠 책상 가운데에 뒀어요. 하나만 골라요~')]);
     this.phase = 'craft';
+    this.softFired = false; // 책상 전환 중에 시간이 다 됐으면, 만들기 단계에서 다시 정리해 준다
     g.spawnItem('stack', 'colorPaper', GROUP_TABLE.x - 0.05, GROUP_TABLE.top + 0.03, GROUP_TABLE.z - 0.3);
     g.spawnItem('stack2', 'drawingPaper', GROUP_TABLE.x - 0.05, GROUP_TABLE.top + 0.03, GROUP_TABLE.z + 0.3);
     g.setObjective('모둠 책상에서 색종이(비행기) 또는 미니 도화지(포스터) 가져오기', this.inter.groupTable);
