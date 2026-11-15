@@ -177,7 +177,7 @@ export function buildCleaningCabinet(W = 0.95, H = 0.9, D = 0.5, broom = true): 
   add(shell, wbox(W, H - 0.06, 0.012), inner, 0, 0.06 + (H - 0.06) / 2, D / 2 - 0.006); // 뒤판
   add(shell, wbox(t, H - 0.1, D - 0.03), wood, 0, 0.08 + (H - 0.1) / 2, 0.01); // 가운데 칸막이
   // 윗판: 한 장으로 덮고, 오른쪽 칸(-x) 위에만 긴 자루가 올라오는 직사각형 수납구(회색 플라스틱 테 + 속 그림자)
-  const slotW = 0.3, slotD = 0.16, sx = -W / 4, sz = 0.02;
+  const slotW = 0.34, slotD = 0.18, sx = -W / 4, sz = 0.02;
   add(shell, wbox(W - (W / 2 + sx + slotW / 2) + 0.01, t, D), wood, (W / 2 + (sx + slotW / 2)) / 2, H - t / 2, 0); // 수납구 왼쪽(+x)
   add(shell, wbox(W / 2 + sx - slotW / 2, t, D), wood, (-W / 2 + sx - slotW / 2) / 2, H - t / 2, 0); // 수납구 오른쪽(-x)
   add(shell, wbox(slotW, t, (D - slotD) / 2 + sz), wood, sx, H - t / 2, -D / 2 + ((D - slotD) / 2 + sz) / 2);
@@ -189,15 +189,16 @@ export function buildCleaningCabinet(W = 0.95, H = 0.9, D = 0.5, broom = true): 
   // 이음 테두리 (상판 앞 모서리)
   add(shell, wbox(W + 0.01, 0.025, 0.012), mdfEdge(), 0, H - 0.0125, -D / 2 - 0.004);
   // 왼쪽 칸 선반 두 장 + 청소용품
-  for (const y of [0.36, 0.62]) add(shell, wbox(W / 2 - 0.03, 0.016, D - 0.06), wood, W / 4, y, 0.01);
+  const y1 = H * 0.4, y2 = H * 0.69; // 선반 두 장 (높이에 맞춰)
+  for (const y of [y1, y2]) add(shell, wbox(W / 2 - 0.03, 0.018, D - 0.06), wood, W / 4, y, 0.01);
   const towel = [0xffffff, 0xa8d5e2, 0xffd6a5];
-  towel.forEach((c, i) => add(shell, rbox(0.2, 0.045, 0.16, 0.012), fabric(c, 3), W / 4 - 0.06, 0.39 + i * 0.047, 0.04));
-  add(shell, rbox(0.1, 0.2, 0.07, 0.02), std(0x2f80ed, 0.4), W / 4 + 0.14, 0.47, 0.06); // 세제 통
-  add(shell, cyl(0.02, 0.02, 0.03, 10), std(0xffffff, 0.4), W / 4 + 0.14, 0.585, 0.06);
+  towel.forEach((c, i) => add(shell, rbox(0.2, 0.045, 0.16, 0.012), fabric(c, 3), W / 4 - 0.07, y1 + 0.04 + i * 0.047, 0.04));
+  add(shell, rbox(0.1, 0.2, 0.07, 0.02), std(0x2f80ed, 0.4), W / 4 + 0.15, y1 + 0.118, 0.06); // 세제 통
+  add(shell, cyl(0.02, 0.02, 0.03, 10), std(0xffffff, 0.4), W / 4 + 0.15, y1 + 0.233, 0.06);
   for (const [dx, c] of [[-0.1, 0x6fcf97], [0.06, 0xf2c94c]] as [number, number][]) {
-    add(shell, cyl(0.035, 0.04, 0.16, 12), std(c, 0.35, 0, { transparent: true, opacity: 0.85, key: 'spray' + c }), W / 4 + dx, 0.716, 0.05); // 분무기
-    add(shell, box(0.03, 0.035, 0.07), std(0xf4f4f4, 0.4), W / 4 + dx, 0.815, 0.03);
-    add(shell, cyl(0.012, 0.012, 0.03, 8), std(0xf4f4f4, 0.4), W / 4 + dx, 0.795, 0.05);
+    add(shell, cyl(0.035, 0.04, 0.16, 12), std(c, 0.35, 0, { transparent: true, opacity: 0.85, key: 'spray' + c }), W / 4 + dx, y2 + 0.09, 0.05); // 분무기
+    add(shell, box(0.03, 0.035, 0.07), std(0xf4f4f4, 0.4), W / 4 + dx, y2 + 0.19, 0.03);
+    add(shell, cyl(0.012, 0.012, 0.03, 8), std(0xf4f4f4, 0.4), W / 4 + dx, y2 + 0.17, 0.05);
   }
   add(shell, rbox(0.18, 0.2, 0.14, 0.02), std(0x8fc1a9, 0.5), W / 4 - 0.07, 0.19, 0.05); // 양동이
   add(shell, rbox(0.14, 0.07, 0.1, 0.02), std(0xf2a65a, 0.8), W / 4 + 0.13, 0.115, 0.05); // 수세미 상자
@@ -209,47 +210,52 @@ export function buildCleaningCabinet(W = 0.95, H = 0.9, D = 0.5, broom = true): 
     return m;
   };
   if (broom) {
-    stick(sx - 0.07, sz, 1.08, 0x2f80ed, 0);
+    stick(sx - 0.08, sz, H + 0.1, 0x2f80ed, 0);
     add(shell, rbox(0.2, 0.14, 0.05, 0.015), std(0x2f80ed, 0.6), rx - 0.08, 0.16, 0.06); // 빗자루 솔 머리
     for (let i = 0; i < 6; i++) add(shell, box(0.026, 0.09, 0.03), std(0xf2e2b8, 0.9), rx - 0.155 + i * 0.03, 0.115, 0.06);
   }
   // 대걸레 자루: 수납구로 30cm쯤 올라온다 (끝에 걸이 고리)
-  stick(sx + 0.07, sz + 0.02, 1.16, 0xf4f4f4, 0);
-  add(shell, cyl(0.016, 0.016, 0.05, 10), std(0x2f80ed, 0.5), sx + 0.07, 0.12 + 1.16 - 0.02, sz + 0.02);
-  add(shell, new THREE.TorusGeometry(0.02, 0.004, 5, 10), std(0x2f80ed, 0.5), sx + 0.07, 0.12 + 1.16 + 0.02, sz + 0.02);
-  add(shell, cyl(0.06, 0.09, 0.2, 10), fabric(0xf7f7f2, 2), sx + 0.07, 0.2, sz + 0.02); // 대걸레 머리
+  const mopL = H + 0.18;
+  stick(sx + 0.08, sz + 0.02, mopL, 0xf4f4f4, 0);
+  add(shell, cyl(0.016, 0.016, 0.05, 10), std(0x2f80ed, 0.5), sx + 0.08, 0.12 + mopL - 0.02, sz + 0.02);
+  add(shell, new THREE.TorusGeometry(0.02, 0.004, 5, 10), std(0x2f80ed, 0.5), sx + 0.08, 0.12 + mopL + 0.02, sz + 0.02);
+  add(shell, cyl(0.06, 0.09, 0.2, 10), fabric(0xf7f7f2, 2), sx + 0.08, 0.2, sz + 0.02); // 대걸레 머리
   add(shell, box(0.2, 0.012, 0.16), std(0xeb5757, 0.5), rx, 0.1, -0.1); // 쓰레받기
   compact(shell);
   // 양문 (닫힌 상태로 고정): 문 두 짝 사이 틈 + 세로 매립 손잡이 + 위·아래 이음 띠
   const doors: THREE.Group[] = [];
   const front = new THREE.Group();
-  const dw = W / 2 - 0.008, dh = H - 0.095;
+  const dw = W / 2 - 0.008, dh = H - 0.095, dt = 0.022;
   for (const s of [1, -1]) {
     const cx = s * (dw / 2 + 0.003);
-    add(front, wbox(dw, dh, 0.018), wood, cx, 0.075 + dh / 2, -D / 2 - 0.01);
-    add(front, box(0.022, 0.16, 0.006), darkGap(), s * 0.035, 0.075 + dh * 0.62, -D / 2 - 0.0195); // 세로 매립 손잡이 (가운데 쪽)
+    add(front, wbox(dw, dh, dt), wood, cx, 0.075 + dh / 2, -D / 2 - dt / 2 - 0.001);
+    add(front, box(0.026, 0.22, 0.006), darkGap(), s * 0.04, 0.075 + dh * 0.6, -D / 2 - dt - 0.002); // 세로 매립 손잡이 (가운데 쪽)
+    add(front, box(0.03, 0.226, 0.003), mdfEdge(), s * 0.04, 0.075 + dh * 0.6, -D / 2 - dt - 0.0005); // 손잡이 테
   }
-  add(front, box(0.006, dh, 0.004), darkGap(), 0, 0.075 + dh / 2, -D / 2 - 0.018); // 문 사이 틈
+  add(front, box(0.006, dh, 0.004), darkGap(), 0, 0.075 + dh / 2, -D / 2 - dt); // 문 사이 틈
   cabinet.add(compact(front));
   // 이름표
-  add(cabinet, new THREE.PlaneGeometry(0.26, 0.07), std(0xffffff, 0.6, 0, { map: labelTex('clean', '청소도구함', '#ffffff', '#5b4a36'), key: 'cleanLabel' }), W / 4, H - 0.11, -D / 2 - 0.021, 0, Math.PI, 0, false);
+  add(cabinet, new THREE.PlaneGeometry(0.26, 0.07), std(0xffffff, 0.6, 0, { map: labelTex('clean', '청소도구함', '#ffffff', '#5b4a36'), key: 'cleanLabel' }), W / 4, H - 0.13, -D / 2 - 0.026, 0, Math.PI, 0, false);
   return { cabinet, doors };
 }
 
 /** 파란 플라스틱 쓰레기통 + 흰 스윙 뚜껑. 원점 = 바닥 가운데 */
 export function buildTrashBin(): THREE.Group {
+  // 교실용 약 50L: 폭 0.48 × 깊이 0.42 × 높이 0.82 (뚜껑 포함)
   const g = new THREE.Group();
   const blue = std(0x1e88e5, 0.42), lid = std(0xf7f7f5, 0.4);
-  add(g, rbox(0.4, 0.5, 0.34, 0.035, 3), blue, 0, 0.25, 0);
-  add(g, rbox(0.42, 0.03, 0.36, 0.012), std(0x1565c0, 0.45), 0, 0.5, 0);
+  const W = 0.46, D = 0.4, Hb = 0.62;
+  add(g, rbox(W - 0.03, 0.02, D - 0.03, 0.008), std(0x1565c0, 0.5), 0, 0.01, 0); // 바닥 굽
+  add(g, rbox(W, Hb, D, 0.04, 3), blue, 0, Hb / 2 + 0.005, 0);
+  add(g, rbox(W + 0.02, 0.035, D + 0.02, 0.014), std(0x1565c0, 0.45), 0, Hb, 0);
   // 뚜껑: 지붕 모양 몸체 + 가운데 축에 달린 스윙 판
-  const roof = add(g, rbox(0.41, 0.15, 0.35, 0.05, 3), lid, 0, 0.585, 0);
-  void roof;
-  const flap = add(g, rbox(0.3, 0.13, 0.012, 0.004), std(0xe2e5e8, 0.35), 0, 0.59, -0.168);
+  add(g, rbox(W + 0.01, 0.18, D + 0.01, 0.06, 3), lid, 0, Hb + 0.1, 0);
+  const flap = add(g, rbox(0.34, 0.15, 0.012, 0.005), std(0xe2e5e8, 0.35), 0, Hb + 0.1, -D / 2 - 0.004);
   flap.rotation.x = 0.16;
-  add(g, cyl(0.008, 0.008, 0.33, 8), std(0xb8bec4, 0.4, 0.6), 0, 0.655, -0.16, 0, 0, Math.PI / 2);
-  // 재활용 표시 딱지
-  add(g, new THREE.PlaneGeometry(0.2, 0.09), std(0xffffff, 0.6, 0, { map: labelTex('trash', '일반 쓰레기', '#ffffff', '#1565c0'), key: 'trashLabel' }), 0, 0.3, -0.171, 0, Math.PI, 0, false);
+  add(g, cyl(0.009, 0.009, 0.38, 8), std(0xb8bec4, 0.4, 0.6), 0, Hb + 0.175, -D / 2 + 0.01, 0, 0, Math.PI / 2);
+  // 손잡이 홈 (양옆) + 표시 딱지
+  for (const sx of [-1, 1]) add(g, box(0.006, 0.03, 0.16), std(0x0d47a1, 0.6), sx * (W / 2 + 0.001), Hb - 0.08, 0);
+  add(g, new THREE.PlaneGeometry(0.24, 0.11), std(0xffffff, 0.6, 0, { map: labelTex('trash', '일반 쓰레기', '#ffffff', '#1565c0'), key: 'trashLabel' }), 0, 0.36, -D / 2 - 0.001, 0, Math.PI, 0, false);
   return compact(g);
 }
 
@@ -261,7 +267,7 @@ export function buildFabricRecycling(): THREE.Group {
     ['종이', 0xece3cc, '#ffffff', '#7a6a45'],
     ['플라스틱', 0x26282b, '#ffffff', '#26282b'],
   ];
-  const w = 0.44, h = 0.56, d = 0.36;
+  const w = 0.52, h = 0.7, d = 0.42; // 통 하나: 폭 0.52 × 높이 0.7 (받침 포함 0.75)
   const frame = std(0xb8bec4, 0.35, 0.7);
   kinds.forEach(([name, col, bg, fg], i) => {
     // 교실에서 볼 때 왼쪽(+x)부터 캔 → 종이 → 플라스틱
@@ -274,8 +280,8 @@ export function buildFabricRecycling(): THREE.Group {
     // 손잡이 끈 (양옆)
     for (const s of [-1, 1]) add(g, new THREE.TorusGeometry(0.05, 0.008, 5, 10, Math.PI), cloth, x + s * (w / 2 - 0.09), 0.05 + h + 0.0, -d / 2 - 0.004);
     // 이름표 (투명 주머니에 끼운 카드)
-    add(g, new THREE.PlaneGeometry(0.24, 0.12), std(0xffffff, 0.55, 0, { map: labelTex('rc' + name, name, bg, fg, 256, 128), key: 'rcLabel' + name }), x, 0.37, -d / 2 - 0.004, 0, Math.PI, 0, false);
-    add(g, box(0.27, 0.15, 0.003), std(0xdfe3e6, 0.3), x, 0.37, -d / 2 - 0.001);
+    add(g, new THREE.PlaneGeometry(0.24, 0.12), std(0xffffff, 0.55, 0, { map: labelTex('rc' + name, name, bg, fg, 256, 128), key: 'rcLabel' + name }), x, 0.46, -d / 2 - 0.004, 0, Math.PI, 0, false);
+    add(g, box(0.27, 0.15, 0.003), std(0xdfe3e6, 0.3), x, 0.46, -d / 2 - 0.001);
   });
   // 철제 받침 틀 (다리 + 가로대)
   const total = 3 * w + 0.04;

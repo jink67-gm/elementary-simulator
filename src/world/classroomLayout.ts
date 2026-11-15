@@ -108,10 +108,11 @@ export function lockerCell(num: number) {
   return { row, col, x: LOCKER_X0 - LOCKER_W * (col + 0.5), y: 0.1 + row * 0.5, z: LOCKER_FRONT_Z };
 }
 export const LOCKERS = { x: LOCKER_X0 - (LOCKER_COLS * LOCKER_W) / 2, w: LOCKER_COLS * LOCKER_W, z: 6.65, d: 0.5, top: 1.13 };
-export const CLEAN_CABINET = { x: 6.25, z: 6.68, w: 0.95, d: 0.5, h: 0.9 };
-export const TABLET_CART = { x: -1.25, z: 6.6 };
-export const TRASH = { x: -2.35, z: 6.62 };
-export const RECYCLE = { x: -3.5, z: 6.64, w: 1.38 };
+export const CLEAN_CABINET = { x: 6.2, z: 6.68, w: 1.05, d: 0.55, h: 1.05 };
+/** 태블릿 충전함: 가로 0.82 × 깊이 0.6 × 높이 0.86(바퀴 포함), 앞면이 교실 쪽 */
+export const TABLET_CART = { x: -1.2, z: 6.62, w: 0.82, d: 0.6 };
+export const TRASH = { x: -2.2, z: 6.7, w: 0.48, d: 0.42 };
+export const RECYCLE = { x: -3.36, z: 6.7, w: 1.62, d: 0.44 };
 /** 뒤 게시판: 가로로 긴 판 하나. 왼쪽(창가 쪽)에 작품 전시, 오른쪽(복도 쪽)에 모둠 포스터 */
 export const BACK_BOARD = { x: 1.2, w: 8.8, y: 1.38, h: 1.36 };
 export const EXHIBIT = { x: -0.9, w: 3.2 };
@@ -133,7 +134,7 @@ export const EAST_SHELF = { x: 6.79, d: 0.42, h: 0.8 };
 /** 창 아래 책장 두 개 (가운데 기둥 양옆) */
 export const EAST_SHELVES: [number, number][] = [[-3.05, -0.85], [0.55, 3.45]];
 /** 돌출 기둥 (바닥~천장): 창가 = 시간표, 복도 쪽 = 벽시계 */
-export const WEST_PILLAR = { x: -6.72, z: 0.95, w: 0.56, d: 0.7 };
+export const WEST_PILLAR = { x: -6.85, z: 0.95, w: 0.7, d: 0.7 }; // 바깥벽(-7.2)부터 교실 쪽으로 0.5m 돌출
 export const EAST_PILLAR = { x: 6.78, z: -0.15, w: 0.44, d: 1.0 };
 export const CLOCK_POS = { x: 6.55, y: 2.12, z: -0.15 };
 export const PURIFIER = { x: 6.66, z: 3.95 };

@@ -445,7 +445,7 @@ export class SchoolMap {
     cart.rotation.y = -Math.PI / 2; // 앞면이 교실 쪽(-z)
     this.root.add(cart);
     this.objs.tabletSlots = slots;
-    this.colliders.push(aabb(TABLET_CART.x, TABLET_CART.z, 1.1, 0.6));
+    this.colliders.push(aabb(TABLET_CART.x, TABLET_CART.z, TABLET_CART.w + 0.04, TABLET_CART.d + 0.04));
     this.objs.tabletCart = cart;
 
     // 사물함 (12칸 × 2단, 연한 우드 MDF, 원형 매립 손잡이, 번호 없음) — 17번이 내 것
@@ -522,7 +522,7 @@ export class SchoolMap {
     cabinet.position.set(cc.x, 0, cc.z);
     this.root.add(cabinet);
     // 빗자루(모델)는 안 오른쪽 칸에 세워 둔다 — 자루가 윗면 수납구 위로 올라온다
-    if (hasBroom) this.prop('plastic_broom', cabinet, { h: 1.08 }, -cc.w / 4 - 0.07, 0.09, 0.02, 0.4);
+    if (hasBroom) this.prop('plastic_broom', cabinet, { h: cc.h + 0.2 }, -cc.w / 4 - 0.08, 0.09, 0.02, 0.4);
     this.colliders.push(aabb(cc.x, cc.z, cc.w, cc.d));
     this.objs.cleanCabinet = cabinet;
     this.cleanDoors = cleanDoors;
@@ -532,11 +532,11 @@ export class SchoolMap {
     bin.position.set(TRASH.x, 0, TRASH.z);
     this.root.add(bin);
     this.objs.trashBin = bin;
-    this.colliders.push(aabb(TRASH.x, TRASH.z, 0.42, 0.36));
+    this.colliders.push(aabb(TRASH.x, TRASH.z, TRASH.w, TRASH.d));
     const trash = buildFabricRecycling();
     trash.position.set(RECYCLE.x, 0, RECYCLE.z);
     this.root.add(trash);
-    this.colliders.push(aabb(RECYCLE.x, RECYCLE.z, RECYCLE.w, 0.38));
+    this.colliders.push(aabb(RECYCLE.x, RECYCLE.z, RECYCLE.w, RECYCLE.d));
     this.objs.trash = trash;
 
     // ── 창가(서): 긴 수납장 줄 속의 학급 문고(열린 책장)와 미술 재료함 + 정리 바구니 3개 ──

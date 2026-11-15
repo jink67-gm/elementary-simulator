@@ -26,7 +26,10 @@ export class ClassroomBuilder extends HQBuilder {
     this.floor();
     this.ceilingHQ();
     this.fabric = combiBlindMat();
-    this.slidingWindowWall(-7.1, Z0, Z1, 1, { blinds: true, bays: 5, frame: this.frame });
+    // 창문 벽은 구조 기둥 양옆에 따로 (기둥 자리에는 창·블라인드가 없다)
+    const wp0 = WEST_PILLAR.z - WEST_PILLAR.d / 2, wp1 = WEST_PILLAR.z + WEST_PILLAR.d / 2;
+    this.slidingWindowWall(-7.1, Z0, wp0, 1, { blinds: true, bays: 3, frame: this.frame });
+    this.slidingWindowWall(-7.1, wp1, Z1, 1, { blinds: true, bays: 3, frame: this.frame });
     this.wainscot();
     this.corridorSide();
     this.frontWall();

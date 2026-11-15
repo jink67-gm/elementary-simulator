@@ -1,0 +1,50 @@
+// 창가 기둥 + 교실 뒤편 가구 캡처 (수정 전후 비교용). 사용: npm run build && OUT=test-results/back-before node scripts/back-furniture-shots.mjs
+import { spawn, execSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { mkdirSync } from 'node:fs';
+const { chromium } = await import('playwright').catch(() => createRequire(execSync('npm root -g').toString().trim() + '/')('playwright'));
+const OUT = process.env.OUT ?? 'test-results/back-after';
+mkdirSync(OUT, { recursive: true });
+const PORT = 4190;
+const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe', detached: true });
+await new Promise((r) => setTimeout(r, 2500));
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+page.setDefaultTimeout(240000);
+await page.addInitScript(() => localStorage.setItem('elementary-simulator.settings.v1', JSON.stringify({ quality: 'high', autoRes: false, controls: 'keyboard' })));
+const errors = [];
+page.on('pageerror', (e) => errors.push(e.message));
+page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+await page.goto(`http://localhost:${PORT}/elementary-simulator/?debug`);
+await page.waitForFunction(() => !!window.__sim, null, { timeout: 120000 });
+await page.evaluate(() => localStorage.removeItem('elementary-simulator.save.v1'));
+await page.getByText('새로 시작').click();
+await page.getByText('학교 갈 준비 완료!').click();
+await page.keyboard.press('KeyE');
+await page.waitForFunction(() => !!window.__sim.game.save && window.__sim.game.running, null, { timeout: 60000 });
+await page.addStyleTag({ content: 'body.shot-nohud .hud, body.shot-nohud .dialogue, body.shot-nohud .ui-layer { display: none !important; }' });
+await page.evaluate(() => window.__sim.skipTo('break'));
+await page.waitForTimeout(3000);
+const shot = async (name, pos, look, fov = 60) => {
+  await page.evaluate(([p, l, f]) => {
+    const g = window.__sim.game, T = g.tpc.cam.position.constructor;
+    g.dialogue.skipEverything();
+    g.tpc.override = { pos: new T(...p), look: new T(...l) };
+    g.tpc.first = true;
+    g.camera.fov = f;
+    g.camera.updateProjectionMatrix();
+    document.body.classList.add('shot-nohud');
+  }, [pos, look, fov]);
+  await page.waitForTimeout(2500);
+  await page.screenshot({ path: `${OUT}/${name}.png` });
+};
+await shot('1_pillar_front', [-1.2, 1.55, 0.95], [-7, 1.45, 0.95], 62);
+await shot('2_pillar_angle', [-3.2, 1.5, -2.6], [-7, 1.4, 1.6], 60);
+await shot('3_back_wall', [0.8, 1.55, 1.4], [0.8, 0.8, 7], 70);
+await shot('4_back_left_cart_bins', [-0.5, 1.4, 3.6], [-2.6, 0.55, 6.9], 55);
+await shot('5_back_right_clean', [4.6, 1.4, 4.0], [6.2, 0.6, 6.9], 55);
+await shot('6_scale_with_student', [1.6, 1.5, 2.6], [-1.6, 0.7, 6.4], 60);
+console.log('오류', errors.length, errors.slice(0, 3));
+await browser.close();
+try { process.kill(-server.pid); } catch {}
+process.exit(0);
