@@ -357,14 +357,9 @@ export function buildTeacherDeskItems(): THREE.Group {
   add(g, rbox(0.86, 0.003, 0.36, 0.0015, 2), std(0x2b2d31, 0.85), 0.1, 0.0025, 0.07);
   add(g, rbox(0.862, 0.0015, 0.362, 0.0007, 1), std(0x45484f, 0.7), 0.1, 0.0012, 0.07); // 매트 테두리 박음질 느낌
   // 노란 제출 바구니 (가정통신문·안내장): 교과서 옆, 안에 A4 종이 몇 장
-  const yb = std(0xf7c948, 0.45), bx = -0.86, bz = -0.02;
+  // 노란 제출 바구니 2개: 책상 모서리(학생 쪽 끝)에 나란히 붙여 둔다 (바구니마다 A4 종이 몇 장)
+  const yb = std(0xf7c948, 0.45), rimC = std(0xd9a514, 0.5);
   const BW = 0.34, BD = 0.25, BH = 0.085, T = 0.008;
-  add(g, rbox(BW, 0.008, BD, 0.004), yb, bx, 0.004, bz);
-  for (const s2 of [-1, 1]) {
-    add(g, rbox(T, BH, BD, 0.004), yb, bx + s2 * (BW / 2 - T / 2), BH / 2, bz);
-    add(g, rbox(BW, BH, T, 0.004), yb, bx, BH / 2, bz + s2 * (BD / 2 - T / 2));
-  }
-  for (const s2 of [-1, 1]) add(g, box(0.07, 0.018, 0.012), std(0xd9a514, 0.5), bx + s2 * (BW / 2 - 0.004), BH - 0.025, bz).rotation.y = Math.PI / 2; // 손잡이 구멍 테
   const paperTex = canvasTex('a4notice', 64, 90, (c, w, h) => {
     c.fillStyle = '#fbfaf6';
     c.fillRect(0, 0, w, h);
@@ -372,9 +367,18 @@ export function buildTeacherDeskItems(): THREE.Group {
     c.fillRect(8, 8, w - 16, 6);
     for (let i = 0; i < 9; i++) c.fillRect(8, 22 + i * 7, (w - 16) * (0.6 + ((i * 37) % 10) / 25), 2);
   });
-  [[0.0, 0.0, 0.02], [0.012, -0.008, -0.06], [-0.01, 0.006, 0.09]].forEach(([dx, dz, rot], i) => {
-    const sheet = add(g, new THREE.PlaneGeometry(0.297 * 0.95, 0.21 * 0.95), std(0xffffff, 0.9, 0, { map: paperTex, key: 'a4' }), bx + dx, 0.011 + i * 0.004, bz + dz, -Math.PI / 2, 0, 0, false);
-    sheet.rotation.z = rot; // A4 긴 변이 바구니 긴 변(가로) 방향
+  ([[-1.07, -0.36, 3], [-1.07, -0.085, 2]] as [number, number, number][]).forEach(([bx, bz, sheets], k) => {
+    add(g, rbox(BW, 0.008, BD, 0.004), yb, bx, 0.004, bz);
+    for (const s2 of [-1, 1]) {
+      add(g, rbox(T, BH, BD, 0.004), yb, bx + s2 * (BW / 2 - T / 2), BH / 2, bz);
+      add(g, rbox(BW, BH, T, 0.004), yb, bx, BH / 2, bz + s2 * (BD / 2 - T / 2));
+      add(g, box(0.07, 0.018, 0.012), rimC, bx + s2 * (BW / 2 - 0.004), BH - 0.025, bz).rotation.y = Math.PI / 2; // 손잡이 구멍 테
+    }
+    for (let i = 0; i < sheets; i++) {
+      const rot = [0.02, -0.06, 0.09][(i + k) % 3], dx = [0, 0.012, -0.01][i], dz = [0, -0.008, 0.006][i];
+      const sheet = add(g, new THREE.PlaneGeometry(0.297 * 0.95, 0.21 * 0.95), std(0xffffff, 0.9, 0, { map: paperTex, key: 'a4' }), bx + dx, 0.011 + i * 0.004, bz + dz, -Math.PI / 2, 0, 0, false);
+      sheet.rotation.z = rot; // A4 긴 변이 바구니 긴 변(가로) 방향
+    }
   });
   // 탁상달력: 삼각 텐트 모양 (앞면 달력 그림 + 뒷판 + 스프링)
   const calTex = canvasTex('deskCal', 128, 96, (c, w, h) => {
