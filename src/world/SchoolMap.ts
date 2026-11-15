@@ -16,7 +16,7 @@ import { buildCutleryBin, buildTray } from './props/items';
 import { drawKidPoster } from './props/posterArt';
 import { TILE_EXT, plinthMat, stuccoMat } from './exteriorTex';
 import { BACK_DZ, ROOM, TEACHER_DESK, TEACHER_SHELF, ART_CAB, BOOKSHELF, CLASS_DOORS, CHAIR, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, BIG_EXHIBIT, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, deskBoxes, lockerCell, seatOf, type DeskLayout } from './classroomLayout';
-import { buildCleaningCabinet, buildFabricRecycling, buildLockerCarcass, buildOfficeChair, buildStudentChair, buildStudentDesk, buildTeacherDesk, buildTeacherDeskItems, buildTeacherShelf, buildTrashBin, lockerDoorGeo, lockerHandle, mdf } from './classroomSet';
+import { buildCleaningCabinet, buildFabricRecycling, buildLockerCarcass, buildOfficeChair, buildStudentChair, buildStudentDesk, buildSmallBin, buildTeacherDesk, buildTeacherDeskItems, buildTeacherShelf, buildTeacherUnderDesk, buildTrashBin, lockerDoorGeo, lockerHandle, mdf } from './classroomSet';
 import { compact } from './props/kit';
 import { GymBuilder } from './GymHQ';
 import { CafeteriaWingBuilder, STEEL, cafeteriaTable } from './CafeteriaWing';
@@ -375,6 +375,13 @@ export class SchoolMap {
     items.position.set(-0.25, TD.h, -0.08);
     items.rotation.y = Math.PI; // 화면이 선생님(칠판 쪽)을 본다
     tdesk.add(items);
+    // 책상 아래: 컴퓨터 본체·멀티탭·정리된 전선 (모니터 받침 위치 = 물품 묶음 기준 + 0.18×1.15 학생 쪽)
+    tdesk.add(buildTeacherUnderDesk(TD.w, TD.d, TD.h, items.position.x, items.position.z + 0.18 * 1.15));
+    // 의자 옆 작은 쓰레기통 (서랍장 앞, 다리 공간 밖)
+    const tbin = buildSmallBin();
+    tbin.position.set(TD.w / 2 - 0.42, 0, -TD.d / 2 - 0.25);
+    tdesk.add(tbin);
+    this.colliders.push(aabb(TD.x + TD.w / 2 - 0.42, TD.z - TD.d / 2 - 0.25, 0.28, 0.28));
     const tchair = buildOfficeChair();
     tchair.scale.setScalar(1.15);
     tchair.position.set(-0.2, 0, -TD.d / 2 - 0.25);

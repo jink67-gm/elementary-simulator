@@ -53,6 +53,8 @@ const shots = [
   ['8c_teacher_desk_top', [-3.4, 1.9, -1.9], [-4.3, 0.95, -3.7], 50],
   ['8d_teacher_shelf', [-3.9, 1.35, -2.2], [-5.8, 0.45, -4.0], 55],
   ['8e_teacher_behind', [-2.3, 1.6, -4.7], [-5.0, 0.7, -3.3], 62],
+  ['8f_teacher_under', [-3.05, 0.5, -4.45], [-5.1, 0.2, -3.4], 62],
+  ['8g_teacher_top_close', [-4.3, 1.75, -4.7], [-4.0, 1.0, -3.4], 58],
   ['9_door_from_hall', [10.4, 1.6, 0.5], [7, 1.2, 0.5], 70],
 ];
 for (const [n, p, l, f] of shots) if (!only || only.some((o) => n.includes(o))) await shot(n, p, l, f);
