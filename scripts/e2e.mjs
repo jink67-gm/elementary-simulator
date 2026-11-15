@@ -573,7 +573,7 @@ try {
     for (let n = 0; n < 12; n++) {
       rs = await robotSt();
       if (!rs.bin.length && !rs.claw) break;
-      await page.evaluate(() => window.__sim.game.robot.place(5.3, 4.85, 0));
+      await page.evaluate(() => window.__sim.game.robot.place(5.3, 3.65, 0));
       await frames(2);
       await page.keyboard.press('Space');
       await frames(3);
