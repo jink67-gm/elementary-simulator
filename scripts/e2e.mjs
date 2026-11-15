@@ -947,13 +947,13 @@ try {
     await waitFor('역할', (s) => s.role === 'organizer');
     const bins = { scissors: 'binCut', ruler: 'binCut', glueStick: 'binStick', tape: 'binStick', colorPaperPack: 'binPaper', markers: 'binPaper' };
     // 일부러 틀린 바구니에 한 번
-    await act('item:org_scissors', 'KeyE', '가위', { from: [-1, 0] });
+    await act('item:org_scissors', 'KeyE', '가위', { from: [1, 0] });
     await selectItem('scissors');
     await act('binPaper', 'KeyF', '넣기');
     let s = await state();
     if (!s.inventory.includes('scissors')) throw new Error('틀린 바구니에 들어감');
     for (const [item, bin] of Object.entries(bins)) {
-      if (item !== 'scissors') await act('item:org_' + item, 'KeyE', '줍기', { from: [-1, 0] });
+      if (item !== 'scissors') await act('item:org_' + item, 'KeyE', '줍기', { from: [1, 0] });
       await selectItem(item);
       await act(bin, 'KeyF', '넣기');
     }

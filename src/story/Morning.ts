@@ -1497,7 +1497,7 @@ export class Morning implements StoryHooks {
     // 친구들이 서 있는 자리와 겹치지 않게 책상 서쪽 끝과 바닥에 흩어 둔다
     const onTable = GROUP_TABLE.top + 0.002;
     const T = GROUP_TABLE;
-    const spots: [number, number, number][] = [[T.x + 0.33, onTable, T.z - 0.45], [T.x - 1.5, 0, T.z + 1.5], [T.x + 0.33, onTable, T.z + 0.45], [T.x + 1.6, 0, T.z + 1.7], [T.x - 0.4, 0, T.z - 1.6], [T.x + 1.9, 0, T.z - 1.3]];
+    const spots: [number, number, number][] = [[T.x + 0.42, onTable, T.z - 0.72], [T.x - 1.5, 0, T.z + 1.5], [T.x + 0.42, onTable, T.z - 0.4], [T.x + 1.6, 0, T.z + 1.7], [T.x - 0.4, 0, T.z - 1.6], [T.x + 1.9, 0, T.z - 1.3]];
     ORGANIZE.forEach((id, i) => this.g.spawnItem('org_' + id, id, spots[i][0], spots[i][1], spots[i][2], i));
     this.organized = 0;
     this.g.setObjective('정리 0/6: 흩어진 재료를 창가 미술 재료함 위 바구니에 종류별로 넣기 (들고 F)', this.inter.binCut);
