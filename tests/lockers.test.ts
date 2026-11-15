@@ -21,7 +21,7 @@ describe('사물함 번호 → 위치', () => {
     expect(b.col).toBe(7);
     expect(Math.abs(a.x - b.x)).toBeCloseTo(1.5);
   });
-  it('17번은 로봇 사건의 「사물함」 구역(x 3.35) 앞에 있다', () => {
-    expect(lockerCell(MY_LOCKER).x).toBeCloseTo(3.35);
+  it('17번은 로봇 사건의 「사물함」 구역(x 3.035) 앞에 있다', () => {
+    expect(lockerCell(MY_LOCKER).x).toBeCloseTo(3.035);
   });
 });

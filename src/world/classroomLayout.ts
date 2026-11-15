@@ -99,7 +99,7 @@ export const LOCKER_COUNT = 24;
 export const MY_LOCKER = 17;
 export const LOCKER_FRONT_Z = 6.39;
 export const LOCKER_W = 0.5;
-export const LOCKER_X0 = 5.6; // 사물함 동쪽 끝
+export const LOCKER_X0 = 5.285; // 사물함 동쪽 끝 (청소도구함 바로 옆)
 export const LOCKER_DOOR = { w: 0.46, h: 0.46 };
 /** 사물함 번호 → 단(row 0=아래)·칸(col)·칸 가운데 x·칸 아래 높이 y */
 export function lockerCell(num: number) {
@@ -108,11 +108,12 @@ export function lockerCell(num: number) {
   return { row, col, x: LOCKER_X0 - LOCKER_W * (col + 0.5), y: 0.1 + row * 0.5, z: LOCKER_FRONT_Z };
 }
 export const LOCKERS = { x: LOCKER_X0 - (LOCKER_COLS * LOCKER_W) / 2, w: LOCKER_COLS * LOCKER_W, z: 6.65, d: 0.5, top: 1.13 };
-export const CLEAN_CABINET = { x: 6.2, z: 6.68, w: 1.05, d: 0.55, h: 1.05 };
+/** 청소도구함: 가로 1.365 × 깊이 0.715 × 높이 1.365 (뒷면이 벽에 붙고, 복도 쪽 끝은 그대로) */
+export const CLEAN_CABINET = { x: 6.0425, z: 6.64, w: 1.365, d: 0.715, h: 1.365 };
 /** 태블릿 충전함: 가로 0.82 × 깊이 0.6 × 높이 0.86(바퀴 포함), 앞면이 교실 쪽 */
-export const TABLET_CART = { x: -1.2, z: 6.62, w: 0.82, d: 0.6 };
-export const TRASH = { x: -2.2, z: 6.7, w: 0.48, d: 0.42 };
-export const RECYCLE = { x: -3.36, z: 6.7, w: 1.62, d: 0.44 };
+export const TABLET_CART = { x: -1.515, z: 6.62, w: 0.82, d: 0.6 };
+export const TRASH = { x: -2.515, z: 6.7, w: 0.48, d: 0.42 };
+export const RECYCLE = { x: -3.675, z: 6.7, w: 1.62, d: 0.44 };
 /** 뒤 게시판: 가로로 긴 판 하나. 왼쪽(창가 쪽)에 작품 전시, 오른쪽(복도 쪽)에 모둠 포스터 */
 export const BACK_BOARD = { x: 1.2, w: 8.8, y: 1.38, h: 1.36 };
 export const EXHIBIT = { x: -0.9, w: 3.2 };

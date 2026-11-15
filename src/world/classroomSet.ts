@@ -177,7 +177,7 @@ export function buildCleaningCabinet(W = 0.95, H = 0.9, D = 0.5, broom = true): 
   add(shell, wbox(W, H - 0.06, 0.012), inner, 0, 0.06 + (H - 0.06) / 2, D / 2 - 0.006); // 뒤판
   add(shell, wbox(t, H - 0.1, D - 0.03), wood, 0, 0.08 + (H - 0.1) / 2, 0.01); // 가운데 칸막이
   // 윗판: 한 장으로 덮고, 오른쪽 칸(-x) 위에만 긴 자루가 올라오는 직사각형 수납구(회색 플라스틱 테 + 속 그림자)
-  const slotW = 0.34, slotD = 0.18, sx = -W / 4, sz = 0.02;
+  const slotW = W * 0.32, slotD = D * 0.33, sx = -W / 4, sz = 0.02;
   add(shell, wbox(W - (W / 2 + sx + slotW / 2) + 0.01, t, D), wood, (W / 2 + (sx + slotW / 2)) / 2, H - t / 2, 0); // 수납구 왼쪽(+x)
   add(shell, wbox(W / 2 + sx - slotW / 2, t, D), wood, (-W / 2 + sx - slotW / 2) / 2, H - t / 2, 0); // 수납구 오른쪽(-x)
   add(shell, wbox(slotW, t, (D - slotD) / 2 + sz), wood, sx, H - t / 2, -D / 2 + ((D - slotD) / 2 + sz) / 2);
@@ -225,12 +225,13 @@ export function buildCleaningCabinet(W = 0.95, H = 0.9, D = 0.5, broom = true): 
   // 양문 (닫힌 상태로 고정): 문 두 짝 사이 틈 + 세로 매립 손잡이 + 위·아래 이음 띠
   const doors: THREE.Group[] = [];
   const front = new THREE.Group();
-  const dw = W / 2 - 0.008, dh = H - 0.095, dt = 0.022;
+  const dw = W / 2 - 0.008, dh = H - 0.095, dt = 0.025;
   for (const s of [1, -1]) {
     const cx = s * (dw / 2 + 0.003);
     add(front, wbox(dw, dh, dt), wood, cx, 0.075 + dh / 2, -D / 2 - dt / 2 - 0.001);
-    add(front, box(0.026, 0.22, 0.006), darkGap(), s * 0.04, 0.075 + dh * 0.6, -D / 2 - dt - 0.002); // 세로 매립 손잡이 (가운데 쪽)
-    add(front, box(0.03, 0.226, 0.003), mdfEdge(), s * 0.04, 0.075 + dh * 0.6, -D / 2 - dt - 0.0005); // 손잡이 테
+    const hl = H * 0.21; // 손잡이 길이 (높이에 비례)
+    add(front, box(0.03, hl, 0.006), darkGap(), s * 0.05, 0.075 + dh * 0.58, -D / 2 - dt - 0.002); // 세로 매립 손잡이 (가운데 쪽)
+    add(front, box(0.036, hl + 0.008, 0.003), mdfEdge(), s * 0.05, 0.075 + dh * 0.58, -D / 2 - dt - 0.0005); // 손잡이 테
   }
   add(front, box(0.006, dh, 0.004), darkGap(), 0, 0.075 + dh / 2, -D / 2 - dt); // 문 사이 틈
   cabinet.add(compact(front));

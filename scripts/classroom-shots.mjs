@@ -60,7 +60,7 @@ const check = await page.evaluate(() => {
   const g = window.__sim.game, m = g.map, s = m.seats.player;
   const seats = ['player', 'seoa', 'minjae', 'filler2', 'junho', 'harin', 'filler0', 'filler1'].filter((k) => m.seats[k]);
   const from = { x: s.x, z: s.z, y: 0 };
-  const to = { 앞문_복도: [9, -4.6], 뒷문_복도: [9, 5.4], 사물함17: [3.35, 5.8], 태블릿충전함: [-1.25, 5.8], 청소도구함: [6.25, 6.1], 분리수거함: [-3.5, 6.0] };
+  const to = { 앞문_복도: [9, -4.6], 뒷문_복도: [9, 5.4], 사물함17: [3.035, 5.8], 태블릿충전함: [-1.515, 5.8], 청소도구함: [6.04, 5.9], 분리수거함: [-3.675, 6.0] };
   const paths = Object.fromEntries(Object.entries(to).map(([k, [x, z]]) => [k, (g.nav.findPath(from, { x, z, y: 0 }) ?? []).length]));
   return { seats: seats.length, paths, groupTableChildren: m.objs.groupTable.children.length };
 });
