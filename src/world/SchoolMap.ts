@@ -15,7 +15,7 @@ import { buildTabletCart } from './props/tabletCart';
 import { buildCutleryBin, buildTray } from './props/items';
 import { drawKidPoster } from './props/posterArt';
 import { TILE_EXT, plinthMat, stuccoMat } from './exteriorTex';
-import { ART_CAB, BOOKSHELF, CLASS_DOORS, CHAIR, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, BIG_EXHIBIT, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, deskBoxes, lockerCell, seatOf, type DeskLayout } from './classroomLayout';
+import { BACK_DZ, ROOM, TEACHER_DESK, ART_CAB, BOOKSHELF, CLASS_DOORS, CHAIR, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, BIG_EXHIBIT, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, deskBoxes, lockerCell, seatOf, type DeskLayout } from './classroomLayout';
 import { buildCleaningCabinet, buildFabricRecycling, buildLockerCarcass, buildOfficeChair, buildStudentChair, buildStudentDesk, buildTeacherPC, buildTrashBin, lockerDoorGeo, lockerHandle, mdf } from './classroomSet';
 import { compact } from './props/kit';
 import { GymBuilder } from './GymHQ';
@@ -321,9 +321,10 @@ export class SchoolMap {
 
   private buildClassroom() {
     // 바닥·천장·창문 벽·판벽·붙박이 가구 모습은 ClassroomHQ가 짓는다. 여기서는 벽·충돌·게임이 쓰는 물건.
-    // 벽: 앞(칠판) z=-6, 뒤(사물함·게시판, 문 없음) z=7, 창문 x=-7, 복도 쪽 x=7 (앞문·뒷문 모두 여기)
-    this.wallZ(-6.1, -7.2, 7.2);
-    this.wallZ(7.1, -7.2, 7.2);
+    // 벽: 앞(칠판) ROOM.z0, 뒤(사물함·게시판, 문 없음) ROOM.z1, 창문 ROOM.x0, 복도 쪽 x=7 (앞문·뒷문 모두 여기).
+    // 복도 쪽 벽은 복도 모습이 그대로이도록 예전 길이(z -6~7)를 유지한다
+    this.wallZ(ROOM.z0 - 0.1, ROOM.x0 - 0.2, 7.2);
+    this.wallZ(ROOM.z1 + 0.1, ROOM.x0 - 0.2, 7.2);
     this.wallX(7.1, -6, CLASS_DOORS[0].z0);
     this.wallX(7.1, CLASS_DOORS[1].z1, 7);
     // 두 문 사이: 기둥 벽 + 복도가 보이는 유리창 두 칸 (창 아래·위만 벽)
@@ -344,11 +345,11 @@ export class SchoolMap {
 
     for (const P of [WEST_PILLAR, EAST_PILLAR]) this.colliders.push(aabb(P.x, P.z, P.w, P.d));
     // 전자칠판 + 시계
-    const boardFrame = this.box(3.8, 1.8, 0.08, 0x30343b, 0, 0.75, -5.96, { shadow: false });
+    const boardFrame = this.box(3.8, 1.8, 0.08, 0x30343b, 0, 0.75, ROOM.z0 + 0.04, { shadow: false });
     boardFrame.material = paint(0x1c1f23, 0.35, 0.2).clone(); // 강조 효과용 자기 재질
     boardFrame.name = 'board';
     this.objs.board = boardFrame;
-    this.plane(3.6, 1.575, this.boardTex.material(), 0, 1.65, -5.91);
+    this.plane(3.6, 1.575, this.boardTex.material(), 0, 1.65, ROOM.z0 + 0.09);
     // 벽시계: 복도 쪽 가운데 기둥 (게임 시간과 연동 — setClock)
     const clock = new THREE.Mesh(new THREE.CircleGeometry(0.27, 40), this.clockTex.material());
     clock.position.set(CLOCK_POS.x - 0.012, CLOCK_POS.y, CLOCK_POS.z);
@@ -362,25 +363,28 @@ export class SchoolMap {
 
     // 선생님 책상 (앞 왼쪽, 창가): 책상 + 컴퓨터(모니터·키보드·필기구) + 의자
     const tdesk = new THREE.Group();
-    tdesk.position.set(-4.6, 0, -4.7);
+    // 실제 교사용 책상 크기: 가로 1.8 × 깊이 0.85 × 높이 0.76 (모니터·키보드·마우스·수업 자료가 넉넉히)
+    const TD = TEACHER_DESK;
+    tdesk.position.set(TD.x, 0, TD.z);
     this.root.add(tdesk);
-    if (!this.prop('metal_office_desk', tdesk, { w: 1.5, h: 0.78, d: 0.75 }, 0, 0, 0, Math.PI)) {
-      this.box(1.5, 0.08, 0.75, 0xb98b5e, 0, 0.72, 0, { parent: tdesk });
-      this.box(0.5, 0.72, 0.7, 0xa57a50, -0.45, 0, 0, { parent: tdesk });
+    if (!this.prop('metal_office_desk', tdesk, { w: TD.w, h: TD.h, d: TD.d }, 0, 0, 0, Math.PI)) {
+      this.box(TD.w, 0.08, TD.d, 0xb98b5e, 0, TD.h - 0.08, 0, { parent: tdesk });
+      this.box(0.55, TD.h - 0.08, TD.d - 0.05, 0xa57a50, -0.55, 0, 0, { parent: tdesk });
     }
-    const drawer = this.box(0.44, 0.18, 0.04, 0xd0a674, -0.45, 0.45, 0.37, { parent: tdesk, ownMat: true });
+    const drawer = this.box(0.46, 0.18, 0.04, 0xd0a674, -0.55, 0.45, TD.d / 2 - 0.005, { parent: tdesk, ownMat: true });
     this.objs.teacherDrawer = drawer;
-    if (!this.prop('classic_laptop', tdesk, { w: 0.36 }, 0.42, 0.78, -0.05)) this.box(0.25, 0.3, 0.02, 0x222222, 0.42, 0.8, -0.2, { parent: tdesk });
+    if (!this.prop('classic_laptop', tdesk, { w: 0.36 }, 0.6, TD.h, 0.0)) this.box(0.25, 0.3, 0.02, 0x222222, 0.6, TD.h + 0.02, -0.2, { parent: tdesk });
     const pc = buildTeacherPC();
-    pc.scale.setScalar(0.8);
-    pc.position.set(-0.26, 0.78, -0.02);
+    pc.position.set(-0.25, TD.h, -0.04);
     pc.rotation.y = Math.PI; // 화면이 선생님(칠판 쪽)을 본다
     tdesk.add(pc);
+    // 수업 자료 (교과서·출석부 더미)
+    for (const [dx, dz, col, hh] of [[0.55, 0.22, 0x3d5a80, 0.05], [0.58, 0.24, 0xe9c46a, 0.03], [0.82, -0.2, 0xffffff, 0.02]] as [number, number, number, number][]) this.box(0.3, hh, 0.22, col, dx, TD.h + (col === 0xe9c46a ? 0.05 : 0), dz, { parent: tdesk });
     const tchair = buildOfficeChair();
-    tchair.position.set(0.62, 0, -0.72);
-    tchair.rotation.y = Math.PI - 0.5;
+    tchair.position.set(0.0, 0, -TD.d / 2 - 0.22);
+    tchair.rotation.y = Math.PI - 0.2;
     tdesk.add(tchair);
-    this.colliders.push(aabb(-4.6, -4.7, 1.5, 0.75));
+    this.colliders.push(aabb(TD.x, TD.z, TD.w, TD.d));
     this.objs.teacherDesk = tdesk;
 
     // 급식표 (앞 벽 오른쪽)
@@ -407,7 +411,7 @@ export class SchoolMap {
         c.fillText(m, 80, y + 10);
       });
     });
-    const menuMesh = this.plane(0.9, 1.17, menu.material(), 4.6, 1.6, -5.9);
+    const menuMesh = this.plane(0.9, 1.17, menu.material(), 4.6, 1.6, ROOM.z0 + 0.1);
     this.objs.lunchMenu = menuMesh;
 
     // 학생 책상 8개 + 의자 8개 = 학생 8명 (플레이어 + NPC 7명). 한 벌(책상+의자)씩 묶어 두고,
@@ -564,7 +568,7 @@ export class SchoolMap {
 
     // 뒤 게시판 (작품 전시 + 모둠 포스터)
     const B = BACK_BOARD;
-    const exhibit = this.box(B.w - 0.16, B.h - 0.16, 0.04, 0x1f6b4a, B.x, B.y + 0.08, 6.96, { shadow: false, ownMat: true });
+    const exhibit = this.box(B.w - 0.16, B.h - 0.16, 0.04, 0x1f6b4a, B.x, B.y + 0.08, 6.96 + BACK_DZ, { shadow: false, ownMat: true });
     exhibit.material = paint(0x1f7a52, 0.95).clone();
     this.objs.exhibitBoard = exhibit;
     // 모둠 포스터: 살짝 들뜬 종이 + 압정 네 개
@@ -577,12 +581,12 @@ export class SchoolMap {
     pg.computeVertexNormals();
     const poster = new THREE.Mesh(pg, new THREE.MeshStandardMaterial({ map: this.posterTex.tex, roughness: 0.85, side: THREE.DoubleSide }));
     poster.scale.setScalar(0.82);
-    poster.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.07, 6.9);
+    poster.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.07, 6.9 + BACK_DZ);
     // 큰 작품 칸의 기본 작품: 학급 협동화 (모둠 포스터를 붙이면 그 자리를 내준다)
     const muralTex = new CanvasTex(640, 400);
     muralTex.draw((c, w, h) => drawKidPoster(c, w, h, { theme: 'friends', slogan: '사이좋은 6학년 1반', bg: '#e7f5ff', stickers: [], footer: '6-1 학급 협동화' }, 2));
     const mural = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.92), new THREE.MeshStandardMaterial({ map: muralTex.tex, roughness: 0.85 }));
-    mural.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.07, 6.905);
+    mural.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.07, 6.905 + BACK_DZ);
     mural.rotation.y = Math.PI;
     this.root.add(mural);
     this.objs.bigMural = mural;
@@ -722,8 +726,8 @@ export class SchoolMap {
     this.flagSign('계단 ▶ 1층', 11.1, -13.8, -1, '#457b9d', '#ffffff');
 
     // 우리 반 명패 (앞문·뒷문 옆에 튀어나온 판)
-    this.flagSign('6-1', 7.1, -3.4, 1, '#ffe8d6', '#d62828');
-    this.flagSign('6-1', 7.1, 6.55, 1, '#ffe8d6', '#d62828');
+    this.flagSign('6-1', 7.1, CLASS_DOORS[0].z1 + 0.4, 1, '#ffe8d6', '#d62828');
+    this.flagSign('6-1', 7.1, CLASS_DOORS[1].z1 + 0.35, 1, '#ffe8d6', '#d62828');
 
     // 게시판 (자료 조사)
     const bb = new CanvasTex(512, 300);
@@ -981,7 +985,7 @@ export class SchoolMap {
     this.objs.robotCorner = corner;
     // 로봇 수거함 (교실 뒤 오른쪽)
     const bin = new THREE.Group();
-    bin.position.set(5.3, 0, 5.7);
+    bin.position.set(5.3, 0, 5.7 + BACK_DZ);
     corner.add(bin);
     this.box(0.8, 0.55, 0.6, 0x4ea8de, 0, 0, 0, { parent: bin, ownMat: true });
     this.box(0.84, 0.05, 0.64, 0x1d71d2, 0, 0.55, 0, { parent: bin, ownMat: true });
@@ -1003,7 +1007,7 @@ export class SchoolMap {
     bin.add(binItems);
     this.objs.robotBin = bin;
     this.objs.robotBinItems = binItems;
-    this.robotColliders.push(aabb(5.3, 5.7, 0.8, 0.6));
+    this.robotColliders.push(aabb(5.3, 5.7 + BACK_DZ, 0.8, 0.6));
     // 분실물 보관함 (앞 오른쪽, 칸 3개)
     const shelf = new THREE.Group();
     shelf.position.set(6.1, 0, -2.0);
@@ -1469,7 +1473,7 @@ export class SchoolMap {
     }
 
     // 우리 반 앞쪽 칠판 아래 수납장 충돌 상자 (모습은 ClassroomHQ)
-    this.colliders.push({ ...aabb(0, -5.79, 7.4, 0.42), level: 1 });
+    this.colliders.push({ ...aabb(0, ROOM.z0 + 0.21, 7.4, 0.42), level: 1 });
     // 복도: 소화기, 게시물
     this.box(0.18, 0.5, 0.18, 0xd62828, 7.35, 0, 1.2, { shadow: false });
     this.box(0.18, 0.5, 0.18, 0xd62828, 10.85, 0, -7.3, { shadow: false });

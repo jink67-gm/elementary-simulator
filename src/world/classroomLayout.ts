@@ -1,4 +1,8 @@
 // 6-1 교실 배치 기준값 (지도·이야기 코드가 같이 쓴다).
+/** 교실 안쪽 벽면: 창가(서) x0, 복도(동) x1, 칠판(앞) z0, 게시판(뒤) z1 — 가로 13m × 깊이 10.8m */
+export const ROOM = { x0: -6.0, x1: 7.0, z0: -5.0, z1: 5.8 };
+/** 예전 교실(뒤 벽 z 7) 기준으로 만든 뒤쪽 물건을 옮길 때 */
+export const BACK_DZ = ROOM.z1 - 7.0;
 // 교실: x -7(창가, 서) ~ 7(복도, 동), z -6(칠판, 앞) ~ 7(사물함, 뒤). 앞문·뒷문은 모두 복도 쪽(동) 벽.
 
 // ───────── 학생 책상 8개·의자 8개: 수업에 따라 두 가지 배치 (같은 책상을 옮기기만 한다) ─────────
@@ -11,15 +15,15 @@ export const DESK = { w: 0.8, d: 0.56, top: 0.68 };
 export const CHAIR = { seat: 0.38, gap: 0.25 };
 /** 모둠 가운데. 1모둠 = 창가 쪽, 2모둠 = 복도 쪽 */
 export const PODS = [
-  { x: -2.2, z: -0.2, name: '1모둠' },
-  { x: 2.2, z: -0.2, name: '2모둠' },
+  { x: -2.2, z: -1.1, name: '1모둠' },
+  { x: 2.2, z: -1.1, name: '2모둠' },
 ];
 /** 짝 책상 가운데 (일반 수업): 앞줄·뒷줄 × 창가 쪽·복도 쪽 */
 export const PAIRS = [
-  { x: -1.9, z: -1.7 },
-  { x: -1.9, z: 0.9 },
-  { x: 1.9, z: -1.7 },
-  { x: 1.9, z: 0.9 },
+  { x: -1.9, z: -2.3 },
+  { x: -1.9, z: 0.2 },
+  { x: 1.9, z: -2.3 },
+  { x: 1.9, z: 0.2 },
 ];
 /** 자리표 (두 배치에서 같은 학생 = 같은 책상).
  *  pods: [모둠, 책상이 놓인 쪽(-1 서 / 1 동), 줄(-1 칠판 쪽 / 1 뒤쪽)], pairs: [짝 번호, 짝 안에서 쪽(-1 서 / 1 동)] */
@@ -97,7 +101,7 @@ export const GROUP_TABLE = { x: PODS[0].x, z: PODS[0].z, w: DESK.d * 2, d: DESK.
 export const LOCKER_COLS = 12;
 export const LOCKER_COUNT = 24;
 export const MY_LOCKER = 17;
-export const LOCKER_FRONT_Z = 6.39;
+export const LOCKER_FRONT_Z = 6.39 + BACK_DZ;
 export const LOCKER_W = 0.5;
 export const LOCKER_X0 = 5.285; // 사물함 동쪽 끝 (청소도구함 바로 옆)
 export const LOCKER_DOOR = { w: 0.46, h: 0.46 };
@@ -107,13 +111,13 @@ export function lockerCell(num: number) {
   const col = (num - 1) % LOCKER_COLS;
   return { row, col, x: LOCKER_X0 - LOCKER_W * (col + 0.5), y: 0.1 + row * 0.5, z: LOCKER_FRONT_Z };
 }
-export const LOCKERS = { x: LOCKER_X0 - (LOCKER_COLS * LOCKER_W) / 2, w: LOCKER_COLS * LOCKER_W, z: 6.65, d: 0.5, top: 1.13 };
+export const LOCKERS = { x: LOCKER_X0 - (LOCKER_COLS * LOCKER_W) / 2, w: LOCKER_COLS * LOCKER_W, z: 6.65 + BACK_DZ, d: 0.5, top: 1.13 };
 /** 청소도구함: 가로 1.365 × 깊이 0.715 × 높이 1.365 (뒷면이 벽에 붙고, 복도 쪽 끝은 그대로) */
-export const CLEAN_CABINET = { x: 6.0425, z: 6.64, w: 1.365, d: 0.715, h: 1.365 };
+export const CLEAN_CABINET = { x: 6.0425, z: 6.64 + BACK_DZ, w: 1.365, d: 0.715, h: 1.365 };
 /** 태블릿 충전함: 가로 0.82 × 깊이 0.6 × 높이 0.86(바퀴 포함), 앞면이 교실 쪽 */
-export const TABLET_CART = { x: -1.515, z: 6.62, w: 0.82, d: 0.6 };
-export const TRASH = { x: -2.515, z: 6.7, w: 0.48, d: 0.42 };
-export const RECYCLE = { x: -3.675, z: 6.7, w: 1.62, d: 0.44 };
+export const TABLET_CART = { x: -1.515, z: 6.62 + BACK_DZ, w: 0.82, d: 0.6 };
+export const TRASH = { x: -2.515, z: 6.7 + BACK_DZ, w: 0.48, d: 0.42 };
+export const RECYCLE = { x: -3.675, z: 6.7 + BACK_DZ, w: 1.62, d: 0.44 };
 /** 뒤 게시판: 가로로 긴 판 하나. 창가 쪽 넓은 부분 = 학생 8명 작품 칸(2줄 × 4칸), 복도 쪽 = 큰 작품 전시 칸 */
 export const BACK_BOARD = { x: 1.2, w: 8.8, y: 1.38, h: 1.36 };
 /** 학생 작품 칸 하나 (색 도화지 바탕 + 작품 + 이름표) */
@@ -132,21 +136,23 @@ export const POSTER_BOARD = { x: BIG_EXHIBIT.x, w: BIG_EXHIBIT.w };
 
 // ───────── 옆 벽 ─────────
 /** 창가(서) 긴 수납장: 높이는 창턱 바로 아래 */
-export const WINDOW_CAB = { x: -6.775, d: 0.45, h: 0.82, z0: -3.3, z1: 6.95 };
-export const BOOKSHELF = { x: -6.7, z: -0.6, len: 2.2 };
-export const ART_CAB = { x: -6.55, z: 4.4, len: 1.9 };
+export const WINDOW_CAB = { x: ROOM.x0 + 0.225, d: 0.45, h: 0.82, z0: -3.0, z1: ROOM.z1 - 0.05 };
+export const BOOKSHELF = { x: ROOM.x0 + 0.3, z: -0.6, len: 2.2 };
+export const ART_CAB = { x: ROOM.x0 + 0.45, z: 3.7, len: 1.9 };
 /** 복도 쪽(동) 벽: 문 두 개 + 그 사이 유리창 두 칸 + 창 아래 낮은 책장 */
 export const CLASS_DOORS = [
-  { z0: -5.4, z1: -3.8, name: '앞문' },
-  { z0: 4.6, z1: 6.2, name: '뒷문' },
+  { z0: -4.5, z1: -2.9, name: '앞문' },
+  { z0: 3.6, z1: 5.2, name: '뒷문' },
 ];
-export const HALL_WINDOWS: [number, number][] = [[-3.1, -0.8], [0.5, 3.5]];
+export const HALL_WINDOWS: [number, number][] = [[-2.4, -0.65], [0.35, 2.95]];
 export const HALL_WIN_Y = { sill: 1.0, top: 2.15 };
 export const EAST_SHELF = { x: 6.79, d: 0.42, h: 0.8 };
 /** 창 아래 책장 두 개 (가운데 기둥 양옆) */
-export const EAST_SHELVES: [number, number][] = [[-3.05, -0.85], [0.55, 3.45]];
+export const EAST_SHELVES: [number, number][] = [[-2.35, -0.7], [0.4, 2.9]];
 /** 돌출 기둥 (바닥~천장): 창가 = 시간표, 복도 쪽 = 벽시계 */
-export const WEST_PILLAR = { x: -6.85, z: 0.95, w: 0.7, d: 0.7 }; // 바깥벽(-7.2)부터 교실 쪽으로 0.5m 돌출
+export const WEST_PILLAR = { x: ROOM.x0 + 0.15, z: 0.95, w: 0.7, d: 0.7 }; // 창 벽 바깥면부터 교실 쪽으로 0.5m 돌출
 export const EAST_PILLAR = { x: 6.78, z: -0.15, w: 0.44, d: 1.0 };
 export const CLOCK_POS = { x: 6.55, y: 2.12, z: -0.15 };
-export const PURIFIER = { x: 6.66, z: 3.95 };
+/** 교사용 책상 (앞 왼쪽, 창가 쪽) */
+export const TEACHER_DESK = { x: -4.45, z: -3.65, w: 1.8, d: 0.85, h: 0.76 };
+export const PURIFIER = { x: 6.66, z: 3.25 };

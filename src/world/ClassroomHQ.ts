@@ -3,19 +3,19 @@
 // - 왼쪽(창가, x=-7): 녹색 창틀 + 베이지 콤비 블라인드, 창 아래 긴 우드 MDF 수납장·화분, 돌출 기둥 + 시간표(월~금 × 1~6교시)
 // - 뒤(z=7, 문·창 없음): 긴 게시판 하나, 아래 우드 MDF 사물함, 왼쪽 청소도구함 / 오른쪽 태블릿 충전함·쓰레기통·분리수거함
 // - 오른쪽(복도 쪽, x=7): 앞문·뒷문(유리 미닫이), 그 사이 복도 유리창 + 낮은 책장, 가운데 기둥 벽시계, 공기청정기
-// 교실 범위: x -7.0~7.0 (벽 안쪽 면), z -6.0~7.0, 바닥 y 0, 천장 3.
+// 교실 범위: classroomLayout ROOM (벽 안쪽 면), 바닥 y 0, 천장 3.
 // 게임 로직이 쓰는 물건(objs, 충돌 상자, 자리)은 SchoolMap이 만든다. 여기서는 모습과 붙박이 가구.
 import * as THREE from 'three';
 import { aabb } from './Collision';
 import { HQBuilder } from './hq';
 import { TILE, aoMaterial, paint, pbr, worldUV } from './pbr';
 import { CanvasTex, font } from './canvasTex';
-import { ART_CAB, BOOKSHELF, CLASS_DOORS, BACK_BOARD, BIG_EXHIBIT, CLOCK_POS, EAST_PILLAR, EAST_SHELF, EAST_SHELVES, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, PURIFIER, WEST_PILLAR, WINDOW_CAB } from './classroomLayout';
+import { ART_CAB, BACK_DZ, ROOM, BOOKSHELF, CLASS_DOORS, BACK_BOARD, BIG_EXHIBIT, CLOCK_POS, EAST_PILLAR, EAST_SHELF, EAST_SHELVES, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, PURIFIER, WEST_PILLAR, WINDOW_CAB } from './classroomLayout';
 import { buildAirPurifier, buildCabinetRun, buildGarland, buildOpenShelf, buildPlant, combiBlindMat, taegukgiTex, timetableTex } from './classroomSet';
 import { compact, std } from './props/kit';
 
 const H = 3;
-const X0 = -7.0, X1 = 7.0, Z0 = -6.0, Z1 = 7.0;
+const X0 = ROOM.x0, X1 = ROOM.x1, Z0 = ROOM.z0, Z1 = ROOM.z1, XC = (X0 + X1) / 2;
 
 export class ClassroomBuilder extends HQBuilder {
   private wood = pbr('oak', { color: 0xf3e2c8, roughness: 0.62 });
@@ -28,8 +28,8 @@ export class ClassroomBuilder extends HQBuilder {
     this.fabric = combiBlindMat();
     // 창문 벽은 구조 기둥 양옆에 따로 (기둥 자리에는 창·블라인드가 없다)
     const wp0 = WEST_PILLAR.z - WEST_PILLAR.d / 2, wp1 = WEST_PILLAR.z + WEST_PILLAR.d / 2;
-    this.slidingWindowWall(-7.1, Z0, wp0, 1, { blinds: true, bays: 3, frame: this.frame });
-    this.slidingWindowWall(-7.1, wp1, Z1, 1, { blinds: true, bays: 3, frame: this.frame });
+    this.slidingWindowWall(X0 - 0.1, Z0, wp0, 1, { blinds: true, bays: 3, frame: this.frame });
+    this.slidingWindowWall(X0 - 0.1, wp1, Z1, 1, { blinds: true, bays: 3, frame: this.frame });
     this.wainscot();
     this.corridorSide();
     this.frontWall();
@@ -42,20 +42,20 @@ export class ClassroomBuilder extends HQBuilder {
   // ───────── 바닥·천장 ─────────
   private floor() {
     const w = X1 - X0 + 0.2, d = Z1 - Z0 + 0.2;
-    const f = this.add(worldUV(new THREE.PlaneGeometry(w, d), w, d, 0, TILE.laminate), pbr('laminate', { roughness: 0.62, envMapIntensity: 0.8, normalScale: 0.6 }), 0, 0.003, (Z0 + Z1) / 2, { cast: false });
+    const f = this.add(worldUV(new THREE.PlaneGeometry(w, d), w, d, 0, TILE.laminate), pbr('laminate', { roughness: 0.62, envMapIntensity: 0.8, normalScale: 0.6 }), XC, 0.003, (Z0 + Z1) / 2, { cast: false });
     f.rotation.x = -Math.PI / 2;
   }
 
   private ceilingHQ() {
     const w = X1 - X0 + 0.2, d = Z1 - Z0 + 0.2, zc = (Z0 + Z1) / 2;
-    const ceil = this.add(worldUV(new THREE.PlaneGeometry(w, d), w, d, 0, TILE.ceiling), pbr('ceiling', { roughness: 0.95 }), 0, H - 0.002, zc, { cast: true });
+    const ceil = this.add(worldUV(new THREE.PlaneGeometry(w, d), w, d, 0, TILE.ceiling), pbr('ceiling', { roughness: 0.95 }), XC, H - 0.002, zc, { cast: true });
     ceil.rotation.x = Math.PI / 2;
     this.blockers.push(ceil);
     // 사각 LED 평판등 3줄 × 4
     const led = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfffbf2, emissiveIntensity: 1.3, roughness: 0.5 });
     led.userData.pbr = true; // 천장 등은 한 덩어리로 합쳐 그린다
-    for (const x of [-4.2, 0, 4.2])
-      for (const z of [-4.2, -1.2, 1.8, 4.8]) {
+    for (const x of [XC - 4.0, XC, XC + 4.0])
+      for (const z of [Z0 + 1.35, Z0 + 4.05, Z0 + 6.75, Z0 + 9.45]) {
         this.box(0.66, 0.03, 0.66, this.alu, x, H - 0.032, z, false);
         this.box(0.6, 0.012, 0.6, led, x, H - 0.042, z, false);
       }
@@ -90,7 +90,7 @@ export class ClassroomBuilder extends HQBuilder {
     const h = 0.95;
     const runs: [number, number, number, number, number][] = [
       // x, z, 길이, 방향(0: z를 따라, 1: x를 따라), 안쪽 법선 부호
-      [X1 - 0.008, (-3.7 + 4.5) / 2, 4.5 + 3.7, 0, -1], // 복도 쪽 (두 문 사이, 창 아래)
+      [X1 - 0.008, (CLASS_DOORS[0].z1 + CLASS_DOORS[1].z0) / 2 + 0.1, CLASS_DOORS[1].z0 - CLASS_DOORS[0].z1 - 0.2, 0, -1], // 복도 쪽 (두 문 사이, 창 아래)
     ];
     for (const [x, z, len, along, n] of runs) {
       if (along === 0) {
@@ -106,9 +106,9 @@ export class ClassroomBuilder extends HQBuilder {
     // 걸레받이 (교실 둘레)
     const base = this.dark;
     this.box(0.02, 0.12, Z1 - Z0, base, X0 + 0.01, 0, (Z0 + Z1) / 2, false);
-    this.box(X1 - X0, 0.12, 0.02, base, 0, 0, Z0 + 0.01, false);
-    this.box(X1 - X0, 0.12, 0.02, base, 0, 0, Z1 - 0.01, false);
-    this.box(0.02, 0.12, 8.2, base, X1 - 0.01, 0, 0.4, false);
+    this.box(X1 - X0, 0.12, 0.02, base, XC, 0, Z0 + 0.01, false);
+    this.box(X1 - X0, 0.12, 0.02, base, XC, 0, Z1 - 0.01, false);
+    this.box(0.02, 0.12, CLASS_DOORS[1].z0 - CLASS_DOORS[0].z1, base, X1 - 0.01, 0, (CLASS_DOORS[0].z1 + CLASS_DOORS[1].z0) / 2, false);
   }
 
   /** 복도 쪽 벽: 복도가 보이는 나무틀 유리창 두 칸 + 문틀(안쪽) */
@@ -146,7 +146,7 @@ export class ClassroomBuilder extends HQBuilder {
       this.box(0.02, 0.56, w, this.wood, 6.992, 2.27, zc, false, TILE.oak);
     }
     // 스위치·인터폰 (앞문 옆 기둥 벽)
-    this.box(0.03, 0.22, 0.14, paint(0xdedfda, 0.5), X1 - 0.015, 1.35, -3.35, false);
+    this.box(0.03, 0.22, 0.14, paint(0xdedfda, 0.5), X1 - 0.015, 1.35, CLASS_DOORS[0].z1 + 0.25, false);
   }
 
   // ───────── 앞면: 칠판 벽 ─────────
@@ -199,6 +199,12 @@ export class ClassroomBuilder extends HQBuilder {
 
   // ───────── 뒷면: 게시판 (문 없음) ─────────
   private backWall() {
+    // 예전 뒤 벽(z 7) 기준 좌표로 짓고, 통째로 지금 뒤 벽 위치로 옮긴다
+    const prevRoot = this.root;
+    const shifted = new THREE.Group();
+    shifted.position.z = BACK_DZ;
+    prevRoot.add(shifted);
+    this.root = shifted;
     const deco = new THREE.Group();
     this.root.add(deco);
     // 사물함 위 화분·책
@@ -249,6 +255,7 @@ export class ClassroomBuilder extends HQBuilder {
     });
     this.add(new THREE.PlaneGeometry(0.9, 0.11), t2.material(), -0.25, BACK_BOARD.y + BACK_BOARD.h - 0.07, 6.912, { cast: false, ry: Math.PI });
     compact(deco);
+    this.root = prevRoot;
   }
 
   // ───────── 붙박이 가구: 창가 긴 수납장·화분, 복도 쪽 낮은 책장, 공기청정기, 벽 선풍기 ─────────
@@ -268,7 +275,7 @@ export class ClassroomBuilder extends HQBuilder {
       z = b;
     }
     // 화분 (창가 수납장 위, 창턱 앞)
-    const plants: [number, number, number][] = [[-3.0, 2, 1.2], [-2.3, 1, 1.0], [1.6, 1, 0.95], [2.1, 0, 1.0], [2.8, 3, 1.1], [3.2, 1, 0.9], [5.75, 0, 1.3], [6.5, 2, 1.1]];
+    const plants: [number, number, number][] = [[-3.0, 2, 1.2], [-2.3, 1, 1.0], [1.6, 1, 0.95], [2.1, 0, 1.0], [2.8, 3, 1.1], [3.2, 1, 0.9], [4.95, 0, 1.3], [5.45, 2, 1.1]];
     for (const [pz, kind, sc] of plants) {
       const pl = buildPlant(kind, sc);
       pl.position.set(W.x - 0.03, W.h, pz);
@@ -320,8 +327,8 @@ export class ClassroomBuilder extends HQBuilder {
       // 벽 중심 x, z, 길이, 안쪽 법선 nx, nz
       [X0, (Z0 + Z1) / 2, Z1 - Z0, 1, 0],
       [X1, (Z0 + Z1) / 2, Z1 - Z0, -1, 0],
-      [0, Z0, X1 - X0, 0, 1],
-      [0, Z1, X1 - X0, 0, -1],
+      [XC, Z0, X1 - X0, 0, 1],
+      [XC, Z1, X1 - X0, 0, -1],
     ];
     for (const [x, z, len, nx, nz] of walls) {
       for (const ceilingSide of [false, true]) {
@@ -341,9 +348,18 @@ export class ClassroomBuilder extends HQBuilder {
     const band = paint(0xb85c38, 0.8);
     // 건물 서쪽 외벽: 1층 전체 + 2층(다른 교실) — 6-1 창 부분은 창문 벽이 대신
     this.box(0.1, -gy, 32.4, ext, -7.25, gy, 0, false);
-    this.box(0.1, H + 0.4, 10.0, ext, -7.25, 0, -11.1, false);
-    this.box(0.1, H + 0.4, 9.0, ext, -7.25, 0, 11.6, false);
-    this.box(0.12, 0.4, 13.2, ext, -7.25, H, 0.5, false);
+    // 2층 외벽: 6-1 창 벽(교실 안쪽으로 들어와 있음)의 앞·뒤만 바깥 면에
+    this.box(0.1, H + 0.4, Z0 - 0.1 + 16.1, ext, -7.25, 0, (-16.1 + Z0 - 0.1) / 2, false);
+    this.box(0.1, H + 0.4, 16.1 - (Z1 + 0.1), ext, -7.25, 0, (16.1 + Z1 + 0.1) / 2, false);
+    // 6-1 창 벽과 바깥 면 사이: 바닥 판(창밖 턱) + 낮은 난간 벽 + 위 처마, 양옆은 막는다
+    const ledgeW = X0 - 0.2 - -7.3, ledgeX = (X0 - 0.2 + -7.3) / 2, ledgeL = Z1 - Z0 + 0.4, ledgeZ = (Z0 + Z1) / 2;
+    if (ledgeW > 0.05) {
+      this.box(ledgeW, 0.3, ledgeL, ext, ledgeX, -0.3, ledgeZ, false);
+      this.box(0.12, 0.9, ledgeL, ext, -7.24, 0, ledgeZ, false);
+      this.box(0.14, 0.05, ledgeL, paint(0xbfc1bc, 0.6), -7.24, 0.9, ledgeZ, false);
+      for (const zz of [Z0 - 0.2, Z1 + 0.2]) this.box(ledgeW + 0.1, H + 0.4, 0.2, ext, ledgeX, 0, zz, false);
+      this.box(ledgeW + 0.1, 0.25, ledgeL, ext, ledgeX, H + 0.15, ledgeZ, false);
+    } else this.box(0.12, 0.4, Z1 - Z0 + 0.2, ext, -7.25, H, ledgeZ, false);
     this.box(0.14, 0.22, 32.4, band, -7.27, -0.25, 0, false); // 층 띠
     // 다른 교실 창 (어두운 유리 + 흰 틀)
     const darkGlass = paint(0x5d7f97, 0.15, 0.2);

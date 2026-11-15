@@ -20,8 +20,8 @@ import {
   type LostCat, type LostItem, type Owner, type RobotSolution, type ZoneId,
 } from './robotLogic';
 
-const DOCK = { x: 4.3, z: 4.75 };
-const BIN = { x: 5.3, z: 5.7 };
+const DOCK = { x: 4.3, z: 3.55 };
+const BIN = { x: 5.3, z: 4.5 }; // SchoolMap 로봇 수거함 (뒤 벽 사물함 앞)
 const COMPARTMENTS: { cat: LostCat; key: string; z: number }[] = [
   { cat: 'books', key: 'lostBooks', z: -2.6 },
   { cat: 'tools', key: 'lostTools', z: -2.0 },
@@ -29,7 +29,7 @@ const COMPARTMENTS: { cat: LostCat; key: string; z: number }[] = [
 ];
 const SHELF_FRONT_X = 5.4;
 // desk: 내 책상(짝꿍 책상 왼쪽 끝) 바로 옆 통로
-const ZONE_SPOT: Record<ZoneId, [number, number]> = { desk: [-0.85, -1.7], board: [-1.6, 5.7], locker: [3.035, 5.85] };
+const ZONE_SPOT: Record<ZoneId, [number, number]> = { desk: [-0.85, -2.3], board: [-1.6, 3.7], locker: [3.035, 3.85] };
 
 export const ROBOT_LABEL: Record<RobotSolution, string> = {
   remote: '로봇을 원격 조종해 물건을 보관함에 분류함',
@@ -211,7 +211,7 @@ export class RobotEvent implements StoryEvent {
     g.fillers.forEach((f, i) => f.sitAt(seats['filler' + i]));
     const t = m.n('teacher');
     t.char.root.visible = true;
-    t.place(0, -4.9, 0);
+    t.place(0, -4.2, 0);
     g.player.teleport(5.6, 2.4, Math.PI);
     g.tpc.behind(g.player.yaw);
     g.setObjective('친구들 물건을 되찾아 주세요', null);
@@ -559,7 +559,7 @@ export class RobotEvent implements StoryEvent {
     g.save.stats.messLevel = messLevel(g.save.stats.cutletCrumbs ?? 0, st.extraGrabs);
     await m.sleep(1);
     g.cutscene = true;
-    g.tpc.override = { pos: new THREE.Vector3(3.5, 2.6, 1.0), look: new THREE.Vector3(5.3, 0.4, 5.0) };
+    g.tpc.override = { pos: new THREE.Vector3(3.5, 2.6, 1.0), look: new THREE.Vector3(5.3, 0.4, 3.8) };
     g.sfx.success();
     const ends: Record<RobotSolution, [MainNpcId | 'ai' | 'narr', string][]> = {
       remote: [['junho', '로봇 운전 진짜 잘한다! 나중에 피구공도 그렇게 몰아 줘ㅋㅋ'], ['ai', '수동 조종 기록을 학습했습니다. 다음부터 분류 칸을 확인하겠습니다.']],

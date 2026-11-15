@@ -3,7 +3,7 @@
 import { ChatPicker, type ChatNpc, type ChatPeriod, type ChatStage } from '../data/chatter';
 import type { Gesture } from '../world/Character';
 import { CAFE, CAFE_FRONT, FLOOR1_Y as F1, cafe } from '../world/rooms';
-import { CLASS_SEATING, CLOCK_POS, DESK, EXHIBIT, EXHIBIT_SLOT, EXHIBIT_SLOTS, GROUP_TABLE, LOCKERS, TABLET_CART, onDesk, type DeskLayout } from '../world/classroomLayout';
+import { BACK_DZ, ROOM, CLASS_SEATING, CLOCK_POS, DESK, EXHIBIT, EXHIBIT_SLOT, EXHIBIT_SLOTS, GROUP_TABLE, LOCKERS, TABLET_CART, onDesk, type DeskLayout } from '../world/classroomLayout';
 import * as THREE from 'three';
 import { FONT } from '../world/canvasTex';
 import type { Game, MainNpcId, StoryHooks } from '../core/Game';
@@ -240,7 +240,7 @@ export class Morning implements StoryHooks {
     const slotsG = new THREE.Group();
     EXHIBIT_SLOTS.forEach((sl, i) => {
       const back = new THREE.Mesh(new THREE.PlaneGeometry(EXHIBIT_SLOT.w - 0.06, EXHIBIT_SLOT.h - 0.04), new THREE.MeshStandardMaterial({ color: slotCols[i], roughness: 0.95 }));
-      back.position.set(sl.x, sl.y, 6.928);
+      back.position.set(sl.x, sl.y, 6.928 + BACK_DZ);
       back.rotation.y = Math.PI;
       slotsG.add(back);
       const name = sl.who === 'player' ? '' : sl.who.startsWith('filler') ? this.g.fillers[Number(sl.who.slice(6))].name : this.n(sl.who as MainNpcId).name;
@@ -262,16 +262,16 @@ export class Morning implements StoryHooks {
       tt.colorSpace = THREE.SRGBColorSpace;
       if (sl.who === 'player') this.myTag = { cv: tagCv, tex: tt, name: '' }; // 내 이름은 저장을 불러온 뒤 쓴다 (syncProps)
       const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.08), new THREE.MeshStandardMaterial({ map: tt, roughness: 0.8 }));
-      tag.position.set(sl.x + 0.38, sl.y - 0.22, 6.922);
+      tag.position.set(sl.x + 0.38, sl.y - 0.22, 6.922 + BACK_DZ);
       tag.rotation.y = Math.PI;
       slotsG.add(tag);
     });
     this.g.scene.add(slotsG);
     // 내 칸: 오늘 만든 작품 (전시하면 보인다)
     const mine = EXHIBIT_SLOTS[0];
-    add('exhibitPlane', makeItemMesh('paperPlane'), mine.x, mine.y + 0.02, 6.86, Math.PI).scale.setScalar(1.5);
+    add('exhibitPlane', makeItemMesh('paperPlane'), mine.x, mine.y + 0.02, 6.86 + BACK_DZ, Math.PI).scale.setScalar(1.5);
     const exPoster = buildPoster(null, 0.36, 0.46, 2);
-    add('exhibitPoster', wallPaper(exPoster, 0.36, 0.46), mine.x - 0.08, mine.y + 0.03, 6.905, Math.PI);
+    add('exhibitPoster', wallPaper(exPoster, 0.36, 0.46), mine.x - 0.08, mine.y + 0.03, 6.905 + BACK_DZ, Math.PI);
     this.exhibitPosterArt = exPoster;
     // 친구 7명 칸의 작품
     EXHIBIT_SLOTS.slice(1).forEach((sl, i) => {
@@ -284,7 +284,7 @@ export class Morning implements StoryHooks {
       lt.colorSpace = THREE.SRGBColorSpace;
       const sheet = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.45).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: lt, roughness: 0.85 }));
       art.add(sheet);
-      add('classArt' + i, wallPaper(art, 0.36, 0.45), sl.x - 0.08 + ((i * 37) % 5) * 0.01, sl.y + 0.03, 6.905, Math.PI).rotation.z = ((i % 3) - 1) * 0.03;
+      add('classArt' + i, wallPaper(art, 0.36, 0.45), sl.x - 0.08 + ((i * 37) % 5) * 0.01, sl.y + 0.03, 6.905 + BACK_DZ, Math.PI).rotation.z = ((i % 3) - 1) * 0.03;
     });
     // 수학 시간 친구들 태블릿: 현우가 책상에 놓아 준 것만 보인다 (npcTablet_자리) — 친구들은 퀴즈 화면
     for (const key of CLASSMATES) desk('npcTablet_' + key, buildTablet('quiz', 10 + CLASSMATES.indexOf(key)), key, 0.05, -0.03, 0.1, 0.01);
@@ -476,7 +476,7 @@ export class Morning implements StoryHooks {
       obj: m.objs.board,
       radius: 2.6,
       promptY: 0.6,
-      at: new THREE.Vector3(0, 1.2, -5.6),
+      at: new THREE.Vector3(0, 1.2, ROOM.z0 + 0.4),
       prompt: () => (this.period === 'group' && this.save.groupRole === 'researcher' && !this.researchDone.has('board') ? '전자칠판 자료 조사하기' : null),
       onInteract: () => void this.research('board'),
     });
@@ -555,7 +555,7 @@ export class Morning implements StoryHooks {
       obj: m.objs.exhibitBoard,
       radius: 2.0,
       promptY: 0,
-      at: new THREE.Vector3(EXHIBIT.x, 1.2, 6.2),
+      at: new THREE.Vector3(EXHIBIT.x, 1.2, 6.2 + BACK_DZ),
       prompt: () => null,
       usePrompt: (item) => (this.period === 'art' && !this.f('exhibited') && (item === 'paperPlane' || item === 'miniPoster') ? '뒤 게시판에 작품 전시하기' : null),
       onUse: (item) => {
@@ -908,12 +908,12 @@ export class Morning implements StoryHooks {
         this.n('seoa').sitAt(seats.seoa);
         this.n('minjae').place(-1.1, 2.6, Math.PI / 2);
         this.n('junho').place(4.3, -1.6, 0.6);
-        this.n('harin').place(-3.3, 5.8, Math.PI);
+        this.n('harin').place(-3.3, 3.9, Math.PI);
         teacher.place(9.6, 12, Math.PI);
         teacher.char.root.visible = false;
         fillers.forEach((f, i) => {
           if (i < 6) f.sitAt(seats['filler' + i]);
-          else if (i < 8) f.place(2.4 + (i - 6) * 0.7, -4.6, i === 6 ? Math.PI / 2 : -Math.PI / 2);
+          else if (i < 8) f.place(2.4 + (i - 6) * 0.7, -3.9, i === 6 ? Math.PI / 2 : -Math.PI / 2);
           else f.place(8.4 + (i - 8) * 0.8, -6.5, i === 8 ? Math.PI / 2 : -Math.PI / 2);
         });
         break;
@@ -922,23 +922,23 @@ export class Morning implements StoryHooks {
       case 'art':
         for (const id of ['seoa', 'minjae', 'junho', 'harin'] as const) seatOrWalk(this.n(id), id);
         fillers.forEach((f, i) => seatOrWalk(f, 'filler' + i));
-        if (fromLoad) teacher.place(0, -4.9, 0);
-        else void teacher.walkTo(0, -4.9, 0);
+        if (fromLoad) teacher.place(0, -4.2, 0);
+        else void teacher.walkTo(0, -4.2, 0);
         break;
       case 'break':
         if (fromLoad) {
           this.n('junho').place(9, -2.5, 0);
           this.n('minjae').place(-1.4, 2.0, Math.PI / 2);
-          this.n('harin').place(4.2, -5.2, Math.PI);
-          this.n('seoa').place(-6.0, -0.6, -Math.PI / 2);
+          this.n('harin').place(4.2, -4.2, Math.PI);
+          this.n('seoa').place(-5.1, -0.6, -Math.PI / 2);
         } else {
           void this.n('junho').walkTo(9, -2.5, 0);
           void this.n('minjae').walkTo(-1.4, 2.0, Math.PI / 2);
-          void this.n('harin').walkTo(4.2, -5.2, Math.PI);
-          void this.n('seoa').walkTo(-6.0, -0.6, -Math.PI / 2);
+          void this.n('harin').walkTo(4.2, -4.2, Math.PI);
+          void this.n('seoa').walkTo(-5.1, -0.6, -Math.PI / 2);
         }
         fillers.forEach((f, i) => {
-          const spots: [number, number][] = [[8.3, 2], [9.7, 2.6], [8.6, 8], [9.4, 8.4], [-5.5, 3.2], [-5, 3.8]];
+          const spots: [number, number][] = [[8.3, 2], [9.7, 2.6], [8.6, 8], [9.4, 8.4], [-4.8, 3.2], [-4.3, 3.8]];
           if (i >= spots.length) return seatOrWalk(f, 'filler' + i);
           const [x, z] = spots[i];
           const [ox, oz] = spots[i ^ 1];
@@ -946,16 +946,16 @@ export class Morning implements StoryHooks {
           if (fromLoad) f.place(x, z, yaw);
           else void f.walkTo(x, z, yaw);
         });
-        if (fromLoad) teacher.place(-4.6, -5.4, 0);
-        else void teacher.walkTo(-4.6, -5.4, 0);
+        if (fromLoad) teacher.place(-5.1, -4.6, 0);
+        else void teacher.walkTo(-5.1, -4.6, 0);
         break;
       case 'group': {
         // 모둠 활동은 맞붙인 학생 책상 자리 그대로 (별도 모둠 책상 없음)
         for (const id of ['seoa', 'minjae', 'junho', 'harin'] as const) seatOrWalk(this.n(id), id);
         fillers.forEach((f, i) => seatOrWalk(f, 'filler' + i));
         // 모둠 시간: 선생님은 교사용 책상 옆에서 지켜본다 (자료 조사 담당이 전자칠판에 다가갈 수 있게)
-        if (fromLoad) teacher.place(-3.0, -4.9, 0.3);
-        else void teacher.walkTo(-3.0, -4.9, 0.3);
+        if (fromLoad) teacher.place(-3.0, -4.25, 0.3);
+        else void teacher.walkTo(-3.0, -4.25, 0.3);
         break;
       }
       case 'lunch': {
@@ -1063,7 +1063,7 @@ export class Morning implements StoryHooks {
     t.char.root.visible = true;
     t.place(9.4, -1, Math.PI);
     this.g.setObjective('선생님이 오셨다! 자리에 앉기', this.inter.seat);
-    void t.walkTo(0, -4.9, 0);
+    void t.walkTo(0, -4.2, 0);
     await this.say([
       this.L('teacher', '좋은 아침~ 다들 자리에 앉아요!'),
       this.L('teacher', this.f('overslept') ? `${this.me}, 오늘은 아슬아슬 세이프였지?` : '오늘 월요일인데 다들 표정이 밝네요?'),

@@ -41,26 +41,26 @@ const shot = async (name, pos, look, fov) => {
 };
 const only = process.env.ONLY?.split(',');
 const shots = [
-  ['1_front', [0, 1.75, 5.9], [0, 1.25, -6], 62],
-  ['2_back', [0, 1.75, -4.6], [0, 1.1, 7], 62],
-  ['3_left_window', [5.6, 1.75, 0.6], [-7, 1.05, 0.5], 66],
-  ['4_right_doors', [-5.9, 1.75, 0.5], [7, 1.1, 0.5], 66],
-  ['5_pods', [0, 3.4, -3.2], [0, 0.3, 0.6], 55],
-  ['6_back_right', [1.2, 1.5, 3.4], [-2.6, 0.5, 6.9], 55],
-  ['7_back_left_clean', [4.2, 1.5, 3.6], [6.1, 0.5, 6.9], 50],
-  ['8_teacher', [-2.2, 1.6, -2.4], [-4.8, 0.8, -5.2], 50],
+  ['1_front', [0.5, 1.75, 5.0], [0.5, 1.25, -5], 66],
+  ['2_back', [0.5, 1.75, -3.9], [0.5, 1.1, 6], 66],
+  ['3_left_window', [6.4, 1.75, 0.5], [-6, 1.05, 0.5], 66],
+  ['4_right_doors', [-5.2, 1.75, 0.4], [7, 1.1, 0.4], 66],
+  ['5_pods', [0.5, 2.7, -4.2], [0.5, 0.3, 0.4], 60],
+  ['6_back_right', [1.2, 1.5, 2.2], [-2.6, 0.5, 5.7], 55],
+  ['7_back_left_clean', [4.2, 1.5, 2.4], [6.0, 0.5, 5.7], 50],
+  ['8_teacher', [-1.6, 1.6, -1.0], [-4.5, 0.8, -3.9], 55],
   ['9_door_from_hall', [10.4, 1.6, 0.5], [7, 1.2, 0.5], 70],
 ];
 for (const [n, p, l, f] of shots) if (!only || only.some((o) => n.includes(o))) await shot(n, p, l, f);
 if (!only || only.includes('clean')) {
   await page.evaluate(() => window.__sim.game.map.toggleCleanCabinet());
-  await shot('7b_clean_open', [5.4, 1.35, 4.6], [6.25, 0.5, 6.9], 45);
+  await shot('7b_clean_open', [5.2, 1.35, 3.4], [6.0, 0.6, 5.7], 45);
 }
 const check = await page.evaluate(() => {
   const g = window.__sim.game, m = g.map, s = m.seats.player;
   const seats = ['player', 'seoa', 'minjae', 'filler2', 'junho', 'harin', 'filler0', 'filler1'].filter((k) => m.seats[k]);
   const from = { x: s.x, z: s.z, y: 0 };
-  const to = { 앞문_복도: [9, -4.6], 뒷문_복도: [9, 5.4], 사물함17: [3.035, 5.8], 태블릿충전함: [-1.515, 5.8], 청소도구함: [6.04, 5.9], 분리수거함: [-3.675, 6.0] };
+  const to = { 앞문_복도: [9, -3.7], 뒷문_복도: [9, 4.4], 사물함17: [3.035, 4.0], 태블릿충전함: [-1.515, 4.6], 청소도구함: [6.04, 4.55], 분리수거함: [-3.675, 4.8], 교사용책상: [-4.45, -2.7], 칠판앞: [0, -4.1] };
   const paths = Object.fromEntries(Object.entries(to).map(([k, [x, z]]) => [k, (g.nav.findPath(from, { x, z, y: 0 }) ?? []).length]));
   return { seats: seats.length, paths, groupTableChildren: m.objs.groupTable.children.length };
 });
