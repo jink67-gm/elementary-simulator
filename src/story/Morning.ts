@@ -65,6 +65,8 @@ export class Morning implements StoryHooks {
   private props: Record<string, THREE.Object3D> = {};
   private posterStage = -1;
   private exhibitPosterArt: THREE.Object3D | null = null;
+  /** 게시판 내 작품 칸 이름표 (닉네임이 정해진 뒤 다시 그린다) */
+  private myTag: { cv: HTMLCanvasElement; tex: THREE.CanvasTexture; name: string } | null = null;
   private inter: Record<string, Interactable> = {};
   private seatPos = new THREE.Vector3();
   private menuViews = 0;
@@ -241,7 +243,7 @@ export class Morning implements StoryHooks {
       back.position.set(sl.x, sl.y, 6.928);
       back.rotation.y = Math.PI;
       slotsG.add(back);
-      const name = sl.who === 'player' ? this.me : sl.who.startsWith('filler') ? this.g.fillers[Number(sl.who.slice(6))].name : this.n(sl.who as MainNpcId).name;
+      const name = sl.who === 'player' ? '' : sl.who.startsWith('filler') ? this.g.fillers[Number(sl.who.slice(6))].name : this.n(sl.who as MainNpcId).name;
       const tagCv = document.createElement('canvas');
       tagCv.width = 256;
       tagCv.height = 64;
@@ -258,6 +260,7 @@ export class Morning implements StoryHooks {
       tc.fillText(name, 128, 34);
       const tt = new THREE.CanvasTexture(tagCv);
       tt.colorSpace = THREE.SRGBColorSpace;
+      if (sl.who === 'player') this.myTag = { cv: tagCv, tex: tt, name: '' }; // 내 이름은 저장을 불러온 뒤 쓴다 (syncProps)
       const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.08), new THREE.MeshStandardMaterial({ map: tt, roughness: 0.8 }));
       tag.position.set(sl.x + 0.38, sl.y - 0.22, 6.922);
       tag.rotation.y = Math.PI;
@@ -335,6 +338,19 @@ export class Morning implements StoryHooks {
     this.show('posterSheet', p === 'group' && !this.f('groupDone'));
     this.show('colorPaperStack', false);
     this.show('drawingStack', false);
+    if (this.myTag && this.myTag.name !== this.me) {
+      const { cv, tex } = this.myTag;
+      const c = cv.getContext('2d')!;
+      c.fillStyle = '#ffffff';
+      c.fillRect(4, 4, 248, 56);
+      c.fillStyle = '#343a40';
+      c.font = `800 34px ${FONT}`;
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(this.me, 128, 34);
+      tex.needsUpdate = true;
+      this.myTag.name = this.me;
+    }
     this.show('exhibitPlane', this.f('exhibited') && this.f('artPlane'));
     this.show('exhibitPoster', this.f('exhibited') && this.f('artPoster'));
     for (let i = 0; i < 7; i++) this.show('classArt' + i, after('lunch') || (p === 'art' && this.phase === 'cleanup'));

@@ -38,6 +38,23 @@ const shot = async (name, pos, look, fov = 60) => {
   await page.waitForTimeout(2500);
   await page.screenshot({ path: `${OUT}/${name}.png` });
 };
+if (process.env.BOARD) {
+  await shot('board_1_before_art', [1.2, 1.9, 2.4], [1.2, 1.95, 7], 72);
+  await page.evaluate(() => {
+    const f = window.__sim.game.save.flags;
+    Object.assign(f, { exhibited: true, artPoster: true, crafted: true, groupDone: true });
+    window.__sim.game.save.schoolPosterTheme = 'friends';
+    window.__sim.skipTo('lunch');
+  });
+  await page.waitForTimeout(3000);
+  await shot('board_2_after_art', [1.2, 1.9, 2.4], [1.2, 1.95, 7], 72);
+  await shot('board_3_slots_close', [-0.3, 1.95, 4.6], [-0.3, 2.0, 7], 60);
+  await shot('board_4_big_close', [4.1, 1.95, 5.0], [4.1, 2.0, 7], 60);
+  console.log('오류', errors.length, errors.slice(0, 3));
+  await browser.close();
+  try { process.kill(-server.pid); } catch {}
+  process.exit(0);
+}
 await shot('1_pillar_front', [-1.2, 1.55, 0.95], [-7, 1.45, 0.95], 62);
 await shot('2_pillar_angle', [-3.2, 1.5, -2.6], [-7, 1.4, 1.6], 60);
 await shot('3_back_wall', [0.8, 1.55, 1.4], [0.8, 0.8, 7], 70);

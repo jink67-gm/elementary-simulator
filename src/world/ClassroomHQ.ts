@@ -217,12 +217,11 @@ export class ClassroomBuilder extends HQBuilder {
     for (const sx of [-1, 1]) this.box(0.06, B.h, 0.06, this.wood, B.x + sx * (B.w / 2 + 0.02), B.y, 6.955, false, TILE.oak);
     const yellow = paint(0xffd43b, 0.9);
     this.box(B.w - 0.02, B.h - 0.02, 0.02, yellow, B.x, B.y + 0.01, 6.975, false);
-    for (const [gx, gy] of [[-1, 1], [1, 1]]) {
-      const gl = buildGarland(0.9);
-      gl.position.set(B.x + gx * (B.w / 2 - 0.6), B.y + B.h / 2 + gy * (B.h / 2 - 0.2), 6.93);
-      gl.rotation.y = Math.PI;
-      deco.add(gl);
-    }
+    // 초록 덩굴: 게시판 위 테를 따라 길게
+    const gl = buildGarland(B.w - 0.3);
+    gl.position.set(B.x, B.y + B.h + 0.03, 6.93);
+    gl.rotation.y = Math.PI;
+    deco.add(gl);
     // 큰 작품 전시 칸: 나무 액자 테 + 제목 띠 (안의 작품은 SchoolMap: 학급 협동화 / 모둠 포스터)
     const BE = BIG_EXHIBIT;
     const frameM = this.wood;
@@ -237,7 +236,7 @@ export class ClassroomBuilder extends HQBuilder {
       c.textAlign = 'center';
       c.fillText('★ 이달의 작품 ★', w / 2, 45);
     });
-    this.add(new THREE.PlaneGeometry(1.1, 0.14), title.material(), BE.x, BE.y + BE.h / 2 + 0.005, 6.915, { cast: false, ry: Math.PI });
+    this.add(new THREE.PlaneGeometry(1.0, 0.12), title.material(), BE.x, BE.y + BE.h / 2 - 0.085, 6.9, { cast: false, ry: Math.PI });
     // 작품 칸 제목 (8명 칸 위)
     const t2 = new CanvasTex(512, 64);
     t2.draw((c, w, h) => {
@@ -248,7 +247,7 @@ export class ClassroomBuilder extends HQBuilder {
       c.textAlign = 'center';
       c.fillText('우리 반 작품 전시', w / 2, 44);
     });
-    this.add(new THREE.PlaneGeometry(1.0, 0.125), t2.material(), -0.25, BACK_BOARD.y + BACK_BOARD.h - 0.1, 6.915, { cast: false, ry: Math.PI });
+    this.add(new THREE.PlaneGeometry(0.9, 0.11), t2.material(), -0.25, BACK_BOARD.y + BACK_BOARD.h - 0.07, 6.912, { cast: false, ry: Math.PI });
     compact(deco);
   }
 

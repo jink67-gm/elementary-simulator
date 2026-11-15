@@ -576,13 +576,13 @@ export class SchoolMap {
     }
     pg.computeVertexNormals();
     const poster = new THREE.Mesh(pg, new THREE.MeshStandardMaterial({ map: this.posterTex.tex, roughness: 0.85, side: THREE.DoubleSide }));
-    poster.scale.setScalar(0.92);
-    poster.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.02, 6.9);
+    poster.scale.setScalar(0.82);
+    poster.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.07, 6.9);
     // 큰 작품 칸의 기본 작품: 학급 협동화 (모둠 포스터를 붙이면 그 자리를 내준다)
     const muralTex = new CanvasTex(640, 400);
     muralTex.draw((c, w, h) => drawKidPoster(c, w, h, { theme: 'friends', slogan: '사이좋은 6학년 1반', bg: '#e7f5ff', stickers: [], footer: '6-1 학급 협동화' }, 2));
-    const mural = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 1.0), new THREE.MeshStandardMaterial({ map: muralTex.tex, roughness: 0.85 }));
-    mural.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.03, 6.905);
+    const mural = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.92), new THREE.MeshStandardMaterial({ map: muralTex.tex, roughness: 0.85 }));
+    mural.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.07, 6.905);
     mural.rotation.y = Math.PI;
     this.root.add(mural);
     this.objs.bigMural = mural;

@@ -122,12 +122,12 @@ export const EXHIBIT_SLOT = { w: 1.22, h: 0.6 };
 export const EXHIBIT_SLOTS: { who: string; x: number; y: number }[] = ['player', 'seoa', 'minjae', 'filler2', 'junho', 'harin', 'filler0', 'filler1'].map((who, i) => ({
   who,
   x: [1.85, 0.45, -0.95, -2.35][i % 4],
-  y: i < 4 ? 2.39 : 1.74,
+  y: i < 4 ? 2.33 : 1.71,
 }));
 /** 내 작품 칸 (전시 상호작용 위치) */
 export const EXHIBIT = { x: EXHIBIT_SLOTS[0].x, y: EXHIBIT_SLOTS[0].y, w: EXHIBIT_SLOT.w };
 /** 큰 작품 전시 칸 (모둠 포스터·학급 협동화) */
-export const BIG_EXHIBIT = { x: 4.1, y: 2.0, w: 2.7, h: 1.2 };
+export const BIG_EXHIBIT = { x: 4.1, y: 2.0, w: 2.7, h: 1.24 };
 export const POSTER_BOARD = { x: BIG_EXHIBIT.x, w: BIG_EXHIBIT.w };
 
 // ───────── 옆 벽 ─────────
