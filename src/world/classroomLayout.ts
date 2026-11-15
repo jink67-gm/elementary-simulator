@@ -154,5 +154,7 @@ export const WEST_PILLAR = { x: ROOM.x0 + 0.15, z: 0.95, w: 0.7, d: 0.7 }; // �
 export const EAST_PILLAR = { x: 6.78, z: -0.15, w: 0.44, d: 1.0 };
 export const CLOCK_POS = { x: 6.55, y: 2.12, z: -0.15 };
 /** 교사용 책상 (앞 왼쪽, 창가 쪽) */
-export const TEACHER_DESK = { x: -4.45, z: -3.65, w: 1.8, d: 0.85, h: 0.76 };
+export const TEACHER_DESK = { x: -4.15, z: -3.62, w: 2.34, d: 1.1, h: 0.99 };
+/** 교사용 교과서 꽂이 선반 (교사 책상 옆, 창 아래) */
+export const TEACHER_SHELF = { x: ROOM.x0 + 0.2, z: -4.0, len: 1.85, d: 0.38, h: 0.82 };
 export const PURIFIER = { x: 6.66, z: 3.25 };

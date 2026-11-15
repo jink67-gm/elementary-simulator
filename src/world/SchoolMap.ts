@@ -15,8 +15,8 @@ import { buildTabletCart } from './props/tabletCart';
 import { buildCutleryBin, buildTray } from './props/items';
 import { drawKidPoster } from './props/posterArt';
 import { TILE_EXT, plinthMat, stuccoMat } from './exteriorTex';
-import { BACK_DZ, ROOM, TEACHER_DESK, ART_CAB, BOOKSHELF, CLASS_DOORS, CHAIR, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, BIG_EXHIBIT, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, deskBoxes, lockerCell, seatOf, type DeskLayout } from './classroomLayout';
-import { buildCleaningCabinet, buildFabricRecycling, buildLockerCarcass, buildOfficeChair, buildStudentChair, buildStudentDesk, buildTeacherPC, buildTrashBin, lockerDoorGeo, lockerHandle, mdf } from './classroomSet';
+import { BACK_DZ, ROOM, TEACHER_DESK, TEACHER_SHELF, ART_CAB, BOOKSHELF, CLASS_DOORS, CHAIR, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, BIG_EXHIBIT, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, deskBoxes, lockerCell, seatOf, type DeskLayout } from './classroomLayout';
+import { buildCleaningCabinet, buildFabricRecycling, buildLockerCarcass, buildOfficeChair, buildStudentChair, buildStudentDesk, buildTeacherDesk, buildTeacherDeskItems, buildTeacherShelf, buildTrashBin, lockerDoorGeo, lockerHandle, mdf } from './classroomSet';
 import { compact } from './props/kit';
 import { GymBuilder } from './GymHQ';
 import { CafeteriaWingBuilder, STEEL, cafeteriaTable } from './CafeteriaWing';
@@ -361,29 +361,31 @@ export class SchoolMap {
     this.root.add(clockRim);
     this.objs.clock = clock;
 
-    // 선생님 책상 (앞 왼쪽, 창가): 책상 + 컴퓨터(모니터·키보드·필기구) + 의자
-    const tdesk = new THREE.Group();
-    // 실제 교사용 책상 크기: 가로 1.8 × 깊이 0.85 × 높이 0.76 (모니터·키보드·마우스·수업 자료가 넉넉히)
+    // 선생님 책상 (앞 왼쪽, 창가): 실제 교사용 사무 책상 크기 (가로 2.34 × 깊이 1.1 × 높이 0.99, 학생 책상과 비율을 맞춤)
+    // 책상 위: 모니터·키보드·마우스·교과서 3권·필기구 꽂이만. 선생님은 칠판 쪽(-z)에 앉는다
     const TD = TEACHER_DESK;
+    const tdesk = new THREE.Group();
     tdesk.position.set(TD.x, 0, TD.z);
     this.root.add(tdesk);
-    if (!this.prop('metal_office_desk', tdesk, { w: TD.w, h: TD.h, d: TD.d }, 0, 0, 0, Math.PI)) {
-      this.box(TD.w, 0.08, TD.d, 0xb98b5e, 0, TD.h - 0.08, 0, { parent: tdesk });
-      this.box(0.55, TD.h - 0.08, TD.d - 0.05, 0xa57a50, -0.55, 0, 0, { parent: tdesk });
-    }
-    const drawer = this.box(0.46, 0.18, 0.04, 0xd0a674, -0.55, 0.45, TD.d / 2 - 0.005, { parent: tdesk, ownMat: true });
+    const { desk: tdeskModel, drawer } = buildTeacherDesk(TD.w, TD.d, TD.h);
+    tdesk.add(tdeskModel);
     this.objs.teacherDrawer = drawer;
-    if (!this.prop('classic_laptop', tdesk, { w: 0.36 }, 0.6, TD.h, 0.0)) this.box(0.25, 0.3, 0.02, 0x222222, 0.6, TD.h + 0.02, -0.2, { parent: tdesk });
-    const pc = buildTeacherPC();
-    pc.position.set(-0.25, TD.h, -0.04);
-    pc.rotation.y = Math.PI; // 화면이 선생님(칠판 쪽)을 본다
-    tdesk.add(pc);
-    // 수업 자료 (교과서·출석부 더미)
-    for (const [dx, dz, col, hh] of [[0.55, 0.22, 0x3d5a80, 0.05], [0.58, 0.24, 0xe9c46a, 0.03], [0.82, -0.2, 0xffffff, 0.02]] as [number, number, number, number][]) this.box(0.3, hh, 0.22, col, dx, TD.h + (col === 0xe9c46a ? 0.05 : 0), dz, { parent: tdesk });
+    const items = buildTeacherDeskItems();
+    items.scale.setScalar(1.15);
+    items.position.set(-0.25, TD.h, -0.08);
+    items.rotation.y = Math.PI; // 화면이 선생님(칠판 쪽)을 본다
+    tdesk.add(items);
     const tchair = buildOfficeChair();
-    tchair.position.set(0.0, 0, -TD.d / 2 - 0.22);
-    tchair.rotation.y = Math.PI - 0.2;
+    tchair.scale.setScalar(1.15);
+    tchair.position.set(-0.2, 0, -TD.d / 2 - 0.25);
+    tchair.rotation.y = Math.PI - 0.15;
     tdesk.add(tchair);
+    // 교사용 교과서 꽂이 선반 (책상 옆, 창 아래)
+    const TS = TEACHER_SHELF;
+    const tshelf = buildTeacherShelf(TS.len, TS.h, TS.d);
+    tshelf.position.set(TS.x, 0, TS.z);
+    this.root.add(tshelf);
+    this.colliders.push(aabb(TS.x, TS.z, TS.d, TS.len));
     this.colliders.push(aabb(TD.x, TD.z, TD.w, TD.d));
     this.objs.teacherDesk = tdesk;
 

@@ -291,27 +291,99 @@ export function buildFabricRecycling(): THREE.Group {
   return compact(g);
 }
 
-/** 교사용 컴퓨터 한 벌: 모니터·키보드·마우스·본체·연필꽂이. 화면이 +z(앉은 사람 쪽)를 본다. 원점 = 책상 윗면 */
-export function buildTeacherPC(): THREE.Group {
+/** 교사용 사무 책상: 밝은 나무 상판(두께 있는 모서리) + 왼쪽 옆판 + 오른쪽 서랍장(3단) + 앞 가림판.
+ *  앉는 쪽 = -z (칠판 쪽), 학생 쪽 = +z. 원점 = 바닥 가운데. drawer = 맨 위 서랍 앞판 (상호작용용) */
+export function buildTeacherDesk(w: number, d: number, h: number): { desk: THREE.Group; drawer: THREE.Mesh } {
+  const g = new THREE.Group();
+  const top = std(0xe8c995, 0.5), body = mdf(), edge = std(0xc9a46b, 0.55), handle = std(0x8a9096, 0.35, 0.7), dark = std(0x3a3632, 0.7);
+  const t = 0.04;
+  add(g, rbox(w, t, d, 0.012), top, 0, h - t / 2, 0);
+  add(g, box(w + 0.004, 0.012, d + 0.004), edge, 0, h - t - 0.004, 0);
+  // 왼쪽 옆판, 앞 가림판 (학생 쪽)
+  const legH = h - t - 0.01;
+  add(g, wbox(0.035, legH, d - 0.04), body, -w / 2 + 0.03, legH / 2, 0);
+  add(g, wbox(w - 0.08, legH * 0.62, 0.025), body, 0, legH - (legH * 0.62) / 2, d / 2 - 0.04);
+  // 오른쪽 서랍장: 몸통 + 서랍 3단 (앉은 사람 쪽에서 연다)
+  const pw = 0.5, px = w / 2 - pw / 2 - 0.02;
+  add(g, wbox(pw, legH, d - 0.04), body, px, legH / 2, 0);
+  add(g, box(pw - 0.02, 0.04, d - 0.08), dark, px, 0.02, 0);
+  const dh = (legH - 0.08) / 3;
+  let drawer!: THREE.Mesh;
+  for (let i = 0; i < 3; i++) {
+    const y = legH - 0.02 - dh * (i + 0.5);
+    const f = add(g, wbox(pw - 0.04, dh - 0.02, 0.02), body.clone(), px, y, -d / 2 + 0.01);
+    f.userData.keep = true;
+    if (i === 0) drawer = f;
+    add(g, box(0.16, 0.018, 0.025), handle, px, y + dh * 0.2, -d / 2 - 0.006);
+  }
+  // 발 받침 가로대 (왼쪽 옆판 ↔ 서랍장)
+  add(g, box(w - pw - 0.1, 0.03, 0.03), dark, (-w / 2 + px - pw / 2) / 2 + 0.02, 0.06, -d / 2 + 0.2);
+  return { desk: compact(g), drawer };
+}
+
+/** 교사 책상 위 물품: 모니터 1, 키보드 1, 마우스 1, 겹쳐 놓은 교과서 3권, 필기구 꽂이(연필·펜).
+ *  화면이 +z(앉은 사람 쪽)를 본다 — 책상에서는 π 돌려 놓는다. 원점 = 책상 윗면 */
+export function buildTeacherDeskItems(): THREE.Group {
   const g = new THREE.Group();
   const black = std(0x1d1f23, 0.4), grey = std(0x8a9099, 0.4, 0.4);
-  add(g, rbox(0.56, 0.34, 0.025, 0.008), black, 0, 0.31, -0.12);
-  add(g, new THREE.PlaneGeometry(0.52, 0.3), new THREE.MeshStandardMaterial({ color: 0x3a6ea5, emissive: 0x2a5d94, emissiveIntensity: 0.5, roughness: 0.3 }), 0, 0.31, -0.106, 0, 0, 0, false);
-  add(g, box(0.05, 0.12, 0.03), grey, 0, 0.09, -0.14);
-  add(g, rbox(0.22, 0.012, 0.16, 0.005), grey, 0, 0.006, -0.13);
-  add(g, rbox(0.4, 0.016, 0.13, 0.005), std(0x2a2c31, 0.5), 0, 0.01, 0.1); // 키보드
-  add(g, box(0.36, 0.004, 0.1), std(0x44474d, 0.6), 0, 0.02, 0.1);
-  add(g, rbox(0.055, 0.025, 0.09, 0.012), std(0x2a2c31, 0.4), 0.3, 0.013, 0.1); // 마우스
-  add(g, box(0.2, 0.003, 0.18), std(0x3d4756, 0.9), 0.3, 0.002, 0.1);
-  // 연필꽂이 + 필기구
-  add(g, cyl(0.04, 0.035, 0.1, 12), std(0x4f8fbf, 0.5), -0.42, 0.05, 0.0);
-  [0xffd166, 0xef476f, 0x06a77d, 0x333333].forEach((c, i) => {
-    const p = add(g, cyl(0.005, 0.005, 0.16, 6), std(c, 0.5), -0.42 + (i - 1.5) * 0.015, 0.11, (i % 2) * 0.02 - 0.01);
-    p.rotation.z = (i - 1.5) * 0.12;
+  // 모니터 (24인치 정도) + 받침
+  add(g, rbox(0.56, 0.34, 0.025, 0.008), black, 0, 0.32, -0.16);
+  add(g, new THREE.PlaneGeometry(0.52, 0.3), new THREE.MeshStandardMaterial({ color: 0x3a6ea5, emissive: 0x2a5d94, emissiveIntensity: 0.5, roughness: 0.3 }), 0, 0.32, -0.146, 0, 0, 0, false);
+  add(g, box(0.05, 0.13, 0.03), grey, 0, 0.09, -0.18);
+  add(g, rbox(0.22, 0.012, 0.16, 0.005), grey, 0, 0.006, -0.17);
+  // 키보드 + 마우스
+  add(g, rbox(0.42, 0.018, 0.14, 0.005), std(0x2a2c31, 0.5), 0, 0.009, 0.08);
+  add(g, box(0.38, 0.004, 0.11), std(0x44474d, 0.6), 0, 0.019, 0.08);
+  add(g, rbox(0.06, 0.026, 0.1, 0.013), std(0x2a2c31, 0.4), 0.3, 0.013, 0.09);
+  // 교과서 3권 (겹쳐서, 조금씩 어긋나게) — 모니터 왼쪽
+  const books: [number, number][] = [[0x3d5a80, 0.022], [0xe76f51, 0.018], [0x2a9d8f, 0.02]];
+  let y = 0;
+  books.forEach(([c, th], i) => {
+    const b = add(g, box(0.26, th, 0.19), std(c, 0.7), -0.5 + (i - 1) * 0.008, y + th / 2, 0.04 + (i % 2) * 0.01);
+    b.rotation.y = (i - 1) * 0.06;
+    add(g, box(0.255, th - 0.004, 0.004), std(0xf8f5ec, 0.9), -0.5 + (i - 1) * 0.008, y + th / 2, 0.04 + (i % 2) * 0.01 + 0.095).rotation.y = (i - 1) * 0.06;
+    y += th;
   });
-  // 서류함 + 공책
-  add(g, rbox(0.26, 0.07, 0.33, 0.01), std(0xf2c94c, 0.5), 0.42, 0.035, -0.03);
-  add(g, box(0.22, 0.012, 0.3), std(0xffffff, 0.8), 0.42, 0.076, -0.03);
+  // 필기구 꽂이 + 연필·펜 (모니터 오른쪽 뒤)
+  add(g, cyl(0.04, 0.036, 0.1, 14), std(0x6c8ebf, 0.5), 0.42, 0.05, -0.1);
+  [[0xffd166, 0.17], [0x2b2d42, 0.15], [0xef476f, 0.15], [0x1d3557, 0.16], [0x06a77d, 0.17]].forEach(([c, len], i) => {
+    const p = add(g, cyl(0.005, 0.005, len, 6), std(c as number, 0.5), 0.42 + (i - 2) * 0.012, 0.03 + (len as number) / 2, -0.1 + ((i * 7) % 3 - 1) * 0.012);
+    p.rotation.z = (i - 2) * 0.1;
+    p.rotation.x = ((i % 2) - 0.5) * 0.12;
+  });
+  return compact(g);
+}
+
+/** 교사용 교과서 꽂이 선반 (창 아래, 높이 0.82): 밝은 나무, 2단. 지도서·교과서·파일철이 꽂혀 있다. 앞면 = +x, 길이 = z */
+export function buildTeacherShelf(len: number, h: number, d: number): THREE.Group {
+  const g = new THREE.Group();
+  const wood = mdf();
+  add(g, box(d - 0.04, 0.06, len - 0.02), std(0x3a3632, 0.7), -0.01, 0.03, 0);
+  add(g, wbox(0.015, h - 0.06, len), std(0xead9bd, 0.7), -d / 2 + 0.0075, 0.06 + (h - 0.06) / 2, 0);
+  for (const y of [0.06, 0.43]) add(g, wbox(d, 0.022, len), wood, 0, y + 0.011, 0);
+  add(g, wbox(d + 0.02, 0.028, len + 0.02), wood, 0.008, h - 0.014, 0);
+  const n = 2, bw = len / n;
+  for (let i = 0; i <= n; i++) add(g, wbox(d, h - 0.07, 0.022), wood, 0, 0.06 + (h - 0.07) / 2, -len / 2 + i * bw + (i === 0 ? 0.011 : i === n ? -0.011 : 0));
+  const items = new THREE.Group();
+  g.add(items);
+  // 아래 칸: 파일철(두꺼운 색 바인더, 등에 흰 이름표) + 지도서
+  const binder = (z: number, c: number, yb: number, hh: number) => {
+    add(items, box(d - 0.08, hh, 0.055), std(c, 0.6), 0, yb + hh / 2, z);
+    add(items, box(0.004, hh * 0.35, 0.035), std(0xffffff, 0.8), (d - 0.08) / 2 + 0.002, yb + hh * 0.6, z);
+  };
+  [0x1d71d2, 0x2a9d6f, 0xe76f51, 0x6c757d, 0xf2c94c].forEach((c, i) => binder(-len / 2 + 0.08 + i * 0.062, c, 0.083, 0.3));
+  bookRow(items, -len / 2 + 0.43, -0.02, 0.083, 0.3, d - 0.08, 0, 211);
+  bookRow(items, 0.03, len / 2 - 0.03, 0.083, 0.32, d - 0.08, 0, 223);
+  // 위 칸: 교사용 지도서(크고 두꺼운 책) + 교과서 + 세워 둔 파일 꽂이
+  bookRow(items, -len / 2 + 0.03, -0.25, 0.453, 0.3, d - 0.08, 0, 241);
+  for (let i = 0; i < 2; i++) {
+    const z = -0.2 + i * 0.13;
+    add(items, box(d - 0.1, 0.26, 0.11), std(0xdfe3e6, 0.5), 0, 0.453 + 0.13, z);
+    add(items, box(d - 0.14, 0.2, 0.005), std([0xfff3bf, 0xd0ebff][i], 0.9), 0.01, 0.453 + 0.17, z - 0.03);
+  }
+  binder(0.08, 0x3d5a80, 0.453, 0.28);
+  binder(0.14, 0x8338ec, 0.453, 0.28);
+  bookRow(items, 0.2, len / 2 - 0.03, 0.453, 0.3, d - 0.08, 0, 257);
   return compact(g);
 }
 

@@ -954,8 +954,8 @@ export class Morning implements StoryHooks {
         for (const id of ['seoa', 'minjae', 'junho', 'harin'] as const) seatOrWalk(this.n(id), id);
         fillers.forEach((f, i) => seatOrWalk(f, 'filler' + i));
         // 모둠 시간: 선생님은 교사용 책상 옆에서 지켜본다 (자료 조사 담당이 전자칠판에 다가갈 수 있게)
-        if (fromLoad) teacher.place(-3.0, -4.25, 0.3);
-        else void teacher.walkTo(-3.0, -4.25, 0.3);
+        if (fromLoad) teacher.place(-2.55, -4.2, 0.3);
+        else void teacher.walkTo(-2.55, -4.2, 0.3);
         break;
       }
       case 'lunch': {
