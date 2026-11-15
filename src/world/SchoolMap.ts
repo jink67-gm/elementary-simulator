@@ -379,7 +379,7 @@ export class SchoolMap {
     tdesk.add(buildTeacherUnderDesk(TD.w, TD.d, TD.h, items.position.x, items.position.z + 0.18 * 1.15));
     // 작은 쓰레기통: 책상 아래 본체 앞 (선생님 쪽, 의자 다리 공간 밖)
     const tbin = buildSmallBin();
-    tbin.position.set(-TD.w / 2 + 0.22, 0, -TD.d / 2 + 0.15);
+    tbin.position.set(-TD.w / 2 + 0.24, 0, -TD.d / 2 + 0.12);
     tdesk.add(tbin);
     const tchair = buildOfficeChair();
     tchair.scale.setScalar(1.15);

@@ -326,11 +326,19 @@ export function buildTeacherDesk(w: number, d: number, h: number): { desk: THREE
 export function buildTeacherDeskItems(): THREE.Group {
   const g = new THREE.Group();
   const black = std(0x1d1f23, 0.4), grey = std(0x8a9099, 0.4, 0.4);
-  // 모니터 (24인치 정도) + 받침
-  add(g, rbox(0.56, 0.34, 0.025, 0.008), black, 0, 0.32, -0.16);
-  add(g, new THREE.PlaneGeometry(0.52, 0.3), new THREE.MeshStandardMaterial({ color: 0x3a6ea5, emissive: 0x2a5d94, emissiveIntensity: 0.5, roughness: 0.3 }), 0, 0.32, -0.146, 0, 0, 0, false);
-  add(g, box(0.05, 0.13, 0.03), grey, 0, 0.09, -0.18);
-  add(g, rbox(0.22, 0.012, 0.16, 0.005), grey, 0, 0.006, -0.17);
+  // 듀얼 모니터 (24인치 정도 두 대, 안쪽으로 살짝 돌려 놓음) + 받침
+  const screenM = new THREE.MeshStandardMaterial({ color: 0x3a6ea5, emissive: 0x2a5d94, emissiveIntensity: 0.5, roughness: 0.3 });
+  const screen2M = new THREE.MeshStandardMaterial({ color: 0xf1f3f5, emissive: 0xdee2e6, emissiveIntensity: 0.35, roughness: 0.3 });
+  for (const s2 of [-1, 1]) {
+    const mon = new THREE.Group();
+    add(mon, rbox(0.56, 0.34, 0.025, 0.008), black, 0, 0.32, 0);
+    add(mon, new THREE.PlaneGeometry(0.52, 0.3), s2 < 0 ? screenM : screen2M, 0, 0.32, 0.014, 0, 0, 0, false);
+    add(mon, box(0.05, 0.13, 0.03), grey, 0, 0.09, -0.02);
+    add(mon, rbox(0.22, 0.012, 0.16, 0.005), grey, 0, 0.006, -0.01);
+    mon.position.set(s2 * 0.29, 0, -0.16 - 0.02);
+    mon.rotation.y = -s2 * 0.18;
+    g.add(mon);
+  }
   // 키보드 + 마우스
   add(g, rbox(0.42, 0.018, 0.14, 0.005), std(0x2a2c31, 0.5), 0, 0.013, 0.08);
   add(g, box(0.38, 0.004, 0.11), std(0x44474d, 0.6), 0, 0.023, 0.08);
@@ -347,9 +355,10 @@ export function buildTeacherDeskItems(): THREE.Group {
     y += th;
   });
   // 필기구 꽂이 + 연필·펜 (모니터 오른쪽 뒤)
-  add(g, cyl(0.04, 0.036, 0.1, 14), std(0x6c8ebf, 0.5), 0.42, 0.05, -0.1);
+  const PCX = 0.68, PCZ = -0.06; // 필기구 꽂이 (오른쪽 모니터 옆)
+  add(g, cyl(0.04, 0.036, 0.1, 14), std(0x6c8ebf, 0.5), PCX, 0.05, PCZ);
   [[0xffd166, 0.17], [0x2b2d42, 0.15], [0xef476f, 0.15], [0x1d3557, 0.16], [0x06a77d, 0.17]].forEach(([c, len], i) => {
-    const p = add(g, cyl(0.005, 0.005, len, 6), std(c as number, 0.5), 0.42 + (i - 2) * 0.012, 0.03 + (len as number) / 2, -0.1 + ((i * 7) % 3 - 1) * 0.012);
+    const p = add(g, cyl(0.005, 0.005, len, 6), std(c as number, 0.5), PCX + (i - 2) * 0.012, 0.03 + (len as number) / 2, PCZ + ((i * 7) % 3 - 1) * 0.012);
     p.rotation.z = (i - 2) * 0.1;
     p.rotation.x = ((i % 2) - 0.5) * 0.12;
   });
@@ -359,7 +368,7 @@ export function buildTeacherDeskItems(): THREE.Group {
   // 노란 제출 바구니 (가정통신문·안내장): 교과서 옆, 안에 A4 종이 몇 장
   // 노란 제출 바구니 2개: 책상 모서리(학생 쪽 끝)에 나란히 붙여 둔다 (바구니마다 A4 종이 몇 장)
   const yb = std(0xf7c948, 0.45), rimC = std(0xd9a514, 0.5);
-  const BW = 0.34, BD = 0.25, BH = 0.085, T = 0.008;
+  const BW = 0.42, BD = 0.31, BH = 0.11, T = 0.009;
   const paperTex = canvasTex('a4notice', 64, 90, (c, w, h) => {
     c.fillStyle = '#fbfaf6';
     c.fillRect(0, 0, w, h);
@@ -367,16 +376,16 @@ export function buildTeacherDeskItems(): THREE.Group {
     c.fillRect(8, 8, w - 16, 6);
     for (let i = 0; i < 9; i++) c.fillRect(8, 22 + i * 7, (w - 16) * (0.6 + ((i * 37) % 10) / 25), 2);
   });
-  ([[-1.07, -0.36, 3], [-1.07, -0.085, 2]] as [number, number, number][]).forEach(([bx, bz, sheets], k) => {
+  ([[-0.99, -0.36, 3], [-0.99, -0.03, 2]] as [number, number, number][]).forEach(([bx, bz, sheets], k) => {
     add(g, rbox(BW, 0.008, BD, 0.004), yb, bx, 0.004, bz);
     for (const s2 of [-1, 1]) {
       add(g, rbox(T, BH, BD, 0.004), yb, bx + s2 * (BW / 2 - T / 2), BH / 2, bz);
       add(g, rbox(BW, BH, T, 0.004), yb, bx, BH / 2, bz + s2 * (BD / 2 - T / 2));
-      add(g, box(0.07, 0.018, 0.012), rimC, bx + s2 * (BW / 2 - 0.004), BH - 0.025, bz).rotation.y = Math.PI / 2; // 손잡이 구멍 테
+      add(g, box(0.09, 0.022, 0.012), rimC, bx + s2 * (BW / 2 - 0.004), BH - 0.03, bz).rotation.y = Math.PI / 2; // 손잡이 구멍 테
     }
     for (let i = 0; i < sheets; i++) {
       const rot = [0.02, -0.06, 0.09][(i + k) % 3], dx = [0, 0.012, -0.01][i], dz = [0, -0.008, 0.006][i];
-      const sheet = add(g, new THREE.PlaneGeometry(0.297 * 0.95, 0.21 * 0.95), std(0xffffff, 0.9, 0, { map: paperTex, key: 'a4' }), bx + dx, 0.011 + i * 0.004, bz + dz, -Math.PI / 2, 0, 0, false);
+      const sheet = add(g, new THREE.PlaneGeometry(0.297 * 1.25, 0.21 * 1.25), std(0xffffff, 0.9, 0, { map: paperTex, key: 'a4' }), bx + dx, 0.012 + i * 0.004, bz + dz, -Math.PI / 2, 0, 0, false);
       sheet.rotation.z = rot; // A4 긴 변이 바구니 긴 변(가로) 방향
     }
   });
@@ -419,13 +428,13 @@ export function buildTeacherDeskItems(): THREE.Group {
     ring.rotation.y = Math.PI / 2;
     cal.add(ring);
   }
-  cal.position.set(0.7, 0, 0.03);
+  cal.position.set(0.68, 0, 0.17);
   cal.rotation.y = -0.35;
   g.add(cal);
   // 필기구 꽂이에 볼펜 두 자루 더 (클립 달린 볼펜)
   for (const [dx, c] of [[0.018, 0x1c7ed6], [-0.02, 0xe03131]] as [number, number][]) {
-    add(g, cyl(0.0045, 0.0045, 0.15, 6), std(0xf8f9fa, 0.4), 0.42 + dx, 0.105, -0.11);
-    add(g, cyl(0.005, 0.005, 0.025, 6), std(c, 0.4), 0.42 + dx, 0.19, -0.11);
+    add(g, cyl(0.0045, 0.0045, 0.15, 6), std(0xf8f9fa, 0.4), PCX + dx, 0.105, PCZ - 0.01);
+    add(g, cyl(0.005, 0.005, 0.025, 6), std(c, 0.4), PCX + dx, 0.19, PCZ - 0.01);
   }
   return compact(g);
 }
@@ -436,14 +445,15 @@ export function buildTeacherUnderDesk(w: number, d: number, h: number, monitorX:
   const g = new THREE.Group();
   const caseM = std(0x2a2d33, 0.45, 0.35), front = std(0x1c1e22, 0.35, 0.2), vent = std(0x0f1012, 0.8);
   // 본체: 왼쪽 옆판 가까이 (다리 공간 밖), 앞면이 선생님 쪽
-  const tx = -w / 2 + 0.2, tz = -0.02, TW = 0.2, TH = 0.43, TD = 0.42;
+  const tx = -w / 2 + 0.23, tz = -0.02, TW = 0.25, TH = 0.54, TD = 0.5;
   add(g, rbox(TW, TH, TD, 0.012), caseM, tx, 0.02 + TH / 2, tz);
   add(g, box(TW - 0.02, TH - 0.03, 0.008), front, tx, 0.02 + TH / 2, tz - TD / 2 - 0.002);
-  for (let i = 0; i < 7; i++) add(g, box(TW - 0.07, 0.006, 0.003), vent, tx, 0.07 + i * 0.022, tz - TD / 2 - 0.007);
+  for (let i = 0; i < 9; i++) add(g, box(TW - 0.08, 0.007, 0.003), vent, tx, 0.07 + i * 0.026, tz - TD / 2 - 0.007);
   add(g, cyl(0.012, 0.012, 0.006, 12), std(0xadb5bd, 0.3, 0.8), tx + 0.05, 0.02 + TH - 0.05, tz - TD / 2 - 0.008, Math.PI / 2, 0, 0);
   add(g, box(0.006, 0.006, 0.003), new THREE.MeshStandardMaterial({ color: 0x4dabf7, emissive: 0x339af0, emissiveIntensity: 1.5 }), tx + 0.05, 0.02 + TH - 0.08, tz - TD / 2 - 0.008);
-  add(g, box(0.05, 0.012, 0.004), vent, tx - 0.04, 0.02 + TH - 0.05, tz - TD / 2 - 0.008); // USB 단자
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, cyl(0.012, 0.012, 0.02, 8), vent, tx + sx * 0.07, 0.01, tz + sz * 0.17); // 받침 발
+  for (const dx of [-0.07, -0.02]) add(g, box(0.035, 0.012, 0.004), vent, tx + dx, 0.02 + TH - 0.05, tz - TD / 2 - 0.008); // USB 단자
+  add(g, box(TW - 0.06, 0.03, 0.004), std(0x3a3d44, 0.4, 0.4), tx, 0.02 + TH - 0.12, tz - TD / 2 - 0.008); // 앞판 띠
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, cyl(0.014, 0.014, 0.02, 8), vent, tx + sx * 0.09, 0.01, tz + sz * 0.2); // 받침 발
   // 멀티탭 (6구, 흰색): 책상 안쪽 바닥, 가림판 앞
   const mx = -0.35, mz = d / 2 - 0.12;
   add(g, rbox(0.4, 0.04, 0.07, 0.012), std(0xf1f3f5, 0.4), mx, 0.02, mz);
