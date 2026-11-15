@@ -3,8 +3,9 @@
 import { ChatPicker, type ChatNpc, type ChatPeriod, type ChatStage } from '../data/chatter';
 import type { Gesture } from '../world/Character';
 import { CAFE, CAFE_FRONT, FLOOR1_Y as F1, cafe } from '../world/rooms';
-import { CLASS_SEATING, CLOCK_POS, DESK, EXHIBIT, GROUP_TABLE, LOCKERS, TABLET_CART, onDesk, type DeskLayout } from '../world/classroomLayout';
+import { CLASS_SEATING, CLOCK_POS, DESK, EXHIBIT, EXHIBIT_SLOT, EXHIBIT_SLOTS, GROUP_TABLE, LOCKERS, TABLET_CART, onDesk, type DeskLayout } from '../world/classroomLayout';
 import * as THREE from 'three';
+import { FONT } from '../world/canvasTex';
 import type { Game, MainNpcId, StoryHooks } from '../core/Game';
 import type { GroupRole, PeriodId, PosterTheme, SaveData, Wish } from '../core/SaveData';
 import { itemDef, type ItemId } from '../data/items';
@@ -220,8 +221,7 @@ export class Morning implements StoryHooks {
     add('posterSheet', buildPoster(null, 0.84, 0.56, 0), GROUP_TABLE.x - 0.2, GROUP_TABLE.top + 0.003, GROUP_TABLE.z, Math.PI / 2); // 글씨가 내 자리(동쪽)에서 바로 읽히게
     add('colorPaperStack', new THREE.Group(), GROUP_TABLE.x, GROUP_TABLE.top, GROUP_TABLE.z - 0.3);
     add('drawingStack', new THREE.Group(), GROUP_TABLE.x, GROUP_TABLE.top, GROUP_TABLE.z + 0.3);
-    // 전시된 작품 (게시판에 압정으로 꽂은 종이)
-    add('exhibitPlane', makeItemMesh('paperPlane'), EXHIBIT.x, 2.2, 6.86, Math.PI).scale.setScalar(1.6);
+    // 뒤 게시판 학생 작품 칸 8개: 색 도화지 바탕 + 이름표 (작품은 아래에서)
     const wallPaper = (inner: THREE.Object3D, w: number, l: number) => {
       const g = new THREE.Group();
       inner.rotation.x = Math.PI / 2;
@@ -234,11 +234,44 @@ export class Morning implements StoryHooks {
       }
       return g;
     };
-    const exPoster = buildPoster(null, 0.45, 0.6, 2);
-    add('exhibitPoster', wallPaper(exPoster, 0.45, 0.6), EXHIBIT.x + 0.6, 2.2, 6.9, Math.PI);
+    const slotCols = ['#fff3bf', '#d3f9d8', '#d0ebff', '#ffe3e3', '#f3d9fa', '#ffe8cc', '#e6fcf5', '#e7f5ff'];
+    const slotsG = new THREE.Group();
+    EXHIBIT_SLOTS.forEach((sl, i) => {
+      const back = new THREE.Mesh(new THREE.PlaneGeometry(EXHIBIT_SLOT.w - 0.06, EXHIBIT_SLOT.h - 0.04), new THREE.MeshStandardMaterial({ color: slotCols[i], roughness: 0.95 }));
+      back.position.set(sl.x, sl.y, 6.928);
+      back.rotation.y = Math.PI;
+      slotsG.add(back);
+      const name = sl.who === 'player' ? this.me : sl.who.startsWith('filler') ? this.g.fillers[Number(sl.who.slice(6))].name : this.n(sl.who as MainNpcId).name;
+      const tagCv = document.createElement('canvas');
+      tagCv.width = 256;
+      tagCv.height = 64;
+      const tc = tagCv.getContext('2d')!;
+      tc.fillStyle = '#ffffff';
+      tc.fillRect(0, 0, 256, 64);
+      tc.strokeStyle = '#adb5bd';
+      tc.lineWidth = 4;
+      tc.strokeRect(2, 2, 252, 60);
+      tc.fillStyle = '#343a40';
+      tc.font = `800 34px ${FONT}`;
+      tc.textAlign = 'center';
+      tc.textBaseline = 'middle';
+      tc.fillText(name, 128, 34);
+      const tt = new THREE.CanvasTexture(tagCv);
+      tt.colorSpace = THREE.SRGBColorSpace;
+      const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.08), new THREE.MeshStandardMaterial({ map: tt, roughness: 0.8 }));
+      tag.position.set(sl.x + 0.38, sl.y - 0.22, 6.922);
+      tag.rotation.y = Math.PI;
+      slotsG.add(tag);
+    });
+    this.g.scene.add(slotsG);
+    // 내 칸: 오늘 만든 작품 (전시하면 보인다)
+    const mine = EXHIBIT_SLOTS[0];
+    add('exhibitPlane', makeItemMesh('paperPlane'), mine.x, mine.y + 0.02, 6.86, Math.PI).scale.setScalar(1.5);
+    const exPoster = buildPoster(null, 0.36, 0.46, 2);
+    add('exhibitPoster', wallPaper(exPoster, 0.36, 0.46), mine.x - 0.08, mine.y + 0.03, 6.905, Math.PI);
     this.exhibitPosterArt = exPoster;
-    // 반 친구들 작품 (분위기)
-    for (let i = 0; i < 5; i++) {
+    // 친구 7명 칸의 작품
+    EXHIBIT_SLOTS.slice(1).forEach((sl, i) => {
       const art = new THREE.Group();
       const lt = new THREE.CanvasTexture(document.createElement('canvas'));
       const cv = lt.image as HTMLCanvasElement;
@@ -246,10 +279,10 @@ export class Morning implements StoryHooks {
       cv.height = 250;
       drawClassArt(cv.getContext('2d')!, 200, 250, i);
       lt.colorSpace = THREE.SRGBColorSpace;
-      const sheet = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: lt, roughness: 0.85 }));
+      const sheet = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.45).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: lt, roughness: 0.85 }));
       art.add(sheet);
-      add('classArt' + i, wallPaper(art, 0.4, 0.5), EXHIBIT.x - 1.3 + i * 0.5 + (i > 2 ? 0.9 : 0) - (i > 2 ? 0.0 : 0), 2.2 + (i % 2) * 0.08, 6.9, Math.PI);
-    }
+      add('classArt' + i, wallPaper(art, 0.36, 0.45), sl.x - 0.08 + ((i * 37) % 5) * 0.01, sl.y + 0.03, 6.905, Math.PI).rotation.z = ((i % 3) - 1) * 0.03;
+    });
     // 수학 시간 친구들 태블릿: 현우가 책상에 놓아 준 것만 보인다 (npcTablet_자리) — 친구들은 퀴즈 화면
     for (const key of CLASSMATES) desk('npcTablet_' + key, buildTablet('quiz', 10 + CLASSMATES.indexOf(key)), key, 0.05, -0.03, 0.1, 0.01);
     // 미술 시간 친구들 책상 위 준비물 (사용 중인 모습)
@@ -304,9 +337,10 @@ export class Morning implements StoryHooks {
     this.show('drawingStack', false);
     this.show('exhibitPlane', this.f('exhibited') && this.f('artPlane'));
     this.show('exhibitPoster', this.f('exhibited') && this.f('artPoster'));
-    for (let i = 0; i < 5; i++) this.show('classArt' + i, after('lunch') || (p === 'art' && this.phase === 'cleanup'));
+    for (let i = 0; i < 7; i++) this.show('classArt' + i, after('lunch') || (p === 'art' && this.phase === 'cleanup'));
     if (this.f('groupDone') && after('art')) this.applyGroupPoster();
     else this.g.map.objs.groupPoster.visible = false;
+    this.g.map.objs.bigMural.visible = !this.g.map.objs.groupPoster.visible;
     this.g.map.objs.giantCutlet.visible = p === 'lunch' || p === 'cutlet';
     if (p !== 'hallway') this.hallway.leave();
     if (p !== 'final') this.final.leave();

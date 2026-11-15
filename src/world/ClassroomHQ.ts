@@ -10,7 +10,7 @@ import { aabb } from './Collision';
 import { HQBuilder } from './hq';
 import { TILE, aoMaterial, paint, pbr, worldUV } from './pbr';
 import { CanvasTex, font } from './canvasTex';
-import { ART_CAB, BOOKSHELF, CLASS_DOORS, BACK_BOARD, CLOCK_POS, EAST_PILLAR, EAST_SHELF, EAST_SHELVES, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, PURIFIER, WEST_PILLAR, WINDOW_CAB } from './classroomLayout';
+import { ART_CAB, BOOKSHELF, CLASS_DOORS, BACK_BOARD, BIG_EXHIBIT, CLOCK_POS, EAST_PILLAR, EAST_SHELF, EAST_SHELVES, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, PURIFIER, WEST_PILLAR, WINDOW_CAB } from './classroomLayout';
 import { buildAirPurifier, buildCabinetRun, buildGarland, buildOpenShelf, buildPlant, combiBlindMat, taegukgiTex, timetableTex } from './classroomSet';
 import { compact, std } from './props/kit';
 
@@ -223,20 +223,33 @@ export class ClassroomBuilder extends HQBuilder {
       gl.rotation.y = Math.PI;
       deco.add(gl);
     }
-    // 종이 튤립 (게시판 아래 양쪽)
-    for (const sx of [-1, 1])
-      for (let i = 0; i < 4; i++) {
-        const fx = B.x + sx * (B.w / 2 - 0.5) + (i - 1.5) * 0.14, fy = B.y + 0.22;
-        this.add(new THREE.PlaneGeometry(0.02, 0.2), paint(0x4f9a3c, 0.9), fx, fy, 6.925, { cast: false, ry: Math.PI });
-        this.add(new THREE.CircleGeometry(0.06, 10), paint([0xff8fab, 0xffd166, 0xf28482, 0xc77dff][i], 0.9), fx, fy + 0.14, 6.924, { cast: false, ry: Math.PI });
-      }
+    // 큰 작품 전시 칸: 나무 액자 테 + 제목 띠 (안의 작품은 SchoolMap: 학급 협동화 / 모둠 포스터)
+    const BE = BIG_EXHIBIT;
+    const frameM = this.wood;
+    for (const dy of [-BE.h / 2, BE.h / 2]) this.box(BE.w + 0.06, 0.035, 0.03, frameM, BE.x, BE.y + dy - 0.0175, 6.92, false, TILE.oak);
+    for (const dx of [-BE.w / 2, BE.w / 2]) this.box(0.035, BE.h, 0.03, frameM, BE.x + dx, BE.y - BE.h / 2, 6.92, false, TILE.oak);
+    const title = new CanvasTex(512, 64);
+    title.draw((c, w, h) => {
+      c.fillStyle = '#ffd43b';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#5b3a1a';
+      c.font = font(34, true);
+      c.textAlign = 'center';
+      c.fillText('★ 이달의 작품 ★', w / 2, 45);
+    });
+    this.add(new THREE.PlaneGeometry(1.1, 0.14), title.material(), BE.x, BE.y + BE.h / 2 + 0.005, 6.915, { cast: false, ry: Math.PI });
+    // 작품 칸 제목 (8명 칸 위)
+    const t2 = new CanvasTex(512, 64);
+    t2.draw((c, w, h) => {
+      c.fillStyle = '#ffffff';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#1f7a52';
+      c.font = font(32, true);
+      c.textAlign = 'center';
+      c.fillText('우리 반 작품 전시', w / 2, 44);
+    });
+    this.add(new THREE.PlaneGeometry(1.0, 0.125), t2.material(), -0.25, BACK_BOARD.y + BACK_BOARD.h - 0.1, 6.915, { cast: false, ry: Math.PI });
     compact(deco);
-    // 학습 자료 (작품 아래 줄)
-    for (let i = 0; i < 5; i++) {
-      const px = B.x - 1.7 + i * 0.85;
-      this.add(new THREE.PlaneGeometry(0.3, 0.38), paint(0xfffdf3, 0.9), px, B.y + 0.32, 6.92, { cast: false, ry: Math.PI });
-      this.add(new THREE.PlaneGeometry(0.24, 0.05), paint([0xef476f, 0x3a86ff, 0x06a77d, 0xf4a261, 0x8338ec][i], 0.9), px, B.y + 0.45, 6.918, { cast: false, ry: Math.PI });
-    }
   }
 
   // ───────── 붙박이 가구: 창가 긴 수납장·화분, 복도 쪽 낮은 책장, 공기청정기, 벽 선풍기 ─────────

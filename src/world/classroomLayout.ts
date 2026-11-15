@@ -114,10 +114,21 @@ export const CLEAN_CABINET = { x: 6.0425, z: 6.64, w: 1.365, d: 0.715, h: 1.365 
 export const TABLET_CART = { x: -1.515, z: 6.62, w: 0.82, d: 0.6 };
 export const TRASH = { x: -2.515, z: 6.7, w: 0.48, d: 0.42 };
 export const RECYCLE = { x: -3.675, z: 6.7, w: 1.62, d: 0.44 };
-/** 뒤 게시판: 가로로 긴 판 하나. 왼쪽(창가 쪽)에 작품 전시, 오른쪽(복도 쪽)에 모둠 포스터 */
+/** 뒤 게시판: 가로로 긴 판 하나. 창가 쪽 넓은 부분 = 학생 8명 작품 칸(2줄 × 4칸), 복도 쪽 = 큰 작품 전시 칸 */
 export const BACK_BOARD = { x: 1.2, w: 8.8, y: 1.38, h: 1.36 };
-export const EXHIBIT = { x: -0.9, w: 3.2 };
-export const POSTER_BOARD = { x: 4.2, w: 2.4 };
+/** 학생 작품 칸 하나 (색 도화지 바탕 + 작품 + 이름표) */
+export const EXHIBIT_SLOT = { w: 1.22, h: 0.6 };
+/** 작품 칸 순서 = 자리표 순서 (교실에서 볼 때 위 줄 왼쪽부터). 왼쪽 = +x */
+export const EXHIBIT_SLOTS: { who: string; x: number; y: number }[] = ['player', 'seoa', 'minjae', 'filler2', 'junho', 'harin', 'filler0', 'filler1'].map((who, i) => ({
+  who,
+  x: [1.85, 0.45, -0.95, -2.35][i % 4],
+  y: i < 4 ? 2.39 : 1.74,
+}));
+/** 내 작품 칸 (전시 상호작용 위치) */
+export const EXHIBIT = { x: EXHIBIT_SLOTS[0].x, y: EXHIBIT_SLOTS[0].y, w: EXHIBIT_SLOT.w };
+/** 큰 작품 전시 칸 (모둠 포스터·학급 협동화) */
+export const BIG_EXHIBIT = { x: 4.1, y: 2.0, w: 2.7, h: 1.2 };
+export const POSTER_BOARD = { x: BIG_EXHIBIT.x, w: BIG_EXHIBIT.w };
 
 // ───────── 옆 벽 ─────────
 /** 창가(서) 긴 수납장: 높이는 창턱 바로 아래 */

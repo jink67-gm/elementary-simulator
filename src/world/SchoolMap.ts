@@ -15,7 +15,7 @@ import { buildTabletCart } from './props/tabletCart';
 import { buildCutleryBin, buildTray } from './props/items';
 import { drawKidPoster } from './props/posterArt';
 import { TILE_EXT, plinthMat, stuccoMat } from './exteriorTex';
-import { ART_CAB, BOOKSHELF, CLASS_DOORS, CHAIR, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, POSTER_BOARD, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, deskBoxes, lockerCell, seatOf, type DeskLayout } from './classroomLayout';
+import { ART_CAB, BOOKSHELF, CLASS_DOORS, CHAIR, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, BIG_EXHIBIT, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, deskBoxes, lockerCell, seatOf, type DeskLayout } from './classroomLayout';
 import { buildCleaningCabinet, buildFabricRecycling, buildLockerCarcass, buildOfficeChair, buildStudentChair, buildStudentDesk, buildTeacherPC, buildTrashBin, lockerDoorGeo, lockerHandle, mdf } from './classroomSet';
 import { compact } from './props/kit';
 import { GymBuilder } from './GymHQ';
@@ -576,8 +576,16 @@ export class SchoolMap {
     }
     pg.computeVertexNormals();
     const poster = new THREE.Mesh(pg, new THREE.MeshStandardMaterial({ map: this.posterTex.tex, roughness: 0.85, side: THREE.DoubleSide }));
-    poster.scale.setScalar(0.82);
-    poster.position.set(POSTER_BOARD.x, 2.06, 6.9);
+    poster.scale.setScalar(0.92);
+    poster.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.02, 6.9);
+    // 큰 작품 칸의 기본 작품: 학급 협동화 (모둠 포스터를 붙이면 그 자리를 내준다)
+    const muralTex = new CanvasTex(640, 400);
+    muralTex.draw((c, w, h) => drawKidPoster(c, w, h, { theme: 'friends', slogan: '사이좋은 6학년 1반', bg: '#e7f5ff', stickers: [], footer: '6-1 학급 협동화' }, 2));
+    const mural = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 1.0), new THREE.MeshStandardMaterial({ map: muralTex.tex, roughness: 0.85 }));
+    mural.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.03, 6.905);
+    mural.rotation.y = Math.PI;
+    this.root.add(mural);
+    this.objs.bigMural = mural;
     poster.rotation.y = Math.PI;
     this.root.add(poster);
     const pinM = new THREE.MeshStandardMaterial({ color: 0xe63946, roughness: 0.4 });
@@ -1701,8 +1709,9 @@ export class SchoolMap {
   /** 모둠 포스터를 뒤 게시판에 붙인다 */
   setGroupPoster(theme: PosterTheme, slogan: string, bg: string, stickers: { kind: string; x: number; y: number }[]) {
     // 학생들이 크레파스로 만든 모둠 포스터 (props/posterArt.ts)
-    this.posterTex.draw((c, w, h) => drawKidPoster(c, w, h, { theme, slogan, bg, stickers, footer: '6-1 2모둠' }, 2));
+    this.posterTex.draw((c, w, h) => drawKidPoster(c, w, h, { theme, slogan, bg, stickers, footer: '6-1 1모둠' }, 2));
     this.objs.groupPoster.visible = true;
+    this.objs.bigMural.visible = false;
   }
 }
 
