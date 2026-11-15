@@ -454,22 +454,43 @@ export function buildTeacherUnderDesk(w: number, d: number, h: number, monitors:
   for (const dx of [-0.07, -0.02]) add(g, box(0.035, 0.012, 0.004), vent, tx + dx, 0.02 + TH - 0.05, tz - TD / 2 - 0.008); // USB 단자
   add(g, box(TW - 0.06, 0.03, 0.004), std(0x3a3d44, 0.4, 0.4), tx, 0.02 + TH - 0.12, tz - TD / 2 - 0.008); // 앞판 띠
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(g, cyl(0.014, 0.014, 0.02, 8), vent, tx + sx * 0.09, 0.01, tz + sz * 0.2); // 받침 발
-  // 멀티탭 (6구, 흰색): 책상 안쪽 바닥, 가림판 앞
-  const mx = -0.35, mz = d / 2 - 0.12;
-  add(g, rbox(0.4, 0.04, 0.07, 0.012), std(0xf1f3f5, 0.4), mx, 0.02, mz);
+  // 멀티탭 (6구, 흰색): 책상 안쪽 바닥, 가림판 앞. 구멍마다 둥글게 파인 콘센트 + 핀 구멍 2개 + 접지 단자, 끝에 전원 스위치(빨간 불)
+  const mx = -0.35, mz = d / 2 - 0.12, MW = 0.48, sockP = 0.068;
+  const white = std(0xf4f5f2, 0.38), recess = std(0xd5d8dc, 0.5), pin = std(0x24262a, 0.7), metal = std(0xb8bec4, 0.3, 0.8);
+  add(g, rbox(MW, 0.042, 0.078, 0.014), white, mx, 0.021, mz);
+  add(g, box(MW - 0.03, 0.002, 0.06), std(0xe9ecef, 0.45), mx, 0.0425, mz); // 윗면 판
+  const sockX = (i: number) => mx - MW / 2 + 0.05 + i * sockP;
   for (let i = 0; i < 6; i++) {
-    add(g, cyl(0.016, 0.016, 0.003, 12), std(0xdee2e6, 0.5), mx - 0.15 + i * 0.055, 0.0415, mz);
-    for (const s2 of [-1, 1]) add(g, cyl(0.0025, 0.0025, 0.004, 6), vent, mx - 0.15 + i * 0.055 + s2 * 0.006, 0.043, mz);
+    const x = sockX(i);
+    add(g, cyl(0.022, 0.022, 0.003, 18), std(0xc5c9ce, 0.45), x, 0.0435, mz); // 콘센트 테
+    add(g, cyl(0.018, 0.018, 0.004, 18), recess, x, 0.0425, mz); // 파인 면
+    for (const s2 of [-1, 1]) add(g, cyl(0.0032, 0.0032, 0.003, 8), pin, x + s2 * 0.0095, 0.0447, mz); // 핀 구멍 2개
+    for (const s2 of [-1, 1]) add(g, box(0.006, 0.002, 0.004), metal, x, 0.045, mz + s2 * 0.0165); // 접지 단자
   }
-  add(g, box(0.03, 0.012, 0.03), std(0xe03131, 0.4), mx + 0.18, 0.046, mz); // 스위치
-  // 전선: 멀티탭 → 벽 쪽 콘센트(가림판 따라), 본체 뒤 → 멀티탭, 모니터 → 상판 구멍 → 가림판 안쪽 → 멀티탭
+  const swX = mx + MW / 2 - 0.035;
+  add(g, rbox(0.035, 0.012, 0.045, 0.004), std(0xe03131, 0.35), swX, 0.047, mz);
+  add(g, box(0.02, 0.003, 0.012), new THREE.MeshStandardMaterial({ color: 0xff8787, emissive: 0xff6b6b, emissiveIntensity: 1.2 }), swX, 0.054, mz - 0.008);
+  // 꽂힌 플러그 (본체 1, 모니터 2): 흰 몸통 + 선이 나가는 꼬리
+  const plugIn = [1, 2, 3];
+  for (const i of plugIn) {
+    add(g, cyl(0.016, 0.017, 0.028, 14), std(0xeceff1, 0.4), sockX(i), 0.059, mz);
+    add(g, cyl(0.006, 0.008, 0.014, 8), std(0xeceff1, 0.4), sockX(i), 0.08, mz);
+  }
+  // 전선: 멀티탭 선(흰색) → 책상 앞쪽 바닥을 따라 → 교사 책장과 창가 책장 사이 틈 → 벽 콘센트에 꽂아 마감
   const cable = std(0x111214, 0.6);
-  const run = (pts: [number, number, number][], r = 0.0045) => {
-    const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)));
-    add(g, new THREE.TubeGeometry(curve, Math.max(8, pts.length * 6), r, 5, false), cable, 0, 0, 0);
+  const wcord = std(0xf1f3f5, 0.5);
+  const run = (pts: [number, number, number][], r = 0.0045, m: THREE.Material = cable) => {
+    const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
+    add(g, new THREE.TubeGeometry(curve, Math.max(10, pts.length * 10), r, 5, false), m, 0, 0, 0);
   };
-  run([[mx - 0.19, 0.02, mz], [mx - 0.32, 0.006, mz + 0.02], [-w / 2 + 0.08, 0.006, mz + 0.02], [-w / 2 + 0.06, 0.006, mz + 0.3]]);
-  run([[tx, 0.2, tz + TD / 2 + 0.005], [tx + 0.02, 0.08, tz + TD / 2 + 0.05], [mx - 0.12, 0.01, mz - 0.03], [mx - 0.095, 0.042, mz]]);
+  const gapZ = d / 2 + 0.033, wallX = -w / 2 - 0.68; // 틈: 책상 앞 가장자리 바로 바깥(교사 책장 끝 ~ 창가 책장 시작), 창 벽 안쪽 면
+  run([[mx - MW / 2, 0.02, mz], [mx - MW / 2 - 0.04, 0.006, mz + 0.03], [mx - MW / 2 - 0.08, 0.005, gapZ], [-w / 2 + 0.1, 0.005, gapZ], [wallX + 0.12, 0.005, gapZ], [wallX + 0.03, 0.01, gapZ], [wallX + 0.02, 0.1, gapZ]], 0.005, wcord);
+  // 벽 콘센트 (틈 안쪽 벽, 흰 판 + 꽂힌 플러그)
+  add(g, rbox(0.012, 0.11, 0.06, 0.004), white, wallX + 0.006, 0.13, gapZ);
+  add(g, cyl(0.016, 0.017, 0.026, 14), std(0xeceff1, 0.4), wallX + 0.024, 0.13, gapZ, 0, 0, Math.PI / 2);
+  run([[wallX + 0.037, 0.13, gapZ], [wallX + 0.045, 0.11, gapZ], [wallX + 0.03, 0.06, gapZ], [wallX + 0.02, 0.1, gapZ]], 0.005, wcord);
+  // 본체 전원선 → 멀티탭 1번 플러그
+  run([[tx, 0.2, tz + TD / 2 + 0.005], [tx + 0.03, 0.08, tz + TD / 2 + 0.05], [sockX(1) - 0.08, 0.03, mz - 0.07], [sockX(1) - 0.02, 0.12, mz - 0.015], [sockX(1), 0.086, mz]]);
   // 본체 뒷면 단자판 (모니터 선이 꽂히는 곳)
   const backZ = tz + TD / 2 + 0.003;
   add(g, box(TW - 0.08, 0.16, 0.004), std(0x15171a, 0.5), tx, 0.02 + TH - 0.14, backZ);
@@ -492,7 +513,8 @@ export function buildTeacherUnderDesk(w: number, d: number, h: number, monitors:
     }
     // 책상 밑: 영상선 → 본체 뒷면 단자, 전원선 → 멀티탭
     runM([[gx + side * 0.008, h - 0.05, gz], [gx - 0.1, h - 0.18, gz + 0.02 - k * 0.01], [tx + 0.25, 0.75, backZ + 0.12], [tx + 0.05, 0.02 + TH - 0.08, backZ + 0.08], [tx - 0.03 + k * 0.06, 0.02 + TH - 0.1, backZ + 0.008]], video);
-    runM([[gx + side * 0.008, h - 0.05, gz], [gx + 0.05 * side, h - 0.35, gz + 0.03], [mx + 0.08 + k * 0.05, 0.2, mz + 0.04], [mx + 0.0 + k * 0.055, 0.042, mz]], cable);
+    const sk = sockX(side > 0 ? 3 : 2); // 오른쪽 모니터 → 오른쪽 구멍 (선이 엇갈리지 않게)
+    runM([[gx + side * 0.008, h - 0.05, gz], [(gx + sk) / 2 + side * 0.02, h - 0.4, gz + 0.02], [sk + side * 0.01, 0.2, mz + 0.03], [sk, 0.11, mz + 0.008], [sk, 0.086, mz]], cable);
   });
   return compact(g);
 }
