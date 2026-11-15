@@ -1,44 +1,86 @@
 // 6-1 교실 배치 기준값 (지도·이야기 코드가 같이 쓴다).
 // 교실: x -7(창가, 서) ~ 7(복도, 동), z -6(칠판, 앞) ~ 7(사물함, 뒤). 앞문·뒷문은 모두 복도 쪽(동) 벽.
 
-// ───────── 학생 책상: 4명씩 2모둠 (일반 학생 책상 4개를 맞붙인 모둠 대형) ─────────
-/** 학생 책상 크기 (앉은 사람 기준 가로 w × 앞뒤 d), 윗면 높이 */
-export const DESK = { w: 0.74, d: 0.54, top: 0.68 };
+// ───────── 학생 책상 8개·의자 8개: 수업에 따라 두 가지 배치 (같은 책상을 옮기기만 한다) ─────────
+// 'pairs' = 일반 수업: 2명씩 짝 4쌍, 모두 칠판(앞, -z)을 본다 (게임 시작 기본)
+// 'pods'  = 모둠 활동: 일반 책상 4개를 맞붙인 4명 모둠 2개, 서로 마주 본다
+export type DeskLayout = 'pairs' | 'pods';
+/** 학생 책상 크기 (앉은 사람 기준 가로 w × 앞뒤 d), 윗면 높이. 캐릭터 키 약 1.4m 기준 */
+export const DESK = { w: 0.8, d: 0.56, top: 0.68 };
+/** 의자 좌판 높이, 책상 가장자리 → 앉는 자리 거리 */
+export const CHAIR = { seat: 0.38, gap: 0.25 };
 /** 모둠 가운데. 1모둠 = 창가 쪽, 2모둠 = 복도 쪽 */
 export const PODS = [
-  { x: -2.3, z: 0.0, name: '1모둠' },
-  { x: 2.3, z: 0.0, name: '2모둠' },
+  { x: -2.2, z: -0.2, name: '1모둠' },
+  { x: 2.2, z: -0.2, name: '2모둠' },
 ];
-/** 자리표: [모둠, 책상이 놓인 쪽(-1 서 / 1 동), 줄(-1 칠판 쪽 / 1 뒤쪽), 자리 주인] */
-export const CLASS_SEATING: [number, -1 | 1, -1 | 1, string][] = [
+/** 짝 책상 가운데 (일반 수업): 앞줄·뒷줄 × 창가 쪽·복도 쪽 */
+export const PAIRS = [
+  { x: -1.9, z: -1.7 },
+  { x: -1.9, z: 0.9 },
+  { x: 1.9, z: -1.7 },
+  { x: 1.9, z: 0.9 },
+];
+/** 자리표 (두 배치에서 같은 학생 = 같은 책상).
+ *  pods: [모둠, 책상이 놓인 쪽(-1 서 / 1 동), 줄(-1 칠판 쪽 / 1 뒤쪽)], pairs: [짝 번호, 짝 안에서 쪽(-1 서 / 1 동)] */
+export const CLASS_SEATING: { who: string; pod: [number, -1 | 1, -1 | 1]; pair: [number, -1 | 1] }[] = [
   // 1모둠: 플레이어·서아(짝꿍) / 민재·현우
-  [0, 1, -1, 'player'],
-  [0, 1, 1, 'seoa'],
-  [0, -1, -1, 'minjae'],
-  [0, -1, 1, 'filler2'],
+  { who: 'player', pod: [0, 1, -1], pair: [0, 1] },
+  { who: 'seoa', pod: [0, 1, 1], pair: [0, -1] },
+  { who: 'minjae', pod: [0, -1, -1], pair: [1, 1] },
+  { who: 'filler2', pod: [0, -1, 1], pair: [1, -1] },
   // 2모둠: 준호·하린 / 지우·수빈
-  [1, -1, -1, 'junho'],
-  [1, -1, 1, 'harin'],
-  [1, 1, -1, 'filler0'],
-  [1, 1, 1, 'filler1'],
+  { who: 'junho', pod: [1, -1, -1], pair: [2, -1] },
+  { who: 'harin', pod: [1, -1, 1], pair: [2, 1] },
+  { who: 'filler0', pod: [1, 1, -1], pair: [3, -1] },
+  { who: 'filler1', pod: [1, 1, 1], pair: [3, 1] },
 ];
-/** 자리 하나의 좌표: 책상 가운데, 의자(앉는 곳), 바라보는 방향, 책상 바깥 옆(가방 고리·옆에 서는 곳) */
-export function classSeat(pod: number, sx: -1 | 1, row: -1 | 1) {
+export interface ClassSeat {
+  /** 앉는 곳·바라보는 방향 */
+  x: number;
+  z: number;
+  yaw: number;
+  /** 책상 가운데 */
+  deskX: number;
+  deskZ: number;
+  /** 책상 모델 회전 (원래 모델: 의자가 +z 쪽) */
+  rot: number;
+  /** 가방 고리가 달린 쪽 (책상 자기 좌표 x 부호) */
+  hookSide: number;
+  /** 책상 옆에 서서 물건을 놓는 곳과 그때 바라보는 방향 */
+  standX: number;
+  standZ: number;
+  standYaw: number;
+}
+export function seatOf(layout: DeskLayout, who: string): ClassSeat {
+  const e = CLASS_SEATING.find((c) => c.who === who)!;
+  const gap = DESK.d / 2 + CHAIR.gap;
+  if (layout === 'pairs') {
+    const [i, side] = e.pair;
+    const p = PAIRS[i];
+    const deskX = p.x + (side * DESK.w) / 2, deskZ = p.z;
+    return { x: deskX, z: deskZ + gap, yaw: Math.PI, deskX, deskZ, rot: 0, hookSide: side, standX: deskX, standZ: deskZ - DESK.d / 2 - 0.45, standYaw: 0 };
+  }
+  const [pod, sx, row] = e.pod;
   const p = PODS[pod];
   const deskX = p.x + (sx * DESK.d) / 2, deskZ = p.z + (row * DESK.w) / 2;
   return {
-    x: deskX + sx * (DESK.d / 2 + 0.23),
+    x: deskX + sx * gap,
     z: deskZ,
     yaw: sx > 0 ? -Math.PI / 2 : Math.PI / 2,
     deskX,
     deskZ,
-    /** 책상 모델 회전 (원래 모델: 의자가 +z 쪽) */
     rot: sx > 0 ? Math.PI / 2 : -Math.PI / 2,
-    /** 책상 바깥 옆면 방향 (z) */
-    side: row,
+    hookSide: sx > 0 ? -row : row,
     standX: deskX,
     standZ: deskZ + row * (DESK.w / 2 + 0.55),
+    standYaw: row > 0 ? Math.PI : 0,
   };
+}
+/** 배치별 책상 충돌 상자 4개 (짝 책상 하나씩 / 모둠의 앞·뒷줄 하나씩) — 개수가 같아 제자리에서 바꿔 쓴다 */
+export function deskBoxes(layout: DeskLayout): { x: number; z: number; w: number; d: number }[] {
+  if (layout === 'pairs') return PAIRS.map((p) => ({ x: p.x, z: p.z, w: DESK.w * 2, d: DESK.d }));
+  return PODS.flatMap((p) => [-1, 1].map((row) => ({ x: p.x, z: p.z + (row * DESK.w) / 2, w: DESK.d * 2, d: DESK.w })));
 }
 /** 책상 기준 좌표(앉은 사람이 볼 때 오른쪽 +lx, 몸 쪽 +lz) → 월드 좌표·회전 */
 export function onDesk(seat: { deskX: number; deskZ: number; rot?: number }, lx: number, lz: number, ry = 0): [number, number, number] {

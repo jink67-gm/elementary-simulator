@@ -400,6 +400,33 @@ export class Game {
     this.input.endFrame();
   };
 
+  private fadeEl: HTMLDivElement | null = null;
+  /** 화면을 부드럽게 어둡게(on) / 밝게. sec 동안 바뀌고 끝나면 풀린다 */
+  fade(on: boolean, sec = 0.4): Promise<void> {
+    if (!this.fadeEl) {
+      const el = document.createElement('div');
+      el.className = 'screen-fade';
+      el.style.cssText = 'position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:900;transition-property:opacity;transition-timing-function:ease-in-out';
+      document.body.appendChild(el);
+      this.fadeEl = el;
+    }
+    const el = this.fadeEl;
+    el.style.transitionDuration = `${sec}s`;
+    el.style.pointerEvents = on ? 'auto' : 'none';
+    void el.offsetWidth;
+    el.style.opacity = on ? '1' : '0';
+    // 느린 컴퓨터에서는 전환이 늦게 시작될 수 있다: 실제로 다 어두워질(밝아질) 때까지 기다린다 (최대 sec + 1.5초)
+    const t0 = performance.now(), target = on ? 1 : 0;
+    return new Promise((r) => {
+      const check = () => {
+        const op = +getComputedStyle(el).opacity;
+        if (Math.abs(op - target) < 0.02 || performance.now() - t0 > sec * 1000 + 1500) r();
+        else requestAnimationFrame(check);
+      };
+      setTimeout(check, sec * 1000 * 0.9);
+    });
+  }
+
   private tick(dt: number, real: number) {
     const input = this.input;
     input.captured = panelsOpen();

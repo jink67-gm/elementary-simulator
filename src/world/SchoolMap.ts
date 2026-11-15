@@ -15,7 +15,7 @@ import { buildTabletCart } from './props/tabletCart';
 import { buildCutleryBin, buildTray } from './props/items';
 import { drawKidPoster } from './props/posterArt';
 import { TILE_EXT, plinthMat, stuccoMat } from './exteriorTex';
-import { ART_CAB, BOOKSHELF, CLASS_DOORS, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, PODS, POSTER_BOARD, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, classSeat, lockerCell } from './classroomLayout';
+import { ART_CAB, BOOKSHELF, CLASS_DOORS, CHAIR, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, POSTER_BOARD, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, deskBoxes, lockerCell, seatOf, type DeskLayout } from './classroomLayout';
 import { buildCleaningCabinet, buildFabricRecycling, buildLockerCarcass, buildOfficeChair, buildStudentChair, buildStudentDesk, buildTeacherPC, buildTrashBin, lockerDoorGeo, lockerHandle, mdf } from './classroomSet';
 import { compact } from './props/kit';
 import { GymBuilder } from './GymHQ';
@@ -35,10 +35,11 @@ export interface Seat {
   deskZ: number;
   /** 책상 모델 회전 (없으면 0: 의자가 +z 쪽) */
   rot?: number;
-  /** 책상 바깥 옆면 방향(z)과 그 옆에 서는 곳 (교실 모둠 책상) */
-  side?: number;
+  /** 교실 학생 책상: 가방 고리 쪽(책상 자기 좌표 x 부호), 옆에 서는 곳·방향 */
+  hookSide?: number;
   standX?: number;
   standZ?: number;
+  standYaw?: number;
 }
 
 const WALL_H = 3;
@@ -409,28 +410,27 @@ export class SchoolMap {
     const menuMesh = this.plane(0.9, 1.17, menu.material(), 4.6, 1.6, -5.9);
     this.objs.lunchMenu = menuMesh;
 
-    // 학생 책상 8개 + 의자 8개 = 학생 8명 (플레이어 + NPC 7명). 일반 책상 4개를 맞붙인 모둠 둘 (CLASS_SEATING)
-    // 밝은 나무 상판 + 회색 금속 틀 + 회색 계열 의자 (classroomSet) — 8벌을 재질별로 한 덩어리로 합친다
-    const desks = new THREE.Group();
-    this.root.add(desks);
-    for (const [pod, sx, row, who] of CLASS_SEATING) {
-      const s = classSeat(pod, sx, row);
+    // 학생 책상 8개 + 의자 8개 = 학생 8명 (플레이어 + NPC 7명). 한 벌(책상+의자)씩 묶어 두고,
+    // 수업 배치(짝 ↔ 모둠)가 바뀌면 같은 묶음의 위치·방향만 바꾼다 (setDeskLayout). 가방·책상 위 물건은 이 묶음의 자식
+    for (const { who } of CLASS_SEATING) {
       const g = new THREE.Group();
-      g.position.set(s.deskX, 0, s.deskZ);
-      g.rotation.y = s.rot;
-      desks.add(g);
+      g.name = 'deskSet:' + who;
+      this.root.add(g);
       g.add(buildStudentDesk(DESK.w, DESK.d, DESK.top));
       const ch = buildStudentChair();
-      ch.position.z = DESK.d / 2 + 0.25;
+      ch.position.z = DESK.d / 2 + CHAIR.gap;
       g.add(ch);
-      this.seats[who] = s;
-      const anchor = new THREE.Group();
-      anchor.position.set(s.deskX, 0, s.deskZ);
-      this.root.add(anchor);
-      this.objs['desk_' + who] = anchor;
+      compact(g);
+      this.objs['deskSet_' + who] = g;
+      this.objs['desk_' + who] = g;
+      this.seats[who] = { ...seatOf('pairs', who) };
     }
-    compact(desks);
-    for (const p of PODS) this.colliders.push(aabb(p.x, p.z, DESK.d * 2, DESK.w * 2, 'desk'));
+    for (const b of deskBoxes('pairs')) {
+      const c = { ...aabb(b.x, b.z, b.w, b.d, 'desk'), level: 1 as const };
+      this.deskColliders.push(c);
+      this.colliders.push(c);
+    }
+    this.setDeskLayout('pairs');
     this.objs.playerDesk = this.objs.desk_player;
     // 모둠 활동 자리 = 1모둠 책상 가운데 (별도 모둠 책상 없음). 상호작용 기준점만 둔다
     const gt = new THREE.Group();
@@ -522,7 +522,7 @@ export class SchoolMap {
     cabinet.position.set(cc.x, 0, cc.z);
     this.root.add(cabinet);
     // 빗자루(모델)는 안 오른쪽 칸에 세워 둔다 — 자루가 윗면 수납구 위로 올라온다
-    if (hasBroom) this.prop('plastic_broom', cabinet, { h: 1.12 }, -cc.w / 4 - 0.1, 0.09, 0.07, 0.4);
+    if (hasBroom) this.prop('plastic_broom', cabinet, { h: 1.08 }, -cc.w / 4 - 0.07, 0.09, 0.02, 0.4);
     this.colliders.push(aabb(cc.x, cc.z, cc.w, cc.d));
     this.objs.cleanCabinet = cabinet;
     this.cleanDoors = cleanDoors;
@@ -588,6 +588,24 @@ export class SchoolMap {
     }
     poster.visible = false;
     this.objs.groupPoster = poster;
+  }
+
+  /** 지금 학생 책상 배치 */
+  deskLayout: DeskLayout = 'pairs';
+  private deskColliders: Aabb[] = [];
+  /** 학생 책상 배치 바꾸기 (같은 책상·의자를 옮긴다). 자리(seats)는 같은 객체를 고쳐 쓴다. 길 찾기는 부른 쪽에서 다시 만든다 */
+  setDeskLayout(layout: DeskLayout) {
+    this.deskLayout = layout;
+    for (const { who } of CLASS_SEATING) {
+      const st = seatOf(layout, who);
+      Object.assign(this.seats[who], st);
+      const g = this.objs['deskSet_' + who];
+      g.position.set(st.deskX, 0, st.deskZ);
+      g.rotation.y = st.rot;
+      g.updateMatrixWorld(true);
+    }
+    deskBoxes(layout).forEach((b, i) => Object.assign(this.deskColliders[i], aabb(b.x, b.z, b.w, b.d, 'desk'), { level: 1 }));
+    this.levelCacheLen = -1;
   }
 
   /** 청소도구함 문 (E로 여닫기) */

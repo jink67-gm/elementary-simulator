@@ -163,6 +163,8 @@ export function buildOpenShelf(len: number, h: number, d: number): THREE.Group {
  * doors: [왼쪽 문, 오른쪽 문] (경첩 그룹, rotation.y로 연다)
  */
 export function buildCleaningCabinet(W = 0.95, H = 0.9, D = 0.5, broom = true): { cabinet: THREE.Group; doors: THREE.Group[] } {
+  const rx = -W / 4;
+  void rx;
   const cabinet = new THREE.Group();
   const wood = mdf(), inner = std(0xead9bd, 0.7);
   const t = 0.02;
@@ -174,11 +176,18 @@ export function buildCleaningCabinet(W = 0.95, H = 0.9, D = 0.5, broom = true): 
   add(shell, wbox(t, H - 0.06, D), wood, -W / 2 + t / 2, 0.06 + (H - 0.06) / 2, 0);
   add(shell, wbox(W, H - 0.06, 0.012), inner, 0, 0.06 + (H - 0.06) / 2, D / 2 - 0.006); // 뒤판
   add(shell, wbox(t, H - 0.1, D - 0.03), wood, 0, 0.08 + (H - 0.1) / 2, 0.01); // 가운데 칸막이
-  // 윗판: 왼쪽 칸(+x)은 막히고, 오른쪽 칸(-x)은 긴 도구가 올라오는 수납구(뚫림 + 테두리)
-  add(shell, wbox(W / 2 + 0.01, t, D), wood, W / 4 - 0.005, H - t / 2, 0);
-  add(shell, wbox(W / 2 - 0.01, t, 0.1), wood, -W / 4 - 0.005, H - t / 2, -D / 2 + 0.05);
-  add(shell, wbox(W / 2 - 0.01, t, 0.1), wood, -W / 4 - 0.005, H - t / 2, D / 2 - 0.05);
-  add(shell, wbox(0.05, t, D), wood, -W / 2 + 0.025, H - t / 2, 0);
+  // 윗판: 한 장으로 덮고, 오른쪽 칸(-x) 위에만 긴 자루가 올라오는 직사각형 수납구(회색 플라스틱 테 + 속 그림자)
+  const slotW = 0.3, slotD = 0.16, sx = -W / 4, sz = 0.02;
+  add(shell, wbox(W - (W / 2 + sx + slotW / 2) + 0.01, t, D), wood, (W / 2 + (sx + slotW / 2)) / 2, H - t / 2, 0); // 수납구 왼쪽(+x)
+  add(shell, wbox(W / 2 + sx - slotW / 2, t, D), wood, (-W / 2 + sx - slotW / 2) / 2, H - t / 2, 0); // 수납구 오른쪽(-x)
+  add(shell, wbox(slotW, t, (D - slotD) / 2 + sz), wood, sx, H - t / 2, -D / 2 + ((D - slotD) / 2 + sz) / 2);
+  add(shell, wbox(slotW, t, (D - slotD) / 2 - sz), wood, sx, H - t / 2, D / 2 - ((D - slotD) / 2 - sz) / 2);
+  const rim = std(0x8a9096, 0.5);
+  for (const zz of [sz - slotD / 2, sz + slotD / 2]) add(shell, box(slotW + 0.02, 0.012, 0.012), rim, sx, H + 0.004, zz);
+  for (const xx of [sx - slotW / 2, sx + slotW / 2]) add(shell, box(0.012, 0.012, slotD + 0.02), rim, xx, H + 0.004, sz);
+  add(shell, box(slotW - 0.01, 0.004, slotD - 0.01), std(0x2a2520, 0.95), sx, H - 0.03, sz); // 수납구 속 어둠
+  // 이음 테두리 (상판 앞 모서리)
+  add(shell, wbox(W + 0.01, 0.025, 0.012), mdfEdge(), 0, H - 0.0125, -D / 2 - 0.004);
   // 왼쪽 칸 선반 두 장 + 청소용품
   for (const y of [0.36, 0.62]) add(shell, wbox(W / 2 - 0.03, 0.016, D - 0.06), wood, W / 4, y, 0.01);
   const towel = [0xffffff, 0xa8d5e2, 0xffd6a5];
@@ -193,7 +202,6 @@ export function buildCleaningCabinet(W = 0.95, H = 0.9, D = 0.5, broom = true): 
   add(shell, rbox(0.18, 0.2, 0.14, 0.02), std(0x8fc1a9, 0.5), W / 4 - 0.07, 0.19, 0.05); // 양동이
   add(shell, rbox(0.14, 0.07, 0.1, 0.02), std(0xf2a65a, 0.8), W / 4 + 0.13, 0.115, 0.05); // 수세미 상자
   // 오른쪽 칸: 빗자루 + 대걸레 (자루가 윗면 수납구 위로 올라온다) + 쓰레받기
-  const rx = -W / 4;
   const stick = (x: number, z: number, len: number, col: number, tilt: number) => {
     const m = add(shell, cyl(0.012, 0.012, len, 8), std(col, 0.5), x, 0.12 + len / 2, z);
     m.rotation.z = tilt;
@@ -201,27 +209,28 @@ export function buildCleaningCabinet(W = 0.95, H = 0.9, D = 0.5, broom = true): 
     return m;
   };
   if (broom) {
-    stick(rx - 0.09, 0.06, 1.12, 0x2f80ed, 0.03);
+    stick(sx - 0.07, sz, 1.08, 0x2f80ed, 0);
     add(shell, rbox(0.2, 0.14, 0.05, 0.015), std(0x2f80ed, 0.6), rx - 0.08, 0.16, 0.06); // 빗자루 솔 머리
     for (let i = 0; i < 6; i++) add(shell, box(0.026, 0.09, 0.03), std(0xf2e2b8, 0.9), rx - 0.155 + i * 0.03, 0.115, 0.06);
   }
-  stick(rx + 0.1, 0.08, 1.2, 0xf4f4f4, -0.025);
-  add(shell, cyl(0.06, 0.09, 0.2, 10), fabric(0xf7f7f2, 2), rx + 0.085, 0.2, 0.08); // 대걸레 머리
+  // 대걸레 자루: 수납구로 30cm쯤 올라온다 (끝에 걸이 고리)
+  stick(sx + 0.07, sz + 0.02, 1.16, 0xf4f4f4, 0);
+  add(shell, cyl(0.016, 0.016, 0.05, 10), std(0x2f80ed, 0.5), sx + 0.07, 0.12 + 1.16 - 0.02, sz + 0.02);
+  add(shell, new THREE.TorusGeometry(0.02, 0.004, 5, 10), std(0x2f80ed, 0.5), sx + 0.07, 0.12 + 1.16 + 0.02, sz + 0.02);
+  add(shell, cyl(0.06, 0.09, 0.2, 10), fabric(0xf7f7f2, 2), sx + 0.07, 0.2, sz + 0.02); // 대걸레 머리
   add(shell, box(0.2, 0.012, 0.16), std(0xeb5757, 0.5), rx, 0.1, -0.1); // 쓰레받기
   compact(shell);
-  // 양문 (경첩 = 바깥 모서리)
+  // 양문 (닫힌 상태로 고정): 문 두 짝 사이 틈 + 세로 매립 손잡이 + 위·아래 이음 띠
   const doors: THREE.Group[] = [];
+  const front = new THREE.Group();
+  const dw = W / 2 - 0.008, dh = H - 0.095;
   for (const s of [1, -1]) {
-    const hinge = new THREE.Group();
-    hinge.position.set(s * (W / 2 - 0.004), 0.075, -D / 2 - 0.01);
-    const dw = W / 2 - 0.008, dh = H - 0.085;
-    const leaf = add(hinge, wbox(dw, dh, 0.018), wood.clone(), (-s * dw) / 2, dh / 2, 0);
-    leaf.userData.keep = true;
-    add(hinge, box(0.022, 0.16, 0.006), darkGap(), -s * (dw - 0.035), dh * 0.62, -0.0095); // 세로 매립 손잡이
-    add(hinge, wbox(dw, 0.012, 0.004), mdfEdge(), (-s * dw) / 2, dh - 0.006, -0.0095);
-    cabinet.add(hinge);
-    doors.push(hinge);
+    const cx = s * (dw / 2 + 0.003);
+    add(front, wbox(dw, dh, 0.018), wood, cx, 0.075 + dh / 2, -D / 2 - 0.01);
+    add(front, box(0.022, 0.16, 0.006), darkGap(), s * 0.035, 0.075 + dh * 0.62, -D / 2 - 0.0195); // 세로 매립 손잡이 (가운데 쪽)
   }
+  add(front, box(0.006, dh, 0.004), darkGap(), 0, 0.075 + dh / 2, -D / 2 - 0.018); // 문 사이 틈
+  cabinet.add(compact(front));
   // 이름표
   add(cabinet, new THREE.PlaneGeometry(0.26, 0.07), std(0xffffff, 0.6, 0, { map: labelTex('clean', '청소도구함', '#ffffff', '#5b4a36'), key: 'cleanLabel' }), W / 4, H - 0.11, -D / 2 - 0.021, 0, Math.PI, 0, false);
   return { cabinet, doors };
@@ -470,9 +479,9 @@ export function buildStudentDesk(w: number, d: number, top: number): THREE.Group
 export function buildStudentChair(): THREE.Group {
   const g = new THREE.Group();
   const shell = std(0x8f93b3, 0.5), metal = std(0x8e949c, 0.42, 0.55);
-  const sh = 0.4;
-  add(g, rbox(0.4, 0.035, 0.38, 0.016, 3), shell, 0, sh, 0);
-  const back = add(g, rbox(0.4, 0.26, 0.03, 0.014, 3), shell, 0, sh + 0.33, 0.185);
+  const sh = 0.38;
+  add(g, rbox(0.42, 0.035, 0.4, 0.016, 3), shell, 0, sh, 0);
+  const back = add(g, rbox(0.42, 0.28, 0.03, 0.014, 3), shell, 0, sh + 0.34, 0.195);
   back.rotation.x = 0.1;
   add(g, box(0.13, 0.035, 0.034), std(0x3a3d4a, 0.6), 0, sh + 0.39, 0.193, 0.1); // 손잡이 구멍
   for (const s of [-1, 1]) {

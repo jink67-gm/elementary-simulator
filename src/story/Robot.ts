@@ -29,7 +29,7 @@ const COMPARTMENTS: { cat: LostCat; key: string; z: number }[] = [
 ];
 const SHELF_FRONT_X = 5.4;
 // desk: 내 책상(짝꿍 책상 왼쪽 끝) 바로 옆 통로
-const ZONE_SPOT: Record<ZoneId, [number, number]> = { desk: [-1.35, -0.75], board: [-1.6, 5.7], locker: [3.35, 5.85] };
+const ZONE_SPOT: Record<ZoneId, [number, number]> = { desk: [-0.85, -1.7], board: [-1.6, 5.7], locker: [3.35, 5.85] };
 
 export const ROBOT_LABEL: Record<RobotSolution, string> = {
   remote: '로봇을 원격 조종해 물건을 보관함에 분류함',
