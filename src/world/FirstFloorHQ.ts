@@ -152,7 +152,7 @@ export class FirstFloorBuilder extends HQBuilder {
     mat.rotation.x = -Math.PI / 2;
 
     // 벽: 아래 1.1m 나무 판 징두리(걸레받이 위) + 위 흰 벽 + 나무 띠 (실제 학교 현관처럼 차분하게)
-    const panelM = pbr('oak', { color: 0xe8d6bb, roughness: 0.6 }), railM = pbr('oak', { color: 0xb08a62, roughness: 0.55 });
+    const panelM = pbr('oak', { color: 0xffffff, roughness: 0.6 }), railM = pbr('oak', { color: 0xd8b48a, roughness: 0.55 });
     const nZ = L.z1 - 0.101, sZ = L.z0 + 0.101;
     for (const [z, ry, dz] of [[nZ, Math.PI, -1], [sZ, 0, 1]] as [number, number, number][]) {
       const len = L.x1 - 0.2 - L.x0;
@@ -431,6 +431,28 @@ export class FirstFloorBuilder extends HQBuilder {
       for (const dx of [-0.21, 0.21]) this.box(0.42, 0.9, 0.012, paint(0xe3e6e9, 0.4, 0.3), fx + dx, 0.05, fz - 0.23, false);
       this.box(0.02, 0.12, 0.02, this.chrome, fx + 0.03, 0.55, fz - 0.245, false);
     }
+    // 문 정면 벽: 낮은 수납장 + 프린터 + 교육 목표 액자 + 벽시계 (복도에서 문으로 들여다보면 보이는 곳)
+    this.solid(0.45, 0.8, 1.3, paint(0xdfe3e6, 0.45, 0.3), O.x1 - 0.23, 0, 3.0);
+    for (const dz of [-0.32, 0.32]) {
+      this.box(0.012, 0.7, 0.62, paint(0xeceff1, 0.4, 0.25), O.x1 - 0.456, 0.05, 3.0 + dz, false);
+      this.box(0.02, 0.1, 0.02, this.chrome, O.x1 - 0.47, 0.5, 3.0 + dz - Math.sign(dz) * 0.26, false);
+    }
+    this.box(0.4, 0.25, 0.45, paint(0xf1f3f5, 0.4), O.x1 - 0.25, 0.8, 2.75);
+    this.box(0.3, 0.02, 0.3, paint(0x343a40, 0.5), O.x1 - 0.27, 1.05, 2.75, false);
+    this.box(0.25, 0.3, 0.32, paint([0x1c7ed6][0], 0.6), O.x1 - 0.25, 0.8, 3.4, false);
+    this.poster(['교육 목표', '스스로 배우는 어린이', '서로 돕는 어린이', '꿈을 키우는 어린이'], 1.0, 0.7, O.x1 - 0.01, 1.75, 3.0, -Math.PI / 2, '#2c4a6b');
+    {
+      const ck = new CanvasTex(128, 128);
+      ck.draw((c, w, h) => {
+        c.fillStyle = '#fff';
+        c.beginPath(); c.arc(w / 2, h / 2, 60, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = '#343a40'; c.lineWidth = 6; c.stroke();
+        c.fillStyle = '#212529';
+        for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; c.fillRect(w / 2 + Math.cos(a) * 48 - 2, h / 2 + Math.sin(a) * 48 - 2, 4, 4); }
+        c.lineWidth = 4; c.beginPath(); c.moveTo(w / 2, h / 2); c.lineTo(w / 2 + 22, h / 2 - 20); c.moveTo(w / 2, h / 2); c.lineTo(w / 2, h / 2 - 40); c.stroke();
+      });
+      this.add(new THREE.CircleGeometry(0.17, 24), ck.material(), O.x1 - 0.012, 2.5, 3.0, { cast: false, ry: -Math.PI / 2 });
+    }
     // 복사기 (문 옆)
     this.solid(0.7, 1.05, 0.6, paint(0xeceff1, 0.4), 14.3, 0, 1.6);
     this.box(0.5, 0.04, 0.4, paint(0x495057, 0.5), 14.3, 1.05, 1.6, false);
@@ -503,7 +525,13 @@ export class FirstFloorBuilder extends HQBuilder {
     bed(11.22, 'open');
     // 가운데: 흰 철제 약장 (위 유리문 + 아래 철문), 위에 구급상자
     const cx = N.x1 - 0.22, cz = 10.0;
-    this.solid(0.42, 1.85, 1.1, white, cx, 0, cz);
+    // 속이 빈 몸통 (뒤판·옆판·위·아래) — 유리문 너머로 약병 선반이 보이게
+    this.box(0.02, 1.85, 1.1, white, cx + 0.2, 0, cz);
+    for (const e of [-1, 1]) this.box(0.42, 1.85, 0.02, white, cx, 0, cz + e * 0.54);
+    this.box(0.42, 0.02, 1.1, white, cx, 1.83, cz);
+    this.box(0.42, 0.9, 1.1, white, cx, 0, cz); // 아래 칸 (철문 뒤)
+    this.box(0.01, 0.9, 1.06, paint(0xeef4f6, 0.6), cx + 0.185, 0.92, cz, false); // 안쪽 벽 색
+    this.colliders.push({ ...aabb(cx, cz, 0.42, 1.1), level: this.level });
     for (let k = 0; k < 3; k++) {
       this.box(0.36, 0.015, 1.02, paint(0xdee2e6, 0.5), cx - 0.02, 0.95 + k * 0.3, cz, false);
       for (let i = 0; i < 6; i++) this.box(0.08, 0.14 + (i % 2) * 0.05, 0.1, paint([0xf8f9fa, 0x74c0fc, 0xffc9c9, 0xffffff, 0xb2f2bb, 0xffe066][(i + k) % 6], 0.5), cx - 0.04, 0.965 + k * 0.3, cz - 0.42 + i * 0.17, false);

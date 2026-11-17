@@ -1642,6 +1642,13 @@ export class SchoolMap {
       const tr = this.box(tread + 0.01, 0.02, wS, 0xd4d6d2, x, top - 0.02, zS, { shadow: false });
       tr.material = treadMat;
     }
+    // 3단 밑면: 계단참에서 올려다볼 때 톱니 모양이 보이지 않게 매끈한 경사 슬래브
+    {
+      const sof = new THREE.Mesh(new THREE.BoxGeometry(len + 0.1, 0.06, wS - 0.02), concrete);
+      sof.position.set((S.xEdge + S.xTurn) / 2, half / 2 - 0.33, zS);
+      sof.rotation.z = -slope;
+      this.root.add(sof);
+    }
     const l3 = this.box(S.xTurn - S.xBack, 0.3, dAll, 0xc9ccd1, (S.xBack + S.xTurn) / 2, half - 0.3 + 0.01, zAll, { shadow: false });
     l3.material = concrete;
     rail(S.zS0 + 0.06, -FLOOR1_Y, 1);
@@ -1874,7 +1881,7 @@ export class SchoolMap {
       this.plane(0.6, 0.11, lab.material(), ex - 0.252, my + 0.79, mz, -Math.PI / 2);
     }
     // 피난 안내도 (현관 맞은편 계단 옆 벽) · 복도 우측 통행 표지
-    this.evacMap(7.215, 1.55, -6.8, Math.PI / 2, 1);
+    this.evacMap(7.215, 1.55, -7.25, Math.PI / 2, 1);
     const kr = new CanvasTex(256, 96);
     kr.draw((c, w, h) => {
       c.fillStyle = '#ffffff';
@@ -1933,7 +1940,8 @@ export class SchoolMap {
         gp.position.set(sx * 0.031, 1.45, zc2 - s * 0.12);
         gp.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2;
         g.add(gp);
-        part(0.006, 0.66, 0.26, frame, sx * 0.031, 1.45, zc2 - s * 0.12).scale.set(1, 1, 1);
+        for (const dy of [-0.32, 0.32]) part(0.008, 0.03, 0.24, frame, sx * 0.031, 1.45 + dy, zc2 - s * 0.12);
+        for (const dz2 of [-0.11, 0.11]) part(0.008, 0.66, 0.025, frame, sx * 0.031, 1.45, zc2 - s * 0.12 + dz2);
       }
       // 패닉바 (가로 누름 손잡이, 복도 쪽) + 받침
       part(0.04, 0.05, lw - 0.25, paint(0xd9dde0, 0.25, 0.85), 0.07, 1.0, zc2);
@@ -2081,7 +2089,7 @@ export class SchoolMap {
       const oak = pbr('oak', { roughness: 0.65 });
       this.box(0.26, 0.08, 1.36, 0x9c6644, 7.1, 2.2, dz).material = oak;
       for (const e of [-0.64, 0.64]) this.box(0.26, 2.2, 0.08, 0x9c6644, 7.1, 0, dz + e).material = oak;
-      const leaf = this.box(0.045, 2.04, 1.15, 0xc7a27a, 6.96, 0, dz + 1.1);
+      const leaf = this.box(0.045, 2.04, 1.15, 0xc7a27a, 6.96, 0, dz + 1.27); // 열어 둔 미닫이: 벽 뒤로 완전히 밀어 둠
       leaf.material = oak;
       this.flagSign(name, 7.1, dz - 0.95, 1, bg, '#ffffff');
     }
@@ -2554,9 +2562,9 @@ export class SchoolMap {
       this.root.add(b);
     }
     // 멀리 보이는 산 (분위기)
-    const hill = new THREE.Mesh(new THREE.SphereGeometry(30, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x4f772d }));
-    hill.scale.set(1.6, 0.35, 1);
-    hill.position.set(70, FLOOR1_Y, 0);
+    const hill = new THREE.Mesh(new THREE.SphereGeometry(30, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x8fa894 }));
+    hill.scale.set(2.4, 0.3, 1.6);
+    hill.position.set(120, FLOOR1_Y, 0);
     this.root.add(hill);
   }
 
