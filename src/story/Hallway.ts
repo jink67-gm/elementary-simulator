@@ -21,8 +21,8 @@ import { BROADCAST_LOGS, CARD_TEXT, CORRECT_ORDER, DOOR_CLOCK, EXTRA_HINT, check
 const DOORS: { id: CardId; x: number; z: number; ry: number }[] = [
   { id: 'group', x: 7.23, z: -14.0, ry: Math.PI / 2 },
   { id: 'lunch', x: 10.97, z: -6.0, ry: -Math.PI / 2 },
-  { id: 'korean', x: 7.23, z: -8.2, ry: Math.PI / 2 },
-  { id: 'art', x: 10.97, z: -12.6, ry: -Math.PI / 2 },
+  { id: 'korean', x: 7.23, z: -12.4, ry: Math.PI / 2 },
+  { id: 'art', x: 10.97, z: -8.5, ry: -Math.PI / 2 },
   { id: 'math', x: 7.23, z: 12.6, ry: Math.PI / 2 },
   { id: 'break', x: 10.97, z: 6.0, ry: -Math.PI / 2 },
 ];
@@ -60,7 +60,7 @@ export class HallwayEvent implements StoryEvent {
     this.buildDeco();
     // 교실 앞문·뒷문 막기 (시간이 멈춘 동안 교실 문이 안 열림)
     // + 계단 입구도 막는다 (시간이 멈춘 동안 2층에 갇힘)
-    this.blockers = [...CLASS_DOORS.map((d) => aabb(7.1, (d.z0 + d.z1) / 2, 0.3, d.z1 - d.z0)), { ...aabb(11.1, STAIR.cz, 0.3, STAIR.z1 - STAIR.z0 + 0.2), level: 1 }];
+    this.blockers = [...CLASS_DOORS.map((d) => aabb(7.1, (d.z0 + d.z1) / 2, 0.3, d.z1 - d.z0)), { ...aabb(7.1, (STAIR.zN0 + STAIR.zN1) / 2, 0.3, STAIR.zN1 - STAIR.zN0 + 0.2), level: 1 }];
     for (const b of this.blockers) {
       b.enabled = false;
       g.map.colliders.push(b);

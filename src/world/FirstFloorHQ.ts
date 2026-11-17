@@ -1,5 +1,6 @@
 // 1층 방 꾸미기: 넓은 현관(실내화 신발장), 교무실, 보건실. 벽·문 자리는 SchoolMap.buildFirstFloor.
-// 좌표: 1층 바닥 y = FLOOR1_Y. 현관 x 11.1~18.0 z -5.6~2.6 (가운데에 2층 계단) / 교무실·보건실은 복도 서쪽(운동장 쪽)
+// 좌표: 1층 바닥 y = FLOOR1_Y. 현관 x 11.1~18.0 (남쪽으로 옮김: LOBBY) → 복도 → 건너편 계단실(rooms STAIR) / 교무실·보건실은 복도 서쪽(운동장 쪽)
+// 현관과 정문 바깥은 처음 만든 자리(LOBBY_SRC) 좌표로 짓고 통째로 ENTRANCE_DZ만큼 옮긴다.
 // 교무실·보건실은 예전 자리(복도 동쪽, OFFICE_SRC·NURSE_SRC) 좌표로 짓고 통째로 180° 돌려 서쪽으로 옮긴다 (ROOM_MOVE)
 import * as THREE from 'three';
 import { aabb } from './Collision';
@@ -11,11 +12,18 @@ import { SCHOOL_NAME } from '../data/school';
 import { TILE_EXT, graniteMat } from './exteriorTex';
 import { makeSlipperPair } from './slipper';
 
-export const LOBBY = { x0: 11.1, x1: 18.0, z0: -5.6, z1: 2.6, doorZ0: -2.6, doorZ1: -0.4 };
+/** 현관 (처음 만든 자리 좌표 — 모습·정문 바깥은 이 좌표로 짓는다) */
+export const LOBBY_SRC = { x0: 11.1, x1: 18.0, z0: -4.5, z1: 1.0, doorZ0: -2.6, doorZ1: -0.4 };
+/** 현관을 남쪽으로 옮긴 거리: 정문 → 현관 → 복도 건너 계단 1단이 한 줄로 보이게 */
+export const ENTRANCE_DZ = -8.875;
+/** 교문·현관 출입문 가운데 z (현관 → 복도 → 계단 1단이 이 줄에 있다) */
+export const GATE_Z = (LOBBY_SRC.doorZ0 + LOBBY_SRC.doorZ1) / 2 + ENTRANCE_DZ;
+/** 실제(옮긴) 현관 */
+export const LOBBY = { ...LOBBY_SRC, z0: LOBBY_SRC.z0 + ENTRANCE_DZ, z1: LOBBY_SRC.z1 + ENTRANCE_DZ, doorZ0: LOBBY_SRC.doorZ0 + ENTRANCE_DZ, doorZ1: LOBBY_SRC.doorZ1 + ENTRANCE_DZ };
 const OFFICE_SRC = { x0: 11.2, x1: 14.8, z0: 1.1, z1: 7.9, doorZ: 3.0 };
 const NURSE_SRC = { x0: 11.2, x1: 14.8, z0: 8.1, z1: 11.9, doorZ: 10.0 };
 /** 예전 자리 → 새 자리: (x, z) → (dx - x, dz - z) (y축 180° 회전 + 이동) */
-const ROOM_MOVE = { dx: 18.2, dz: 1.5 };
+const ROOM_MOVE = { dx: 18.2, dz: 5.6 };
 const moved = (r: { x0: number; x1: number; z0: number; z1: number; doorZ: number }) => ({ x0: ROOM_MOVE.dx - r.x1, x1: ROOM_MOVE.dx - r.x0, z0: ROOM_MOVE.dz - r.z1, z1: ROOM_MOVE.dz - r.z0, doorZ: ROOM_MOVE.dz - r.doorZ });
 /** 복도 서쪽 교무실 (문: 복도 쪽 벽 x 7.1, 현관 정면) */
 export const OFFICE = moved(OFFICE_SRC);
@@ -28,7 +36,20 @@ export class FirstFloorBuilder extends HQBuilder {
   build() {
     this.y = FLOOR1_Y;
     this.level = 0;
-    this.lobby();
+    // 현관: 처음 자리 좌표로 지어 남쪽으로 옮긴다 (충돌 상자도 같이)
+    {
+      const prev = this.root, grp = new THREE.Group();
+      grp.position.z = ENTRANCE_DZ;
+      prev.add(grp);
+      this.root = grp;
+      const c0 = this.colliders.length;
+      this.lobby();
+      this.root = prev;
+      for (let i = c0; i < this.colliders.length; i++) {
+        this.colliders[i].minZ += ENTRANCE_DZ;
+        this.colliders[i].maxZ += ENTRANCE_DZ;
+      }
+    }
     // 교무실·보건실: 예전 좌표로 지은 뒤 180° 돌려 서쪽으로 (충돌 상자도 같이 옮긴다)
     const prev = this.root, grp = new THREE.Group();
     grp.position.set(ROOM_MOVE.dx, 0, ROOM_MOVE.dz);
@@ -107,9 +128,8 @@ export class FirstFloorBuilder extends HQBuilder {
 
   // ───────── 현관: 바깥 신발 구역(화강석) | 실내화 구역(테라조), 학년별 신발장, 안내도·소식 게시판, 방향 표지판 ─────────
   private lobby() {
-    const L = LOBBY;
-    // 천장은 계단이 지나가는 곳(x 11.1~14.9, 계단 폭)을 비운다
-    this.room(L.x0, L.x1, L.z0, L.z1, pbr('terrazzo', { color: 0xc9c2b4, roughness: 0.7 }), TILE.terrazzo, [[12.6, -4.3], [12.6, 1.3], [15.2, -4.3], [15.2, 1.3], [17.0, -1.5]], { x0: 11.0, x1: 14.95, z0: -2.95, z1: -0.05 });
+    const L = LOBBY_SRC;
+    this.room(L.x0, L.x1, L.z0, L.z1, pbr('terrazzo', { color: 0xc9c2b4, roughness: 0.7 }), TILE.terrazzo, [[12.6, -1.75], [15.2, -1.75], [17.0, -1.75]]);
     // 바깥 신발 구역 (문 쪽 짙은 화강석) + 노란 경계선 + 바닥 글씨
     const zoneX = 16.3;
     const outer = this.add(worldUV(new THREE.PlaneGeometry(L.x1 - zoneX, L.z1 - L.z0), L.x1 - zoneX, L.z1 - L.z0, 0, TILE_EXT.granite), graniteMat('dark'), (zoneX + L.x1) / 2, 0.007, (L.z0 + L.z1) / 2, { cast: false });
@@ -205,8 +225,7 @@ export class FirstFloorBuilder extends HQBuilder {
     this.cushionBench(12.7, L.z0 + 0.32, 1.25, 1);
     this.poster(['실내화로 갈아 신어요', '바깥 신발은 신발장에', '복도에서는 천천히 걸어요'], 1.0, 0.62, 15.75, 1.75, L.z0 + 0.11, 0, '#2a9d8f');
     // 천장에 매단 방향 표지판 (들어오는 쪽에서 보이게: 왼쪽 = 북쪽, 오른쪽 = 남쪽)
-    this.directionSign(11.55, 2.28, L.z1 - 1.3);
-    this.directionSign(11.55, 2.28, L.z0 + 1.3);
+    this.directionSign(11.55, 2.28, (L.z0 + L.z1) / 2);
   }
 
   /** 알루미늄 액자에 넣은 판 (북쪽 벽, 남쪽을 바라봄) */
@@ -246,23 +265,23 @@ export class FirstFloorBuilder extends HQBuilder {
           x += rw;
         }
       };
-      floor('2층', 92, [['강당', '#cdb4db', 100], ['6-1', '#ffd6a5', 82], ['5-1', '#fdffb6', 82], ['4-1', '#caffbf', 82], ['도서관', '#9bf6ff', 100], ['방송실', '#bdb2ff', 100], ['급식실 위', '#e9ecef', 106]]);
-      floor('1층', 200, [['1-1', '#ffd6a5', 72], ['보건실', '#ffb3c1', 84], ['교무실', '#a0c4ff', 90], ['행정실', '#a0c4ff', 84], ['2-1', '#fdffb6', 72], ['3-1', '#caffbf', 72], ['급식실', '#ffc6ff', 116]]);
+      floor('2층', 92, [['강당', '#cdb4db', 90], ['5-1', '#fdffb6', 72], ['계단', '#e9ecef', 60], ['6-1', '#ffd6a5', 82], ['4-1', '#caffbf', 72], ['방송실', '#bdb2ff', 86], ['도서관', '#9bf6ff', 86], ['3층↑', '#dee2e6', 76]]);
+      floor('1층', 200, [['교장실', '#bde0fe', 76], ['계단', '#e9ecef', 60], ['보건실', '#ffb3c1', 76], ['교무실', '#a0c4ff', 84], ['행정실', '#a0c4ff', 76], ['자치실', '#caffbf', 70], ['Wee', '#fdffb6', 60], ['급식실', '#ffc6ff', 98]]);
       // 현재 위치
       c.fillStyle = '#e63946';
       c.beginPath();
-      c.arc(92 + 72 + 84 + 45, 316, 13, 0, Math.PI * 2);
+      c.arc(92 + 76 + 30, 316, 13, 0, Math.PI * 2);
       c.fill();
       c.font = font(22, true);
       c.textAlign = 'left';
-      c.fillText('지금 여기 (현관 → 교무실 정면)', 92 + 72 + 84 + 64, 318);
+      c.fillText('지금 여기 (현관 → 복도 건너 계단)', 92 + 76 + 48, 318);
       c.fillStyle = '#243447';
       c.font = font(24, true);
-      c.fillText('▶ 계단: 현관 바로 정면! 올라가면 2층 복도', 28, 380);
+      c.fillText('▶ 계단: 현관을 지나 복도 건너편 정면 (3층은 방화문 닫힘)', 28, 380);
       c.fillText('▶ 6학년 교실: 계단으로 2층 → 복도 가운데', 28, 420);
       c.fillStyle = '#6c757d';
       c.font = font(20);
-      c.fillText('교실·교무실은 운동장 쪽 · 화장실·엘리베이터는 현관 쪽', 28, 458);
+      c.fillText('1층은 교무실·행정실 층 · 화장실·엘리베이터는 현관 쪽', 28, 458);
     });
     return t;
   }
@@ -392,7 +411,7 @@ export class FirstFloorBuilder extends HQBuilder {
       c.textAlign = 'left';
       c.fillText('◀ 교무실 · 행정실 · 보건실', 30, h / 2 + 2);
       c.textAlign = 'right';
-      c.fillText('계단 · 2층 교실 ▶', w - 30, h / 2 + 2);
+      c.fillText('▲ 계단(복도 건너) · 교장실 ▶', w - 30, h / 2 + 2);
     });
     this.add(new THREE.PlaneGeometry(W - 0.04, H - 0.02), t.material(), x + 0.027, y + H / 2, z, { cast: false, ry: Math.PI / 2 });
   }

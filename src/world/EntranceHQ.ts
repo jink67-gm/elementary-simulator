@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { aabb } from './Collision';
 import { CanvasTex } from './canvasTex';
 import { HQBuilder } from './hq';
-import { LOBBY } from './FirstFloorHQ';
+import { LOBBY_SRC as LOBBY } from './FirstFloorHQ';
 import { FLOOR1_Y, STOREY } from './rooms';
 import { paint, worldUV } from './pbr';
 import { SCHOOL_MOTTO, SCHOOL_NAME } from '../data/school';

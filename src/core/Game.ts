@@ -69,7 +69,7 @@ export class Game {
   tpc = new ThirdPersonCamera(this.camera);
   map = new SchoolMap();
   /** 두 층 길찾기 (층이 다르면 계단으로) */
-  nav = new LevelNav(-7.5, -35.0, 17.5, 31.0, 0.3, floorY, STAIR_ENDS);
+  nav = new LevelNav(-7.5, -35.0, 37.5, 31.0, 0.3, floorY, STAIR_ENDS);
   input: Input;
   sfx = new Sfx();
   saves = new SaveManager();

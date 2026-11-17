@@ -189,7 +189,7 @@ export class LevelNav {
     maxZ: number,
     cell: number,
     private floorY: (level: 0 | 1) => number,
-    private stair: { top: Pt; topStep: Pt; bottomStep: Pt; bottom: Pt },
+    private stair: { top: Pt; topStep: Pt; bottomStep: Pt; bottom: Pt; mid?: Pt[] },
   ) {
     this.grids = [new NavGrid(minX, minZ, maxX, maxZ, cell, 0), new NavGrid(minX, minZ, maxX, maxZ, cell, 1)];
   }
@@ -213,6 +213,8 @@ export class LevelNav {
     const a = tag(this.grids[lf].findPath(from, aEnd), lf);
     const b = tag(this.grids[lt].findPath(bStart, to), lt);
     if (!a || !b) return null;
-    return [...a, { ...aStep, y: this.floorY(lf) }, { ...bStep, y: this.floorY(lt) }, ...b];
+    // 꺾인 계단: 층계참 경유점 (올라갈 때 순서대로, 내려갈 때 거꾸로)
+    const mid = (lf === 0 ? st.mid ?? [] : [...(st.mid ?? [])].reverse()).map((p) => ({ ...p }));
+    return [...a, { ...aStep, y: this.floorY(lf) }, ...mid, { ...bStep, y: this.floorY(lt) }, ...b];
   }
 }

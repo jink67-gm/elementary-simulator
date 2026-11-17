@@ -117,14 +117,15 @@ const Y1 = -3.6;
 // ── 1. 등교 동선 (순간이동 없음) ──
 await quiet();
 await perf('정문 앞');
-await shot('01_school_front', [29.5, Y1 + 3.0, -1.5], [16, Y1 + 2.2, -1.5]);
-await walkTo('정문→현관 안', 17.0, -1.5, Y1);
+await shot('01_school_front', [29.5, Y1 + 3.0, -10.375], [16, Y1 + 2.2, -10.375]);
+const GZ = -10.375, ZS = -10.425, ZN = -7.975; // 교문·현관 줄, 계단 1단(남)·2단(북) 가운데
+await walkTo('등굣길→교문→현관 안', 16.6, GZ, Y1);
 await perf('현관');
-await walkTo('현관→계단 아래', 16.9, -1.5, Y1);
-await shot('03_stairs_bottom', [17.7, Y1 + 1.6, -1.5], [11.5, Y1 + 2.4, -1.5]);
-await walkTo('계단 오르기(1층→2층)', 10.2, -1.5, 0);
-await shot('04_stairs_top_gap_check', [9.0, 1.7, -1.5], [15.0, -1.6, -1.5]);
-await shot('04b_stairs_side', [12.6, Y1 + 1.5, -4.6], [13.5, Y1 + 1.5, -1.5]);
+await walkTo('현관→복도 건너 계단 아래', 8.4, ZS, Y1);
+await shot('03_stairs_bottom', [10.6, Y1 + 1.6, ZS], [3.0, Y1 + 1.5, ZS]);
+await walkTo('계단 오르기(1층→층계참→2층)', 8.4, ZN, 0);
+await shot('04_stairs_top_gap_check', [9.3, 1.7, ZN], [3.0, -1.2, ZN]);
+await shot('04b_fire_door', [9.6, 1.6, -9.0], [7.1, 1.2, -10.4]);
 await perf('2층 계단참');
 const seat = await page.evaluate(() => {
   const s = window.__sim.game.map.seats.player;
@@ -133,8 +134,8 @@ const seat = await page.evaluate(() => {
 await walkTo('2층 복도→6-1 내 자리', seat[0], seat[1], 0);
 await perf('6-1 교실');
 // 계단 왕복 한 번 더 (내려가기) + 1층 급식실까지
-await walkTo('교실→계단 위', 10.2, -1.5, 0);
-await walkTo('계단 내려가기(2층→1층)', 16.9, -1.5, Y1);
+await walkTo('교실→계단 위', 8.4, ZN, 0);
+await walkTo('계단 내려가기(2층→1층)', 8.4, ZS, Y1);
 await walkTo('1층 복도→급식실 문 앞', 9, 14.6, Y1);
 await perf('1층 복도 끝');
 await shot('05_corridor_1f', [9, Y1 + 1.6, -3], [9, Y1 + 1.4, 14]);

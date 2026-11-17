@@ -21,22 +21,34 @@ export function levelOfY(y: number): Level {
 }
 
 /**
- * 중앙 계단: 정문으로 들어와 현관 홀 정면에서 서쪽(복도 쪽)으로 오른다.
- * 1층 x xBottom(16.0, 현관 문 쪽) → 2층 x xTop(11.5, 2층 복도 동쪽 벽 바로 옆). 폭 z z0~z1. 디딤판 16개
+ * 중앙 계단 (꺾인 계단, 복도 서쪽 = 방 쪽): 현관 → 복도를 건너 정면 계단실.
+ * 1단(남쪽 절반): 1층 복도 쪽 x xEdge에서 서쪽으로 올라 층계참(x xBack~xTurn, 높이 반 층)
+ * 2단(북쪽 절반): 층계참에서 동쪽으로 올라 2층 복도 쪽 x xEdge에 도착
+ * 3층으로 가는 3단(2층 남쪽 절반)은 방화문으로 닫혀 있다.
  */
-export const STAIR = { xBottom: 16.0, xTop: 11.5, z0: -2.8, z1: -0.2, steps: 16, cz: -1.5 };
-/** 계단 위·아래에서 NPC가 지나가는 점 */
+export const STAIR = { xEdge: 6.9, xTurn: 3.6, xBack: 2.0, zS0: -11.55, zS1: -9.3, zN0: -9.1, zN1: -6.85, zMid: -9.2, steps: 12 };
+const zS = (STAIR.zS0 + STAIR.zS1) / 2, zN = (STAIR.zN0 + STAIR.zN1) / 2;
+/** 층계참 높이 (2층 판정이 되도록 반 층보다 살짝 위) */
+export const LANDING_Y = FLOOR1_Y / 2 + 0.01;
+/** 계단 위·아래와 층계참에서 NPC가 지나가는 점 */
 export const STAIR_ENDS = {
-  top: { x: 10.2, z: STAIR.cz, y: 0 },
-  topStep: { x: STAIR.xTop - 0.15, z: STAIR.cz, y: 0 },
-  bottomStep: { x: STAIR.xBottom + 0.1, z: STAIR.cz, y: FLOOR1_Y },
-  bottom: { x: 16.9, z: STAIR.cz, y: FLOOR1_Y },
+  top: { x: 8.4, z: zN, y: 0 },
+  topStep: { x: STAIR.xEdge - 0.25, z: zN, y: 0 },
+  bottomStep: { x: STAIR.xEdge - 0.25, z: zS, y: FLOOR1_Y },
+  bottom: { x: 8.4, z: zS, y: FLOOR1_Y },
+  mid: [
+    { x: STAIR.xTurn - 0.75, z: zS, y: LANDING_Y },
+    { x: STAIR.xTurn - 0.75, z: zN, y: LANDING_Y },
+  ],
 };
-/** 계단 위 높이 (계단 밖이면 null) */
+/** 계단 위 높이 (계단실 밖이면 null) */
 export function stairY(x: number, z: number): number | null {
-  if (z <= STAIR.z0 || z >= STAIR.z1 || x >= STAIR.xBottom || x <= STAIR.xTop - 0.4) return null;
-  const t = Math.min(1, (STAIR.xBottom - x) / (STAIR.xBottom - STAIR.xTop));
-  return FLOOR1_Y * (1 - t);
+  const S = STAIR;
+  if (x < S.xBack || x > S.xEdge || z < S.zS0 || z > S.zN1) return null;
+  if (x <= S.xTurn) return LANDING_Y;
+  const t = (x - S.xTurn) / (S.xEdge - S.xTurn); // 0 = 층계참 쪽, 1 = 복도 쪽
+  const half = FLOOR1_Y / 2; // -1.8
+  return z < S.zMid ? half + half * t /* 1단: 복도 쪽이 1층 */ : half - half * t /* 2단: 복도 쪽이 2층 */;
 }
 
 // ───────── 1층 급식실 동 (복도 북쪽 끝 너머) ─────────
