@@ -77,6 +77,16 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 400; letter-spacing:
 .obj-label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--coral-d); letter-spacing: 0.04em; }
 .obj-label::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--coral); box-shadow: 0 0 0 3px var(--coral-l); }
 .obj-text { font-size: 16px; font-weight: 700; line-height: 1.45; margin-top: 4px; }
+.obj-detail:empty { display: none; }
+.obj-detail { margin-top: 6px; display: flex; flex-direction: column; gap: 5px; }
+.obj-route { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 4px; }
+.obj-step { font-size: 12.5px; font-weight: 700; line-height: 1.2; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.75); border: 1px solid var(--line); color: var(--ink-soft); white-space: nowrap; }
+.obj-step.last { background: var(--coral-l); border-color: transparent; color: var(--coral-d); }
+.obj-arrow { font-size: 13px; font-weight: 800; color: var(--ink-faint); }
+.obj-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.obj-list li { position: relative; padding-left: 13px; font-size: 13.5px; font-weight: 600; line-height: 1.4; color: var(--ink-soft); }
+.obj-list li::before { content: ''; position: absolute; left: 2px; top: 0.6em; width: 5px; height: 5px; border-radius: 50%; background: var(--sun); }
+.obj-note { font-size: 12.5px; font-weight: 600; line-height: 1.4; color: var(--ink-faint); }
 .clock { position: absolute; top: 16px; right: 16px; background: var(--glass); backdrop-filter: blur(8px); border-radius: var(--r-lg); padding: 10px 16px 11px; box-shadow: var(--shadow); border: 1px solid rgba(255, 255, 255, 0.7); text-align: right; min-width: 148px; }
 .clock-period { display: inline-block; font-size: 12px; font-weight: 800; color: var(--sky); background: var(--sky-l); border-radius: 999px; padding: 2px 9px; }
 .clock-time { font-family: var(--font-display); font-size: 28px; line-height: 1.15; margin-top: 3px; font-variant-numeric: tabular-nums; }
@@ -95,7 +105,7 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 400; letter-spacing:
 .inv-desc { position: absolute; bottom: 128px; left: 50%; transform: translateX(-50%); background: var(--glass-dark); backdrop-filter: blur(6px); color: #fff; padding: 9px 15px; border-radius: var(--r-md); font-size: 14px; font-weight: 600; max-width: 80vw; box-shadow: var(--shadow); }
 .help { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.95); white-space: nowrap; background: rgba(25, 36, 50, 0.45); backdrop-filter: blur(4px); padding: 4px 12px; border-radius: 999px; }
 .help b { display: inline-block; font-weight: 800; color: #fff; background: rgba(255, 255, 255, 0.18); border-radius: 5px; padding: 0 5px; margin-right: 2px; }
-.lock-hint { position: absolute; top: 92px; left: 50%; transform: translateX(-50%); font-size: 13px; font-weight: 600; background: var(--glass-dark); color: #fff; padding: 6px 14px; border-radius: 999px; box-shadow: var(--shadow); }
+.lock-hint { position: absolute; top: 98px; right: 16px; max-width: 46vw; text-align: center; font-size: 13px; font-weight: 600; background: var(--glass-dark); color: #fff; padding: 6px 14px; border-radius: 999px; box-shadow: var(--shadow); }
 .toasts { position: absolute; top: 112px; right: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: min(400px, 70vw); }
 .toast { position: relative; background: var(--glass); backdrop-filter: blur(8px); border-radius: var(--r-md); padding: 10px 14px 10px 40px; font-size: 14px; font-weight: 700; line-height: 1.45; box-shadow: var(--shadow); border: 1px solid rgba(255, 255, 255, 0.7); animation: toastIn 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2); transition: opacity 0.4s, transform 0.4s; }
 .toast::before { content: 'i'; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #fff; background: var(--sky); }

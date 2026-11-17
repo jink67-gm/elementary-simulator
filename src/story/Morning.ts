@@ -1103,7 +1103,7 @@ export class Morning implements StoryHooks {
     }
     const takenOver = () => this.phase === 'teacher';
     if (!this.f('bagOnDesk')) {
-      g.setObjective('가방을 메고 2층 6-1 교실로 가서 책상 옆에 걸기 (횡단보도 → 교문 → 현관 → 복도 건너 계단 → 내 책상에서 E)', this.inter.seat);
+      g.setObjective('가방 메고 2층 6-1 교실 내 책상에 걸기 (횡단보도 → 교문 → 현관 → 복도 건너 계단 → 2층 6-1 → 내 책상에서 E)', this.inter.seat);
       await this.until(() => this.f('bagOnDesk'));
     }
     if (takenOver()) return;

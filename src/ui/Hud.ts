@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { formatObjective } from './objectiveFormat';
 import { el } from './dom';
 import { itemDef, type ItemId } from '../data/items';
 import { SLOT_COUNT } from '../player/Inventory';
@@ -15,6 +16,8 @@ export class Hud {
   root = el('div', { class: 'hud hidden' });
   private objective = el('div', { class: 'objective' });
   private objText = el('div', { class: 'obj-text' });
+  private objDetail = el('div', { class: 'obj-detail' });
+  private objRaw = '';
   private clock = el('div', { class: 'clock' });
   private clockPeriod = el('div', { class: 'clock-period' });
   private clockTime = el('div', { class: 'clock-time' });
@@ -32,7 +35,7 @@ export class Hud {
   onSlotTap: (i: number) => void = () => {};
 
   constructor(parent: HTMLElement) {
-    this.objective.append(el('div', { class: 'obj-label' }, '지금 할 일'), this.objText);
+    this.objective.append(el('div', { class: 'obj-label' }, '지금 할 일'), this.objText, this.objDetail);
     this.clock.append(this.clockPeriod, this.clockTime, this.clockTimer);
     this.help.innerHTML =
       '<span class="help-kb"><b>WASD</b> 이동 · <b>Shift</b> 달리기 · <b>마우스</b> 둘러보기 · <b>E</b> 조사·줍기·대화 · <b>F</b> 사용·놓기 · <b>1~4</b> 소지품 · <b>Tab</b> 설명 · <b>Esc</b> 메뉴</span>' +
@@ -46,15 +49,29 @@ export class Hud {
   }
 
   setObjective(text: string) {
-    if (this.objText.textContent === text) return;
-    this.objText.textContent = text;
+    if (this.objRaw === text) return;
+    this.objRaw = text;
+    // 긴 문장은 본문 + 길 순서(칩) + 할 일 목록 + 메모로 나눠 보여 준다
+    const p = formatObjective(text);
+    this.objText.textContent = p.main;
+    this.objDetail.innerHTML = '';
+    if (p.route.length) {
+      const r = el('div', { class: 'obj-route' });
+      p.route.forEach((step, i) => {
+        if (i) r.append(el('span', { class: 'obj-arrow' }, '›'));
+        r.append(el('span', { class: 'obj-step' + (i === p.route.length - 1 ? ' last' : '') }, step));
+      });
+      this.objDetail.append(r);
+    }
+    if (p.list.length) this.objDetail.append(el('ul', { class: 'obj-list' }, ...p.list.map((x) => el('li', {}, x))));
+    if (p.note) this.objDetail.append(el('div', { class: 'obj-note' }, p.note));
     this.objective.classList.remove('flash');
     void this.objective.offsetWidth;
     this.objective.classList.add('flash');
   }
 
   get objectiveText() {
-    return this.objText.textContent ?? '';
+    return this.objRaw;
   }
 
   setClock(period: string, time: string) {
