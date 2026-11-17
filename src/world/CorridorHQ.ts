@@ -60,7 +60,7 @@ export class CorridorBuilder extends HQBuilder {
     }
     for (const win of s.windows) this.windowWall(win[0], win[1]);
     for (const t of s.transoms) this.transom(t.z0, t.z1, t.clear);
-    s.arches.forEach((z, i) => this.arch(z, [0xf3b6c9, 0xa8dcc0, 0xcdbdf3, 0xffd9ae][(i + s.level) % 4]));
+    s.arches.forEach((z) => this.arch(z, 0xe4e0d8)); // 기둥·보: 벽보다 살짝 짙은 미색 (튀지 않게)
     for (const d of s.openDoors) this.openDoor(d.z0, d.z1);
   }
 

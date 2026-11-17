@@ -15,7 +15,8 @@ import { EntranceBuilder } from './EntranceHQ';
 import { buildTabletCart } from './props/tabletCart';
 import { buildCutleryBin, buildTray } from './props/items';
 import { drawKidPoster } from './props/posterArt';
-import { TILE_EXT, plinthMat, stuccoMat } from './exteriorTex';
+import { TILE_EXT, brickMat, plinthMat, stuccoMat } from './exteriorTex';
+import { makeTree } from './landscape';
 import { BACK_DZ, ROOM, TEACHER_DESK, TEACHER_SHELF, ART_CAB, BOOKSHELF, CLASS_DOORS, CHAIR, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, BIG_EXHIBIT, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, deskBoxes, lockerCell, seatOf, type DeskLayout } from './classroomLayout';
 import { buildCleaningCabinet, buildFabricRecycling, buildLockerCarcass, buildOfficeChair, buildStudentChair, buildStudentDesk, buildSmallBin, buildTeacherDesk, buildTeacherDeskItems, buildTeacherShelf, buildTeacherUnderDesk, buildTrashBin, lockerDoorGeo, lockerHandle, mdf } from './classroomSet';
 import { compact } from './props/kit';
@@ -133,13 +134,8 @@ export class SchoolMap {
       z0: -16.1,
       z1: 16.1,
       windows: [[-5.4, 2.2], [6.9, 15.8]],
-      // 서쪽(방 쪽) 벽 위 유리창: 5-1 | (계단실) | (6-1은 ClassroomHQ) | 4-1
-      transoms: [
-        { z0: -15.6, z1: -14.9, clear: false },
-        { z0: -13.4, z1: -13.1, clear: false },
-        { z0: 9.3, z1: 11.8, clear: false },
-        { z0: 13.4, z1: 15.6, clear: false },
-      ],
+      // 다른 반 창은 frostedRoomFace (위 유리창을 겹치지 않는다)
+      transoms: [],
       arches: [-13.3, -0.2, 7.0, 15.4],
       openDoors: [], // 6-1 문은 SchoolMap.buildSlidingDoor (열리고 닫히는 미닫이)
     });
@@ -149,17 +145,7 @@ export class SchoolMap {
       z0: -16.1,
       z1: 16.1,
       windows: [],
-      // 서쪽(방 쪽) 벽 위 유리창: 교장실 | (계단실) | 보건실 | 교무실 | 행정실 | 학생자치실 | Wee클래스 (문 자리는 비움)
-      transoms: [
-        { z0: -15.6, z1: -14.4, clear: false },
-        { z0: -12.8, z1: -11.9, clear: false },
-        { z0: -6.1, z1: -5.2, clear: false },
-        { z0: -3.6, z1: -2.6, clear: false },
-        { z0: -2.0, z1: 1.8, clear: false },
-        { z0: 3.4, z1: 5.8, clear: false },
-        { z0: 7.4, z1: 8.8, clear: false },
-        { z0: 10.4, z1: 14.2, clear: false },
-      ],
+      transoms: [],
       arches: [-2.9, 8.2],
       openDoors: [],
     });
@@ -265,35 +251,61 @@ export class SchoolMap {
    * 벽에서 복도 쪽으로 튀어나온 실 명패 (양면, 사진의 「제2과학실」처럼).
    * wallX: 벽 x, z: 명패 위치, dir: 복도 쪽 (+1 = +x로 튀어나옴)
    */
-  private flagSign(text: string, wallX: number, z: number, dir: 1 | -1, bg = '#ffffff', fg = '#1d3557') {
-    const t = new CanvasTex(256, 96);
-    t.draw((c, w, h) => {
-      c.fillStyle = bg;
-      c.fillRect(0, 0, w, h);
-      c.strokeStyle = '#adb5bd';
-      c.lineWidth = 6;
-      c.strokeRect(3, 3, w - 6, h - 6);
-      c.fillStyle = fg;
-      c.font = font(text.length <= 3 ? 60 : text.length > 5 ? 34 : 42, true);
-      c.textAlign = 'center';
-      c.fillText(text, w / 2, text.length <= 3 ? 70 : 64);
-    });
+  private flagSign(text: string, wallX: number, z: number, dir: 1 | -1, _bg = '', _fg = '') {
+    void _bg, void _fg;
+    const t = this.plateTex(text, 256, 96);
     const g = new THREE.Group();
-    g.position.set(wallX + dir * 0.42, this.baseY + 2.5, z);
+    g.position.set(wallX + dir * 0.4, this.baseY + 2.45, z);
     this.root.add(g);
-    for (const s of [1, -1]) {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.25), t.material());
-      m.rotation.y = s === 1 ? 0 : Math.PI;
-      m.position.z = s * 0.012;
+    // 은색 알루미늄 테 + 양면 아크릴 판
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.25, 0.03), paint(0xb8bec4, 0.35, 0.6));
+    g.add(bar);
+    for (const s2 of [1, -1]) {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.225), t.material());
+      m.rotation.y = s2 === 1 ? 0 : Math.PI;
+      m.position.z = s2 * 0.016;
       g.add(m);
     }
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.29, 0.02), this.mat(0xced4da));
-    g.add(bar);
-    // 벽에 붙는 받침
-    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 0.06), this.mat(0x868e96));
-    arm.position.x = -dir * 0.37;
-    g.add(arm);
+    // 벽에 붙는 받침 (ㄱ자 금속)
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.035), paint(0x8d949b, 0.4, 0.6));
+    arm.position.set(-dir * 0.36, 0.08, 0);
+    const arm2 = arm.clone();
+    arm2.position.y = -0.08;
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.24, 0.07), paint(0x8d949b, 0.4, 0.6));
+    plate.position.set(-dir * 0.405, 0, 0);
+    g.add(arm, arm2, plate);
     return g;
+  }
+
+  /** 학교 실명판 무늬 (모든 문패·안내판 공통): 흰 아크릴 + 위아래 남색 선 + 한글 + 작은 영문 */
+  private plateTex(text: string, w = 256, h = 96): CanvasTex {
+    const EN: Record<string, string> = {
+      교장실: "Principal's Office", 행정실: 'Administration', 학생자치실: 'Student Council', Wee클래스: 'Wee Class', 교무실: "Teachers' Office", 보건실: 'Health Room',
+      '남자 화장실': 'Men', '여자 화장실': 'Women', '교직원 화장실': 'Staff Restroom', 화장실: 'Restroom', 방송실: 'Broadcasting', 강당: 'Auditorium', 도서관: 'Library',
+      급식실: 'Cafeteria', 엘리베이터: 'Elevator', '공 창고': 'Storage', '5-1': 'Class 5-1', '4-1': 'Class 4-1', '6-1': 'Class 6-1',
+    };
+    const key = text.replace(/[▲▼◀▶]/g, '').trim();
+    const en = EN[key] ?? '';
+    const t = new CanvasTex(w, h);
+    t.draw((c, cw, ch) => {
+      c.fillStyle = '#f7f8f8';
+      c.fillRect(0, 0, cw, ch);
+      c.fillStyle = '#2c4a6b';
+      c.fillRect(0, 0, cw, ch * 0.07);
+      c.fillRect(0, ch * 0.93, cw, ch * 0.07);
+      c.fillStyle = '#1f2d3d';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      const big = Math.round(ch * (en ? 0.42 : 0.5));
+      c.font = font(text.length > 6 ? Math.round(big * 0.78) : big, true);
+      c.fillText(text, cw / 2, en ? ch * 0.43 : ch / 2);
+      if (en) {
+        c.fillStyle = '#6c757d';
+        c.font = font(Math.round(ch * 0.17));
+        c.fillText(en, cw / 2, ch * 0.77);
+      }
+    });
+    return t;
   }
 
   /** 엘리베이터 (복도 동쪽 벽, 지금 층): 스테인리스 양문 + 문틀 + 호출 버튼 + 층 표시 */
@@ -341,31 +353,95 @@ export class SchoolMap {
     this.objs[floor === 1 ? 'elevator1' : 'elevator2'] = g;
   }
 
-  /** 닫힌 문 + 이름표 (들어갈 필요 없는 방) */
-  private door(name: string, label: string, x: number, z: number, ry: number, color = 0xc7a27a, signBg = '#2d6a4f') {
+  /**
+   * 닫힌 문 (들어갈 필요 없는 방): 벽 앞에 붙는 문틀 + 문짝. 문 뒤는 벽이 막혀 있어 틈으로 건너편이 보이지 않는다.
+   * - 화장실: 밝은 회색 여닫이 문 + 픽토그램 판 + 발차기판 + 레버 손잡이
+   * - 교장실: 짙은 나무 여닫이 문 (창 없음)
+   * - 그 밖의 방: 나무 미닫이 문 (위쪽 불투명 유리창 + 오목 손잡이) — 한국 학교 실 문
+   */
+  private door(name: string, label: string, x: number, z: number, ry: number, color = 0xc7a27a, _signBg = '') {
+    void _signBg;
     const g = new THREE.Group();
     g.position.set(x, this.baseY, z);
     g.rotation.y = ry;
     this.root.add(g);
-    const panel = this.box(1.2, 2.1, 0.06, color, 0, 0, 0, { parent: g, ownMat: true, shadow: false });
-    this.cameraBlockers.push(panel); // 닫힌 문 너머로 카메라가 빠지지 않게
-    const win = this.box(0.4, 0.5, 0.07, 0x9ad0ec, -0.25, 1.35, 0, { parent: g, shadow: false });
-    void win;
-    const t = new CanvasTex(256, 64);
-    t.draw((c, w, h) => {
-      c.fillStyle = signBg;
-      c.fillRect(0, 0, w, h);
-      c.fillStyle = '#fff';
-      c.font = font(label.length > 5 ? 28 : 32, true);
-      c.textAlign = 'center';
-      c.fillText(label, w / 2, 44);
-    });
+    const wc = label.includes('화장실');
+    const solidWood = name === 'doorPrincipal';
+    const W = wc ? 0.95 : 1.1, H = 2.1;
+    const oak = pbr('oak', { roughness: 0.6 });
+    const part = (w: number, h: number, d: number, m: THREE.Material, px: number, py: number, pz: number) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+      b.position.set(px, py + h / 2, pz);
+      b.castShadow = false;
+      b.receiveShadow = true;
+      g.add(b);
+      return b;
+    };
+    // 문틀 (벽에서 살짝 튀어나온 테두리)
+    const frameM = wc ? paint(0xa9b0b6, 0.4, 0.4) : oak;
+    part(W + 0.2, 0.08, 0.1, frameM, 0, H, -0.01);
+    for (const s2 of [-1, 1]) part(0.08, H, 0.1, frameM, s2 * (W / 2 + 0.06), 0, -0.01);
+    // 문짝 (벽 쪽으로 붙임 — 뒤는 벽)
+    const leafM = wc ? paint(0xd5d9dc, 0.45, 0.15) : solidWood ? pbr('oak', { color: 0x8a6a52, roughness: 0.5 }) : oak;
+    void color;
+    const leaf = part(W, H - 0.01, 0.045, leafM, 0, 0.005, -0.01);
+    this.cameraBlockers.push(leaf); // 닫힌 문 너머로 카메라가 빠지지 않게
+    const steel = paint(0xc9ced3, 0.28, 0.85);
+    if (wc) {
+      part(W - 0.06, 0.22, 0.05, paint(0xb3b9bf, 0.35, 0.6), 0, 0.03, -0.005); // 발차기판
+      part(0.14, 0.03, 0.04, steel, W / 2 - 0.16, 1.0, 0.03); // 레버
+      part(0.06, 0.06, 0.02, steel, W / 2 - 0.1, 0.985, 0.02);
+      // 픽토그램 판 (문 위쪽)
+      const female = label.includes('여자'), staff = label.includes('교직원');
+      const pt = new CanvasTex(128, 160);
+      pt.draw((c, w, h) => {
+        c.fillStyle = '#ffffff';
+        c.fillRect(0, 0, w, h);
+        const col = staff ? '#495057' : female ? '#d6336c' : '#1c7ed6';
+        c.fillStyle = col;
+        const fig = (cx: number, skirt: boolean) => {
+          c.beginPath();
+          c.arc(cx, 34, 12, 0, Math.PI * 2);
+          c.fill();
+          if (skirt) {
+            c.beginPath();
+            c.moveTo(cx - 9, 52); c.lineTo(cx + 9, 52); c.lineTo(cx + 18, 98); c.lineTo(cx - 18, 98); c.closePath();
+            c.fill();
+          } else c.fillRect(cx - 12, 52, 24, 46);
+          c.fillRect(cx - 9, 96, 7, 30);
+          c.fillRect(cx + 2, 96, 7, 30);
+        };
+        if (staff) { fig(w / 2 - 22, false); fig(w / 2 + 22, true); } else fig(w / 2, female);
+        c.font = font(22, true);
+        c.textAlign = 'center';
+        c.fillText(staff ? '교직원' : female ? '여자' : label.includes('남자') ? '남자' : '화장실', w / 2, 150);
+      });
+      const pm = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.25), pt.material());
+      pm.position.set(0, 1.55, 0.016);
+      g.add(pm);
+    } else if (solidWood) {
+      // 판문 몰딩 두 칸 + 레버
+      for (const py of [0.25, 1.2]) part(W - 0.3, 0.75, 0.012, pbr('oak', { color: 0x7a5c46, roughness: 0.5 }), 0, py, 0.017);
+      part(0.14, 0.03, 0.04, steel, W / 2 - 0.16, 1.0, 0.03);
+    } else {
+      // 미닫이: 위쪽 불투명 유리창(나무 살) + 오목 손잡이 + 아래 판
+      const gw = W * 0.55;
+      part(gw + 0.06, 0.68, 0.05, oak, -W * 0.12, 1.22, 0.0);
+      const glass = new THREE.Mesh(new THREE.PlaneGeometry(gw, 0.62), paint(0xd6e0e5, 0.2));
+      glass.position.set(-W * 0.12, 1.53, 0.027);
+      g.add(glass);
+      part(0.03, 0.62, 0.012, oak, -W * 0.12, 1.22, 0.03);
+      part(0.05, 0.18, 0.02, paint(0x4a4e54, 0.5, 0.5), W / 2 - 0.1, 0.92, 0.015); // 오목 손잡이
+      // 문 위 레일 덮개
+      part(W + 0.2, 0.06, 0.06, oak, 0, H - 0.06, 0.04);
+    }
     if (Math.abs(Math.abs(ry) - Math.PI / 2) < 0.01) {
-      // 복도 벽의 문: 문 옆 위에 튀어나온 실 명패
+      // 복도 벽의 문: 문 옆 위에 튀어나온 실명판
       const west = ry > 0;
       this.flagSign(label, west ? 7.1 : 11.1, z + 0.8, west ? 1 : -1);
     } else {
-      const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.2), t.material());
+      const t = this.plateTex(label, 256, 80);
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.225), t.material());
       sign.position.set(0, 2.35, 0.04);
       g.add(sign);
     }
@@ -797,7 +873,7 @@ export class SchoolMap {
     this.door('doorClass1', '5-1', 7.23, -14.2, Math.PI / 2);
     this.door('doorClass4', '4-1', 7.23, 8.4, Math.PI / 2);
     this.door('doorGym', '강당 ▲', 9, -15.97, 0, 0x7a9cc6);
-    this.flagSign('계단 ▼ 1층 현관', 7.1, STAIR.zN1 + 0.45, 1, '#457b9d', '#ffffff');
+    this.sign('1층 ▼', 7.215, 2.35, STAIR.zN1 + 0.42, Math.PI / 2);
     // 방 쪽 벽 창문 (다른 반: 불투명 유리)
     this.frostedRoomFace(-16.0, STAIR.zS0, [-14.2, -12.4]);
     this.frostedRoomFace(ROOM.z1 + 0.1, 16.0, [8.4, 12.6]);
@@ -1359,21 +1435,19 @@ export class SchoolMap {
     this.colliders.push(this.broadcastDoor);
   }
 
-  private sign(text: string, x: number, y: number, z: number, ry: number, bg: string) {
-    const t = new CanvasTex(256, 64);
-    t.draw((c, w, h) => {
-      c.fillStyle = bg;
-      c.fillRect(0, 0, w, h);
-      c.fillStyle = '#fff';
-      c.font = font(32, true);
-      c.textAlign = 'center';
-      c.fillText(text, w / 2, 44);
-    });
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.22), t.material());
-    m.position.set(x, y + this.baseY, z);
-    m.rotation.y = ry;
-    this.root.add(m);
-    return m;
+  private sign(text: string, x: number, y: number, z: number, ry: number, _bg = '') {
+    void _bg;
+    // 벽에 붙인 실명판 (얇은 알루미늄 테 + 판)
+    const t = this.plateTex(text, 256, 80);
+    const g = new THREE.Group();
+    g.position.set(x, y + this.baseY, z);
+    g.rotation.y = ry;
+    this.root.add(g);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.25, 0.02), paint(0xb8bec4, 0.35, 0.6));
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.225), t.material());
+    m.position.z = 0.011;
+    g.add(back, m);
+    return g;
   }
 
   private crumbMaterial() {
@@ -1514,6 +1588,7 @@ export class SchoolMap {
     // 벽 손잡이 (나무 봉 + 받침): 1단은 남쪽 벽·가운데 벽, 2단은 북쪽 벽·가운데 벽
     const railMat = pbr('oak', { color: 0xc49a6c, roughness: 0.5 });
     const slope = Math.atan2(half, run), len = Math.hypot(half, run);
+    const stripeM = paint(0x9fb3a8, 0.7);
     const rail = (z: number, y0: number, up: 1 | -1) => {
       const r = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, len, 10), railMat);
       r.position.set((S.xEdge + S.xTurn) / 2, FLOOR1_Y + y0 + half / 2 + 0.88, z);
@@ -1522,8 +1597,25 @@ export class SchoolMap {
       this.root.add(r);
       for (let k = 0; k <= 3; k++) {
         const t = k / 3, x = S.xEdge - run * t, y = up > 0 ? half * t : half * (1 - t);
-        this.box(0.03, 0.03, 0.03, 0x9aa1a8, x, y0 + y + 0.84, z, { shadow: false });
+        // 벽 받침 (벽 → 봉 ㄱ자)
+        const side = z < (S.zS0 + S.zN1) / 2 ? (Math.abs(z - S.zS0) < 0.2 || Math.abs(z - S.zN0) < 0.2 ? -1 : 1) : (Math.abs(z - S.zN1) < 0.2 ? 1 : -1);
+        this.box(0.025, 0.07, 0.025, 0x9aa1a8, x, y0 + y + 0.8, z + side * 0.035, { shadow: false }).material = paint(0x9aa1a8, 0.35, 0.7);
+        this.box(0.025, 0.025, 0.06, 0x9aa1a8, x, y0 + y + 0.8, z + side * 0.05, { shadow: false }).material = paint(0x9aa1a8, 0.35, 0.7);
       }
+      // 손잡이 끝: 수평으로 30cm 연장 (위·아래 계단 끝, 실제 학교 계단처럼)
+      const hEdge = up > 0 ? 0 : half, hTurn = up > 0 ? half : 0;
+      for (const [xa, xb, hh] of [[S.xEdge, S.xEdge + 0.3, hEdge], [S.xTurn - 0.3, S.xTurn, hTurn]] as [number, number, number][]) {
+        const e = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, xb - xa, 10), railMat);
+        e.rotation.z = Math.PI / 2;
+        e.position.set((xa + xb) / 2, this.baseY + y0 + hh + 0.88, z);
+        this.root.add(e);
+      }
+      // 벽 띠 (손잡이와 나란한 회녹색 줄 — 계단실 벽 마감)
+      const stripe = new THREE.Mesh(new THREE.BoxGeometry(len, 0.07, 0.012), stripeM);
+      const side2 = Math.abs(z - S.zS0) < 0.2 || Math.abs(z - S.zN0) < 0.2 ? -1 : 1;
+      stripe.position.set((S.xEdge + S.xTurn) / 2, this.baseY + y0 + half / 2 + 1.25, z + side2 * 0.05);
+      stripe.rotation.z = -up * slope;
+      this.root.add(stripe);
     };
     rail(S.zS0 + 0.06, 0, 1);
     rail(S.zS1 - 0.06, 0, 1);
@@ -1537,6 +1629,10 @@ export class SchoolMap {
     const frost = paint(0xdbe5ea, 0.22);
     this.box(0.04, 1.1, 1.8, 0xffffff, S.xBack + 0.02, landTop + 0.9, zAll, { shadow: false }).material = frost;
     for (const dz of [-0.92, 0.92]) this.box(0.06, 1.16, 0.05, 0xffffff, S.xBack + 0.03, landTop + 0.87, zAll + dz, { shadow: false }).material = pbr('oak', { roughness: 0.6 });
+    // 층 표지 · 층계참 안내 (벽에 납작하게)
+    this.floorPlate('1', 6.35, 1.65, S.zS0 + 0.006, 0);
+    this.sign('2층 ▲', S.xBack + 0.012, landTop + 1.55, -7.6, Math.PI / 2);
+    this.sign('1층 ▼', S.xBack + 0.012, landTop + 1.55, -10.8, Math.PI / 2);
     // ── 2층 위: 3층 가는 3단(남쪽 절반, 방화문 뒤) + 3층 쪽 층계참 + 계단실 천장 ──
     this.baseY = 0;
     this.curLevel = 1;
@@ -1549,9 +1645,250 @@ export class SchoolMap {
     const l3 = this.box(S.xTurn - S.xBack, 0.3, dAll, 0xc9ccd1, (S.xBack + S.xTurn) / 2, half - 0.3 + 0.01, zAll, { shadow: false });
     l3.material = concrete;
     rail(S.zS0 + 0.06, -FLOOR1_Y, 1);
+    this.floorPlate('2', 6.35, 1.65, S.zN1 - 0.006, Math.PI);
     this.ceiling(7.0 - x0, dAll + 0.4, (x0 + 7.0) / 2, zAll, true, 3.4);
     this.baseY = 0;
     this.curLevel = 1;
+  }
+
+  /** 소화기 + 받침대 (복도 벽 앞 바닥). dir: 벽에서 복도 쪽 (+1 = +x) */
+  private extinguisher(x: number, z: number, dir: 1 | -1) {
+    const red = paint(0xc92a2a, 0.35, 0.1), blk = paint(0x212529, 0.6);
+    const stand = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.24), paint(0xb0b5ba, 0.4, 0.6));
+    stand.position.set(x, this.baseY + 0.025, z);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.46, 16), red);
+    body.position.set(x, this.baseY + 0.3, z);
+    body.castShadow = true;
+    const head = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.04, 0.07, 10), blk);
+    head.position.set(x, this.baseY + 0.565, z);
+    const lever = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.015, 0.03), blk);
+    lever.position.set(x + dir * 0.03, this.baseY + 0.6, z);
+    const hose = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.36, 6), blk);
+    hose.position.set(x - dir * 0.085, this.baseY + 0.4, z);
+    const label = new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.14), paint(0xf8f9fa, 0.5));
+    label.position.set(x + dir * 0.076, this.baseY + 0.3, z);
+    label.rotation.y = dir * Math.PI / 2;
+    this.root.add(stand, body, head, lever, hose, label);
+    // 벽 위 「소화기」 표지
+    const t = new CanvasTex(128, 48);
+    t.draw((c, w, h) => {
+      c.fillStyle = '#c92a2a';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#fff';
+      c.font = font(30, true);
+      c.textAlign = 'center';
+      c.fillText('소화기', w / 2, 35);
+    });
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.11), t.material());
+    sg.position.set(x - dir * 0.21, this.baseY + 1.5, z);
+    sg.rotation.y = dir * Math.PI / 2;
+    this.root.add(sg);
+    this.colliders.push({ ...aabb(x, z, 0.26, 0.26), level: this.curLevel });
+  }
+
+  /** 층 표지판 (계단실 벽에 붙임: 큰 숫자 + 「층」) */
+  private floorPlate(n: string, x: number, y: number, z: number, ry: number, sub = '') {
+    const t = new CanvasTex(192, 192);
+    t.draw((c, w, h) => {
+      c.fillStyle = '#2c4a6b';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#fff';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.font = font(104, true);
+      c.fillText(n, w / 2 - 20, h / 2 - (sub ? 14 : 0));
+      c.font = font(44, true);
+      c.fillText('층', w / 2 + 50, h / 2 + 22 - (sub ? 14 : 0));
+      if (sub) {
+        c.font = font(24, true);
+        c.fillText(sub, w / 2, h - 26);
+      }
+    });
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), t.material());
+    m.position.set(x, this.baseY + y, z);
+    m.rotation.y = ry;
+    this.root.add(m);
+  }
+
+  /** 피난 안내도 (액자) */
+  private evacMap(x: number, y: number, z: number, ry: number, floor: number) {
+    const t = new CanvasTex(320, 230);
+    t.draw((c, w, h) => {
+      c.fillStyle = '#ffffff';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#1f9d55';
+      c.fillRect(0, 0, w, 38);
+      c.fillStyle = '#fff';
+      c.font = font(24, true);
+      c.textAlign = 'center';
+      c.fillText(`피난 안내도 (${floor}층)`, w / 2, 27);
+      c.strokeStyle = '#495057';
+      c.lineWidth = 3;
+      c.strokeRect(20, 60, w - 40, 130);
+      c.strokeRect(20, 105, w - 40, 40);
+      for (let i = 1; i < 6; i++) { c.beginPath(); c.moveTo(20 + i * 46, 60); c.lineTo(20 + i * 46, 105); c.stroke(); }
+      c.strokeStyle = '#2b8a3e';
+      c.lineWidth = 5;
+      c.beginPath(); c.moveTo(260, 125); c.lineTo(110, 125); c.lineTo(110, 175); c.stroke();
+      c.fillStyle = '#e03131';
+      c.beginPath(); c.arc(260, 125, 8, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#212529';
+      c.font = font(15);
+      c.fillText('● 현재 위치   ━ 대피 경로', w / 2, 215);
+    });
+    const fr = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.46, 0.02), paint(0xb8bec4, 0.35, 0.6));
+    fr.position.set(x, this.baseY + y, z);
+    fr.rotation.y = ry;
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.42), t.material());
+    m.position.set(x + Math.sin(ry) * 0.012, this.baseY + y, z + Math.cos(ry) * 0.012);
+    m.rotation.y = ry;
+    this.root.add(fr, m);
+  }
+
+  /** 창 아래 낮은 복도 책장 (복도 동쪽 창문 벽 앞, 학급 문고). x = 앞면 쪽 가운데 */
+  private windowShelf(x: number, z: number, len: number) {
+    const H = 0.8, D = 0.32, wood = pbr('oak', { color: 0xe6d2b3, roughness: 0.6 });
+    const xc = x + 0.16 - D / 2 + 0.06;
+    const g = new THREE.Group();
+    g.position.set(xc, this.baseY, z);
+    this.root.add(g);
+    const b = (w: number, h: number, d: number, m: THREE.Material, px: number, py: number, pz: number) => {
+      const mm = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+      mm.position.set(px, py + h / 2, pz);
+      mm.castShadow = mm.receiveShadow = true;
+      g.add(mm);
+    };
+    b(D, 0.022, len, wood, 0, H - 0.022, 0);
+    b(D - 0.02, 0.06, len, paint(0x8d8f91, 0.6), 0, 0, 0);
+    b(D, 0.022, len, wood, 0, 0.06, 0);
+    b(D, 0.022, len, wood, 0, 0.42, 0);
+    b(0.012, H, len, wood, D / 2 - 0.006, 0, 0);
+    const n = Math.round(len / 0.8);
+    for (let i = 0; i <= n; i++) b(D, H - 0.022, 0.022, wood, 0, 0, -len / 2 + 0.011 + (i * (len - 0.022)) / n);
+    const cols = [0x1d3557, 0xa61e4d, 0x2b8a3e, 0xe67700, 0x5f3dc4, 0x868e96, 0x0b7285, 0xf1f3f5];
+    let k = 0;
+    for (const sy of [0.082, 0.442])
+      for (let bz = -len / 2 + 0.05; bz < len / 2 - 0.08; ) {
+        const bw = 0.025 + ((k * 7) % 3) * 0.008, bh = 0.2 + ((k * 5) % 4) * 0.025;
+        if ((k * 11) % 9 === 0) bz += 0.07;
+        b(0.2, bh, bw, paint(cols[k % cols.length], 0.7), -0.03, sy, bz + bw / 2);
+        bz += bw + 0.003;
+        k++;
+      }
+    this.colliders.push({ ...aabb(xc, z, D, len), level: this.curLevel });
+  }
+
+  /** 1층 복도: 소화전함·소화기, 나무 벤치 + 게시판, 낮은 수납장, 교직원 우편함, 피난 안내도·안전 표지 */
+  private safetyFixtures1F() {
+    const ex = 11.0; // 동쪽 벽 복도 쪽 면
+    // 옥내 소화전함 (빨간 철문 + 「소화전」 글씨, 벽에 반쯤 묻힘)
+    {
+      const z = 6.4;
+      this.box(0.12, 1.25, 0.75, 0xc92a2a, ex - 0.02, 0.55, z, { ownMat: true }).material = paint(0xc92a2a, 0.35, 0.1);
+      const t = new CanvasTex(128, 64);
+      t.draw((c, w, h) => {
+        c.clearRect(0, 0, w, h);
+        c.fillStyle = '#ffffff';
+        c.font = font(34, true);
+        c.textAlign = 'center';
+        c.fillText('소화전', w / 2, 44);
+      });
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.21), new THREE.MeshBasicMaterial({ map: t.tex, transparent: true }));
+      m.position.set(ex - 0.085, this.baseY + 1.5, z);
+      m.rotation.y = -Math.PI / 2;
+      this.root.add(m);
+      this.box(0.03, 0.12, 0.04, 0xadb5bd, ex - 0.095, 1.05, z + 0.3).material = paint(0xadb5bd, 0.3, 0.8);
+      this.colliders.push({ ...aabb(ex - 0.02, z, 0.14, 0.75), level: 0 });
+    }
+    this.extinguisher(10.78, 9.0, -1);
+    this.extinguisher(7.42, -6.4, 1);
+    // 나무 벤치 + 위 게시판 (동쪽 벽, 교무실 맞은편)
+    {
+      const z = -1.4, len = 1.8, D = 0.4, x = ex - D / 2 - 0.02;
+      const seat = pbr('oak', { color: 0xd9bf98, roughness: 0.55 }), leg = paint(0x6c737a, 0.45, 0.5);
+      for (let i = 0; i < 3; i++) this.box(D / 3 - 0.012, 0.035, len, 0xd9bf98, x - D / 2 + (i + 0.5) * (D / 3), 0.42, z).material = seat;
+      for (const s2 of [-1, 1]) this.box(D - 0.04, 0.42, 0.05, 0x6c737a, x, 0, z + s2 * (len / 2 - 0.12)).material = leg;
+      this.colliders.push({ ...aabb(x, z, D, len), level: 0 });
+      const bb = new CanvasTex(512, 256);
+      bb.draw((c, w, h) => {
+        c.fillStyle = '#c69c6d';
+        c.fillRect(0, 0, w, h);
+        const notes: [string, string, string][] = [['#ffffff', '교직원 연수', '수요일 15:00 시청각실'], ['#fff3bf', '학부모 상담 주간', '다음 주 월~금'], ['#e7f5ff', '분리배출 안내', '종이·플라스틱·캔']];
+        notes.forEach(([bg, a2, b2], i) => {
+          const nx = 16 + i * 166;
+          c.fillStyle = 'rgba(0,0,0,0.18)';
+          c.fillRect(nx + 3, 25, 152, 200);
+          c.fillStyle = bg;
+          c.fillRect(nx, 22, 152, 200);
+          c.fillStyle = '#212529';
+          c.textAlign = 'center';
+          c.font = font(21, true);
+          c.fillText(a2, nx + 76, 62);
+          c.font = font(16);
+          c.fillText(b2, nx + 76, 92);
+          c.fillStyle = 'rgba(73,80,87,0.35)';
+          for (let k = 0; k < 5; k++) c.fillRect(nx + 14, 120 + k * 16, 124, 5);
+        });
+      });
+      this.box(0.03, 0.9, 1.8, 0xe6e9ec, ex - 0.015, 1.15, z).material = paint(0xe6e9ec, 0.32, 0.55);
+      this.plane(1.74, 0.84, bb.material(), ex - 0.032, 1.6, z, -Math.PI / 2);
+    }
+    // 낮은 수납장 (회색 철제 두 칸 문) + 교직원 우편함 (벽걸이 칸)
+    {
+      const z = 1.6, x = ex - 0.23;
+      this.box(0.45, 0.9, 1.6, 0xd5d9dd, x, 0, z, { collide: true }).material = paint(0xd5d9dd, 0.45, 0.35);
+      for (const dz of [-0.4, 0.4]) {
+        this.box(0.012, 0.8, 0.78, 0xe3e6e9, x - 0.226, 0.05, z + dz).material = paint(0xe3e6e9, 0.4, 0.3);
+        this.box(0.02, 0.12, 0.025, 0x868e96, x - 0.24, 0.6, z + dz - Math.sign(dz) * 0.32).material = paint(0x868e96, 0.3, 0.7);
+      }
+      // 우편함: 4 × 6 칸 나무 칸 + 이름표
+      const mz = z, my = 1.2;
+      this.box(0.25, 0.7, 1.3, 0xc7a27a, ex - 0.125, my, mz).material = pbr('oak', { color: 0xd9bf98, roughness: 0.6 });
+      const mt = new CanvasTex(384, 208);
+      mt.draw((c, w, h) => {
+        c.fillStyle = '#b08a62';
+        c.fillRect(0, 0, w, h);
+        for (let r = 0; r < 4; r++)
+          for (let k = 0; k < 6; k++) {
+            const cx = 6 + k * 63, cy = 6 + r * 50;
+            c.fillStyle = '#3b2f25';
+            c.fillRect(cx, cy, 57, 44);
+            c.fillStyle = '#f1f3f5';
+            c.fillRect(cx + 4, cy + 30, 49, 11);
+            if ((r * 6 + k) % 3 === 0) {
+              c.fillStyle = '#ffffff';
+              c.fillRect(cx + 8, cy + 4, 40, 22);
+            }
+          }
+      });
+      this.plane(1.26, 0.66, mt.material(), ex - 0.252, my + 0.35, mz, -Math.PI / 2);
+      const lab = new CanvasTex(256, 48);
+      lab.draw((c, w, h) => {
+        c.fillStyle = '#2c4a6b';
+        c.fillRect(0, 0, w, h);
+        c.fillStyle = '#fff';
+        c.font = font(28, true);
+        c.textAlign = 'center';
+        c.fillText('교직원 우편함', w / 2, 34);
+      });
+      this.plane(0.6, 0.11, lab.material(), ex - 0.252, my + 0.79, mz, -Math.PI / 2);
+    }
+    // 피난 안내도 (현관 맞은편 계단 옆 벽) · 복도 우측 통행 표지
+    this.evacMap(7.215, 1.55, -6.8, Math.PI / 2, 1);
+    const kr = new CanvasTex(256, 96);
+    kr.draw((c, w, h) => {
+      c.fillStyle = '#ffffff';
+      c.fillRect(0, 0, w, h);
+      c.strokeStyle = '#1c7ed6';
+      c.lineWidth = 6;
+      c.strokeRect(3, 3, w - 6, h - 6);
+      c.fillStyle = '#1c7ed6';
+      c.font = font(30, true);
+      c.textAlign = 'center';
+      c.fillText('복도에서는', w / 2, 40);
+      c.fillText('천천히 우측 통행', w / 2, 76);
+    });
+    this.plane(0.6, 0.225, kr.material(), ex - 0.012, 1.7, 11.0, -Math.PI / 2);
   }
 
   /** 3층 가는 방화문 (2층 계단실 남쪽 절반 입구): 회색 철문 두 짝, 손잡이, 그물 유리창, 도어클로저, 안내판. 늘 닫혀 있다 */
@@ -1571,16 +1908,62 @@ export class SchoolMap {
     part(0.24, 0.08, w, frame, 0, 2.14, 0);
     for (const s of [-1, 1]) part(0.24, 2.18, 0.07, frame, 0, 1.09, s * (w / 2 - 0.035));
     const lw = (w - 0.14) / 2;
+    // 그물 유리 (철망 무늬)
+    const wire = new CanvasTex(64, 64);
+    wire.draw((c, cw, ch) => {
+      c.fillStyle = '#b9c7cf';
+      c.fillRect(0, 0, cw, ch);
+      c.strokeStyle = 'rgba(70,80,88,0.7)';
+      c.lineWidth = 1.5;
+      for (let i = 0; i <= cw; i += 8) {
+        c.beginPath(); c.moveTo(i, 0); c.lineTo(i, ch); c.stroke();
+        c.beginPath(); c.moveTo(0, i); c.lineTo(cw, i); c.stroke();
+      }
+    });
+    wire.tex.wrapS = wire.tex.wrapT = THREE.RepeatWrapping;
+    wire.tex.repeat.set(2, 4);
+    const wireM = new THREE.MeshStandardMaterial({ map: wire.tex, roughness: 0.15, metalness: 0.1 });
     for (const s of [-1, 1]) {
-      const leaf = part(0.06, 2.06, lw - 0.01, steel, 0, 1.05, s * (lw / 2 + 0.005));
+      const zc2 = s * (lw / 2 + 0.005);
+      const leaf = part(0.06, 2.06, lw - 0.01, steel, 0, 1.05, zc2);
       this.cameraBlockers.push(leaf);
-      // 그물 유리창 (위쪽 작은 창)
-      part(0.07, 0.42, 0.22, dark, 0, 1.55, s * (lw / 2 + 0.005));
-      // 손잡이 (가운데 쪽 세로 레버)
-      part(0.05, 0.22, 0.03, paint(0xd9dde0, 0.25, 0.85), 0.06, 1.0, s * 0.09);
-      // 도어클로저 (위)
-      part(0.07, 0.06, 0.28, dark, 0.06, 1.98, s * (lw / 2));
+      // 세로로 긴 그물 유리창 (양면)
+      for (const sx of [-1, 1]) {
+        const gp = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.6), wireM);
+        gp.position.set(sx * 0.031, 1.45, zc2 - s * 0.12);
+        gp.rotation.y = sx > 0 ? Math.PI / 2 : -Math.PI / 2;
+        g.add(gp);
+        part(0.006, 0.66, 0.26, frame, sx * 0.031, 1.45, zc2 - s * 0.12).scale.set(1, 1, 1);
+      }
+      // 패닉바 (가로 누름 손잡이, 복도 쪽) + 받침
+      part(0.04, 0.05, lw - 0.25, paint(0xd9dde0, 0.25, 0.85), 0.07, 1.0, zc2);
+      for (const e of [-1, 1]) part(0.06, 0.08, 0.04, dark, 0.05, 1.0, zc2 + e * (lw / 2 - 0.14));
+      // 도어클로저 + 팔
+      part(0.07, 0.06, 0.3, dark, 0.06, 1.98, zc2);
+      part(0.03, 0.02, 0.28, dark, 0.09, 1.95, zc2 - s * 0.14);
     }
+    // 위 비상구 유도등 (초록 피난구 표시)
+    const ex = new CanvasTex(128, 64);
+    ex.draw((c, cw, ch) => {
+      c.fillStyle = '#1f9d55';
+      c.fillRect(0, 0, cw, ch);
+      c.fillStyle = '#ffffff';
+      c.fillRect(cw - 38, 10, 26, 44);
+      c.fillStyle = '#1f9d55';
+      c.fillRect(cw - 34, 14, 18, 40);
+      c.fillStyle = '#ffffff';
+      c.beginPath(); c.arc(42, 16, 7, 0, Math.PI * 2); c.fill();
+      c.fillRect(34, 24, 14, 18);
+      c.fillRect(30, 40, 6, 16); c.fillRect(46, 40, 6, 14);
+      c.fillRect(48, 26, 22, 5);
+    });
+    const exit = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.16, 0.34), paint(0xf1f3f5, 0.5));
+    exit.position.set(0.13, 2.32, w / 2 - 0.35);
+    g.add(exit);
+    const exf = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.14), new THREE.MeshBasicMaterial({ map: ex.tex, toneMapped: false }));
+    exf.position.set(0.161, 2.32, w / 2 - 0.35);
+    exf.rotation.y = Math.PI / 2;
+    g.add(exf);
     part(0.07, 2.06, 0.012, dark, 0, 1.05, 0); // 두 짝 사이 틈
     // 문 위 벽 + 안내판
     this.box(0.2, WALL_H - 2.18, w, C.wall, 7.1, 2.18, zc, { wall: true, shadow: false });
@@ -1667,9 +2050,11 @@ export class SchoolMap {
 
     // 우리 반 앞쪽 칠판 아래 수납장 충돌 상자 (모습은 ClassroomHQ)
     this.colliders.push({ ...aabb(0, ROOM.z0 + 0.21, 7.4, 0.42), level: 1 });
-    // 복도: 소화기, 게시물
-    this.box(0.18, 0.5, 0.18, 0xd62828, 7.35, 0, 1.2, { shadow: false });
-    this.box(0.18, 0.5, 0.18, 0xd62828, 10.85, 0, -7.3, { shadow: false });
+    // 복도: 소화기(받침대), 층 표지, 피난 안내도, 창 아래 낮은 책장
+    this.extinguisher(7.42, 1.2, 1);
+    this.extinguisher(10.78, -7.3, -1);
+    this.windowShelf(10.78, -3.0, 2.0);
+    this.windowShelf(10.78, 10.6, 2.4);
   }
 
   /**
@@ -1710,7 +2095,8 @@ export class SchoolMap {
     this.frostedRoomFace(OFFICE.z0, OFFICE.z1, [OFFICE.doorZ]);
     this.frostedRoomFace(OFFICE.z1 + 0.2, 16.0, [6.6, 9.6, 15.0]);
     // 계단 입구 안내 (2단 밑 벽)
-    this.sign('계단 ▲ 2층', 7.22, 2.3, (S.zN0 + S.zN1) / 2, Math.PI / 2, '#457b9d');
+    this.sign('2층 ▲', 7.215, 2.35, (S.zN0 + S.zN1) / 2, Math.PI / 2);
+    this.safetyFixtures1F();
     // ── 동쪽(현관 쪽) 벽: 화장실·엘리베이터 | 현관 | 화장실 ──
     this.wallX(11.1, -16.1, LOBBY.z0);
     this.wallX(11.1, LOBBY.z1, 16.1);
@@ -1824,49 +2210,194 @@ export class SchoolMap {
       const p = flat(2.2, 1.1, zm, x, z, 0.023);
       p.rotation.z = r;
     }
-    // 신호등 (보행자 초록불) 두 개 + 어린이 보호구역 표지판
-    const pole = paint(0x6c757d, 0.4, 0.6);
-    for (const [x, z, face] of [[27.4, gz + 2.0, Math.PI / 2], [34.0, gz - 2.0, -Math.PI / 2]] as [number, number, number][]) {
-      solid(0.09, 2.6, 0.09, pole, x, 0, z);
-      const box = solid(0.3, 0.6, 0.25, paint(0x2b2f33, 0.5), x, 2.0, z);
-      void box;
-      const lit = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.2), new THREE.MeshStandardMaterial({ color: 0x37b24d, emissive: 0x2fbf4f, emissiveIntensity: 1.6 }));
-      lit.position.set(x + Math.sin(face) * 0.13, Y + 2.15, z + Math.cos(face) * 0.13);
-      lit.rotation.y = face;
-      this.root.add(lit);
+    // 보행자 신호등 두 개: 회색 기둥 + 검은 함 (위 빨간 사람 꺼짐 / 아래 초록 사람 켜짐) + 차양
+    const pole = paint(0x8a9096, 0.45, 0.55);
+    const pedTex = (green: boolean) => {
+      const t = new CanvasTex(64, 64);
+      t.draw((c, w, h) => {
+        c.fillStyle = '#111';
+        c.fillRect(0, 0, w, h);
+        c.fillStyle = green ? '#3cff7a' : '#5a1a1a';
+        c.beginPath();
+        c.arc(w / 2, 14, 6, 0, Math.PI * 2);
+        c.fill();
+        if (green) {
+          // 걷는 사람
+          c.fillRect(w / 2 - 5, 21, 10, 18);
+          c.beginPath();
+          c.moveTo(w / 2 - 4, 38); c.lineTo(w / 2 - 12, 56); c.lineTo(w / 2 - 6, 57); c.lineTo(w / 2 + 1, 41);
+          c.moveTo(w / 2 + 2, 38); c.lineTo(w / 2 + 12, 55); c.lineTo(w / 2 + 6, 57); c.lineTo(w / 2 - 2, 41);
+          c.fill();
+        } else {
+          c.fillRect(w / 2 - 6, 21, 12, 20);
+          c.fillRect(w / 2 - 6, 40, 5, 17);
+          c.fillRect(w / 2 + 1, 40, 5, 17);
+        }
+      });
+      return green ? new THREE.MeshBasicMaterial({ map: t.tex, toneMapped: false }) : t.material();
+    };
+    const redM = pedTex(false), greenM = pedTex(true);
+    for (const [x, z, face] of [[27.35, gz + 2.1, Math.PI / 2], [34.05, gz - 2.1, -Math.PI / 2]] as [number, number, number][]) {
+      const pc = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 2.9, 12), pole);
+      pc.position.set(x, Y + 1.45, z);
+      pc.castShadow = true;
+      this.root.add(pc);
+      const head = new THREE.Group();
+      head.position.set(x, Y + 2.25, z);
+      head.rotation.y = face;
+      this.root.add(head);
+      const housing = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.74, 0.22), paint(0x22252a, 0.55));
+      housing.position.z = 0.15;
+      housing.castShadow = true;
+      head.add(housing);
+      for (const [dy, m] of [[0.17, redM], [-0.17, greenM]] as [number, THREE.Material][]) {
+        const lens = new THREE.Mesh(new THREE.PlaneGeometry(0.27, 0.3), m);
+        lens.position.set(0, dy, 0.262);
+        const visor = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.02, 0.12), paint(0x22252a, 0.55));
+        visor.position.set(0, dy + 0.16, 0.32);
+        head.add(lens, visor);
+      }
+      // 보행 버튼함 (기둥 허리)
+      const btn = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.08), paint(0xf2c230, 0.5));
+      btn.position.set(0, -1.15, 0.1);
+      head.add(btn);
       this.colliders.push({ ...aabb(x, z, 0.2, 0.2), level: 0 });
     }
-    const sign = new CanvasTex(256, 256);
-    sign.draw((c, w, h) => {
-      c.fillStyle = '#ffffff';
-      c.fillRect(0, 0, w, h);
+    // 어린이 보호구역 표지 (주의 표지 삼각형 + 아래 보조판) + 제한속도 30
+    const caution = new CanvasTex(256, 256);
+    caution.draw((c, w, h) => {
+      c.clearRect(0, 0, w, h);
+      c.fillStyle = '#c92a2a';
+      c.beginPath();
+      c.moveTo(w / 2, 8); c.lineTo(w - 6, h - 26); c.lineTo(6, h - 26); c.closePath();
+      c.fill();
       c.fillStyle = '#ffd43b';
       c.beginPath();
-      c.moveTo(w / 2, 18);
-      c.lineTo(w - 18, h - 70);
-      c.lineTo(18, h - 70);
-      c.closePath();
+      c.moveTo(w / 2, 42); c.lineTo(w - 38, h - 44); c.lineTo(38, h - 44); c.closePath();
       c.fill();
-      c.strokeStyle = '#c92a2a';
-      c.lineWidth = 12;
-      c.stroke();
-      c.fillStyle = '#212529';
-      c.font = font(30, true);
-      c.textAlign = 'center';
-      c.fillText('어린이 보호구역', w / 2, h - 28);
+      // 손잡고 걷는 두 아이 (실루엣)
+      c.fillStyle = '#1b1b1b';
+      for (const [cx, s2] of [[w / 2 - 22, 1], [w / 2 + 22, 0.85]] as [number, number][]) {
+        c.beginPath();
+        c.arc(cx, 112 + (1 - s2) * 30, 10 * s2, 0, Math.PI * 2);
+        c.fill();
+        c.fillRect(cx - 9 * s2, 126 + (1 - s2) * 26, 18 * s2, 36 * s2);
+        c.fillRect(cx - 8 * s2, 160 + (1 - s2) * 20, 6 * s2, 30 * s2);
+        c.fillRect(cx + 2 * s2, 160 + (1 - s2) * 20, 6 * s2, 30 * s2);
+      }
+      c.fillRect(w / 2 - 14, 138, 28, 5);
     });
-    solid(0.07, 2.4, 0.07, pole, 35.9, 0, gz + 2.0);
-    const sm = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), sign.material());
-    sm.position.set(35.86, Y + 2.15, gz + 2.0);
-    sm.rotation.y = -Math.PI / 2;
-    this.root.add(sm);
-    // 노란 보행자 울타리 (학교 쪽 보도, 횡단보도 밖)
-    const fence = paint(0xf2c230, 0.5, 0.2);
-    for (const s of [-1, 1]) {
-      const zc = gz + s * 8.5;
-      solid(0.05, 0.06, 12.6, fence, 27.45, 0.95, zc);
-      solid(0.05, 0.06, 12.6, fence, 27.45, 0.45, zc);
-      for (let i = 0; i <= 6; i++) solid(0.06, 1.0, 0.06, fence, 27.45, 0, zc - 6.3 + i * 2.1);
+    const plateT = new CanvasTex(256, 72);
+    plateT.draw((c, w, h) => {
+      c.fillStyle = '#ffffff';
+      c.fillRect(0, 0, w, h);
+      c.strokeStyle = '#212529';
+      c.lineWidth = 4;
+      c.strokeRect(3, 3, w - 6, h - 6);
+      c.fillStyle = '#212529';
+      c.font = font(36, true);
+      c.textAlign = 'center';
+      c.fillText('어린이보호구역', w / 2, 49);
+    });
+    const speedT = new CanvasTex(128, 128);
+    speedT.draw((c, w, h) => {
+      c.clearRect(0, 0, w, h);
+      c.fillStyle = '#ffffff';
+      c.beginPath();
+      c.arc(w / 2, h / 2, 62, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = '#d62828';
+      c.lineWidth = 13;
+      c.beginPath();
+      c.arc(w / 2, h / 2, 54, 0, Math.PI * 2);
+      c.stroke();
+      c.fillStyle = '#111';
+      c.font = font(54, true);
+      c.textAlign = 'center';
+      c.fillText('30', w / 2, h / 2 + 19);
+    });
+    const signPost = (x: number, z: number, ry: number) => {
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 2.9, 10), pole);
+      p.position.set(x, Y + 1.45, z);
+      this.root.add(p);
+      const face = (w: number, h: number, m: THREE.Material, y: number) => {
+        const s2 = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
+        s2.position.set(x + Math.sin(ry) * 0.045, Y + y, z + Math.cos(ry) * 0.045);
+        s2.rotation.y = ry;
+        this.root.add(s2);
+        const back = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.95, h * 0.95), paint(0x9aa0a6, 0.5, 0.5));
+        back.position.set(x + Math.sin(ry) * 0.04, Y + y, z + Math.cos(ry) * 0.04);
+        back.rotation.y = ry + Math.PI;
+        this.root.add(back);
+      };
+      face(0.66, 0.66, new THREE.MeshStandardMaterial({ map: caution.tex, transparent: true, alphaTest: 0.5, roughness: 0.5 }), 2.5);
+      face(0.66, 0.19, plateT.material(), 2.08);
+      face(0.5, 0.5, new THREE.MeshStandardMaterial({ map: speedT.tex, transparent: true, alphaTest: 0.5, roughness: 0.5 }), 1.62);
+    };
+    signPost(35.95, gz + 2.3, -Math.PI / 2);
+    signPost(27.2, gz - 5.5, Math.PI / 2);
+    // 보행자 방호 울타리 (학교 쪽 보도, 횡단보도 밖): 노란 기둥 + 위·아래 가로대 + 세로 살 판
+    const barT = new CanvasTex(128, 64);
+    barT.draw((c, w, h) => {
+      c.clearRect(0, 0, w, h);
+      c.fillStyle = '#e0b22c';
+      for (let x = 4; x < w; x += 16) c.fillRect(x, 0, 5, h);
+    });
+    barT.tex.wrapS = THREE.RepeatWrapping;
+    const fence = paint(0xe0b22c, 0.55, 0.3);
+    const barM = new THREE.MeshStandardMaterial({ map: barT.tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.55 });
+    for (const [fx, zc] of [[27.45, gz - 8.4], [27.45, gz + 8.4], [33.85, gz - 8.4], [33.85, gz + 8.4]] as [number, number][]) {
+      const L2 = 12.2;
+      solid(0.05, 0.05, L2, fence, fx, 0.95, zc);
+      solid(0.04, 0.04, L2, fence, fx, 0.2, zc);
+      const t = barT.tex.clone();
+      t.needsUpdate = true;
+      t.repeat.set(L2 / 0.16 / 8, 1);
+      const pm2 = barM.clone();
+      pm2.map = t;
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(L2, 0.73), pm2);
+      panel.position.set(fx, Y + 0.585, zc);
+      panel.rotation.y = Math.PI / 2;
+      this.root.add(panel);
+      for (let i = 0; i <= 6; i++) solid(0.07, 1.02, 0.07, fence, fx, 0, zc - L2 / 2 + (i * L2) / 6);
+    }
+    // 볼라드 (횡단보도 양쪽 보도 끝): 회색 철제 + 노란 반사띠
+    const bollM = paint(0x9aa0a6, 0.4, 0.6), refl = paint(0xf2c230, 0.35);
+    for (const bx of [27.4, 33.95])
+      for (const dz of [-1.5, -0.5, 0.5, 1.5]) {
+        const bz = gz + dz;
+        if ((bx < 30 && dz > 1) || (bx > 30 && dz < -1)) continue; // 신호등 자리
+        const b = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.8, 14), bollM);
+        b.position.set(bx, Y + 0.4, bz);
+        b.castShadow = true;
+        const r2 = new THREE.Mesh(new THREE.CylinderGeometry(0.073, 0.073, 0.07, 14), refl);
+        r2.position.set(bx, Y + 0.66, bz);
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.07, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), bollM);
+        cap.position.set(bx, Y + 0.8, bz);
+        this.root.add(b, r2, cap);
+      }
+    // 학교 담장 (교문 양옆): 화강석 낮은 담 + 짙은 회색 철제 울타리
+    const barT2 = new CanvasTex(128, 64);
+    barT2.draw((c, w, h) => {
+      c.clearRect(0, 0, w, h);
+      c.fillStyle = '#3d4146';
+      for (let x = 4; x < w; x += 16) c.fillRect(x, 0, 4, h);
+    });
+    barT2.tex.wrapS = THREE.RepeatWrapping;
+    for (const s2 of [-1, 1]) {
+      const za = gz + s2 * 2.65, zb = gz + s2 * 26, zc = (za + zb) / 2, L2 = Math.abs(zb - za);
+      solid(0.32, 0.55, L2, stone, 25.3, 0, zc);
+      solid(0.36, 0.06, L2, paint(0x8d8a83, 0.7), 25.3, 0.55, zc);
+      const t = barT2.tex.clone();
+      t.needsUpdate = true;
+      t.repeat.set(L2 / 0.12 / 8, 1);
+      const fm = new THREE.Mesh(new THREE.PlaneGeometry(L2, 1.0), new THREE.MeshStandardMaterial({ map: t, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5 }));
+      fm.position.set(25.3, Y + 1.13, zc);
+      fm.rotation.y = Math.PI / 2;
+      this.root.add(fm);
+      solid(0.05, 0.05, L2, dark, 25.3, 1.6, zc);
+      solid(0.04, 0.04, L2, dark, 25.3, 0.68, zc);
+      for (let z2 = Math.min(za, zb) + 0.02; z2 <= Math.max(za, zb); z2 += 2.4) solid(0.07, 1.1, 0.07, dark, 25.3, 0.58, z2);
     }
     // 걸을 수 있는 길 둘레 (교문 ~ 건너편 보도)
     const x0 = 24.6, x1 = 36.6, xc = (x0 + x1) / 2;
@@ -1921,8 +2452,9 @@ export class SchoolMap {
     // 외벽: 크림색 뿜칠 + 회색 화강석 받침·층 띠·두겁 (벽돌은 현관 동에만 포인트로 — EntranceBuilder)
     const stucco = stuccoMat(), stone = plinthMat();
     const H = -FLOOR1_Y + WALL_H + 0.3;
-    const facade = (w: number, x: number, z: number, ry: number, y0 = FLOOR1_Y, h = H) => {
-      const m = new THREE.Mesh(worldUV(new THREE.PlaneGeometry(w, h), w, h, 0, TILE_EXT.stucco), stucco);
+    const brick = brickMat();
+    const facade = (w: number, x: number, z: number, ry: number, y0 = FLOOR1_Y, h = H, mat: THREE.Material = stucco) => {
+      const m = new THREE.Mesh(worldUV(new THREE.PlaneGeometry(w, h), w, h, 0, mat === brick ? TILE_EXT.brick : TILE_EXT.stucco), mat);
       m.position.set(x, y0 + h / 2, z);
       m.rotation.y = ry;
       this.root.add(m);
@@ -1938,8 +2470,9 @@ export class SchoolMap {
     };
     // 동쪽 정면 (현관 쪽). 1층 현관 동(LOBBY z) 자리는 비운다 (현관 동 벽이 대신)
     const sW = LOBBY.z0 + 16.2, sC = (-16.2 + LOBBY.z0) / 2, nW = 16.2 - LOBBY.z1, nC = (LOBBY.z1 + 16.2) / 2;
-    facade(sW, 15.02, sC, Math.PI / 2, FLOOR1_Y, -FLOOR1_Y);
-    facade(nW, 15.02, nC, Math.PI / 2, FLOOR1_Y, -FLOOR1_Y);
+    // 1층은 적갈색 벽돌, 2·3층은 밝은 뿜칠 (한국 학교에 흔한 벽돌 + 콘크리트 조합)
+    facade(sW, 15.02, sC, Math.PI / 2, FLOOR1_Y, -FLOOR1_Y, brick);
+    facade(nW, 15.02, nC, Math.PI / 2, FLOOR1_Y, -FLOOR1_Y, brick);
     // 2층: 화장실·엘리베이터 칸(z -16.2~-5.4, 현관 위 포함)과 방송실(2.5~6.5)만 벽, 나머지는 1층 지붕(옥상)
     facade(10.8, 15.02, -10.8, Math.PI / 2, 0, H + FLOOR1_Y);
     facade(4.0, 15.02, 4.5, Math.PI / 2, 0, H + FLOOR1_Y);
@@ -1994,18 +2527,14 @@ export class SchoolMap {
     this.root.add(north);
     facade(11.0, 15.12, 21.6, Math.PI / 2);
     // 창밖 풍경: 나무 줄 + 아파트 단지 (운동장 사진처럼)
-    const trunkMat = paint(0x6b4f3a, 0.9);
-    const leafMats = [paint(0x4f8a3c, 0.85), paint(0x5f9e45, 0.85), paint(0x3f7a35, 0.85)];
+    // 담장 안쪽 조경수 줄: 느티나무·소나무 섞어서 (교문 길은 비움)
     for (let i = 0; i < 14; i++) {
       const z = -26 + i * 4.1 + ((i * 37) % 7) * 0.2;
-      const x = 24 + ((i * 53) % 5) * 0.6;
-      if (Math.abs(z - GATE_Z) < 3.2) continue; // 교문 길은 비워 둔다 (등교 길·카메라)
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 2.2, 8), trunkMat);
-      trunk.position.set(x, FLOOR1_Y + 1.1, z);
-      const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(1.5 + ((i * 13) % 4) * 0.2, 1), leafMats[i % 3]);
-      crown.position.set(x, FLOOR1_Y + 3.3, z);
-      crown.scale.y = 1.25;
-      this.root.add(trunk, crown);
+      const x = 23.6 + ((i * 53) % 5) * 0.35;
+      if (Math.abs(z - GATE_Z) < 3.4) continue; // 교문 길은 비워 둔다 (등교 길·카메라)
+      const t = makeTree(i % 3 === 1 ? 'pine' : 'zelkova', i + 3, 0.95 + ((i * 7) % 4) * 0.06);
+      t.position.set(x, FLOOR1_Y, z);
+      this.root.add(t);
     }
     const apt = new CanvasTex(128, 256);
     apt.draw((c, w, h) => {

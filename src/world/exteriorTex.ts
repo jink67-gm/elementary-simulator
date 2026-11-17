@@ -2,7 +2,7 @@
 // 무늬는 「미터당」 크기로 그려서 worldUV(geo, w, h, d, TILE_EXT.xxx)와 함께 쓴다. 같은 재질을 여러 곳이 나눠 써서 합치기 좋다.
 import * as THREE from 'three';
 
-export const TILE_EXT = { stucco: 3, brick: 1.2, granite: 1.2, paver: 1.0, soil: 2, granitePlinth: 1.8, grass: 2.5 };
+export const TILE_EXT = { stucco: 3, brick: 1.2, granite: 1.2, paver: 1.0, soil: 2, granitePlinth: 1.8, grass: 2.5, concrete: 1.8 };
 
 function canvasTex(size: number, draw: (c: CanvasRenderingContext2D, s: number) => void, srgb = true) {
   const cv = document.createElement('canvas');
@@ -145,4 +145,47 @@ export const grassMat = () =>
       speckle(c, s, 6000, ['#5c8a3c', '#83ad5a', '#4f7c34', '#94b866'], 2.5, 29);
     });
     return new THREE.MeshStandardMaterial({ map, roughness: 0.95 });
+  });
+
+/** 잎 무늬 (잎 덩어리·생울타리): 잔 점이 많은 짙은 초록. tone별로 색만 다르다 */
+export const foliageMat = (tone: 'deep' | 'mid' | 'light' | 'pine' | 'box' = 'mid') =>
+  mat('foliage_' + tone, () => {
+    const base = { deep: '#3d6a31', mid: '#4f7d3a', light: '#62904a', pine: '#2f5a33', box: '#44713a' }[tone];
+    const map = canvasTex(128, (c, s) => {
+      c.fillStyle = base;
+      c.fillRect(0, 0, s, s);
+      speckle(c, s, 2200, ['#2c4f24', '#6f9c52', '#365f2c', '#7fae5c', '#25421f'], 3, tone.length * 11);
+    });
+    return new THREE.MeshStandardMaterial({ map, roughness: 0.95, flatShading: true });
+  });
+
+/** 나무껍질 */
+export const barkMat = (pine = false) =>
+  mat(pine ? 'barkPine' : 'bark', () => {
+    const map = canvasTex(64, (c, s) => {
+      c.fillStyle = pine ? '#7a4f37' : '#6b5a4a';
+      c.fillRect(0, 0, s, s);
+      speckle(c, s, 600, pine ? ['#5a3726', '#94654a', '#3f281c'] : ['#4f4236', '#857262', '#3b3129'], 3, 5);
+    });
+    return new THREE.MeshStandardMaterial({ map, roughness: 1 });
+  });
+
+/** 노출 콘크리트 (밝은 회색, 1.8m 판 줄눈 + 폼타이 구멍) */
+export const concreteMat = () =>
+  mat('concrete', () => {
+    const map = canvasTex(256, (c, s) => {
+      c.fillStyle = '#c9c8c3';
+      c.fillRect(0, 0, s, s);
+      speckle(c, s, 3000, ['#b9b8b2', '#d6d5d0', '#adaba5'], 2, 41);
+      c.fillStyle = 'rgba(110,110,105,0.35)';
+      c.fillRect(0, s - 2, s, 2);
+      c.fillRect(s - 2, 0, 2, s);
+      c.fillStyle = 'rgba(90,90,85,0.45)';
+      for (const [x, y] of [[0.25, 0.25], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]]) {
+        c.beginPath();
+        c.arc(x * s, y * s, 2.5, 0, Math.PI * 2);
+        c.fill();
+      }
+    });
+    return new THREE.MeshStandardMaterial({ map, roughness: 0.9 });
   });

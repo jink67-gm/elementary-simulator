@@ -10,7 +10,8 @@ import { LOBBY_SRC as LOBBY } from './FirstFloorHQ';
 import { FLOOR1_Y, STOREY } from './rooms';
 import { paint, worldUV } from './pbr';
 import { SCHOOL_MOTTO, SCHOOL_NAME } from '../data/school';
-import { TILE_EXT, brickMat, graniteMat, grassMat, paverMat, plinthMat, soilMat, stuccoMat } from './exteriorTex';
+import { TILE_EXT, brickMat, concreteMat, graniteMat, grassMat, paverMat, plinthMat, soilMat, stuccoMat } from './exteriorTex';
+import { makeHedge, makeTree } from './landscape';
 import { FONT } from './canvasTex';
 
 const L = LOBBY;
@@ -32,7 +33,6 @@ function rng(seed: number) {
 
 export class EntranceBuilder extends HQBuilder {
   private doorGlass = new THREE.MeshStandardMaterial({ color: 0xc6e0ec, transparent: true, opacity: 0.24, roughness: 0.04, metalness: 0.15, envMapIntensity: 1.5, depthWrite: false });
-  private leafMats = [paint(0x4f7f3d, 0.85), paint(0x5f9447, 0.85), paint(0x3f6e33, 0.85), paint(0x6d9e4f, 0.85)];
 
   build() {
     this.y = FLOOR1_Y;
@@ -93,7 +93,7 @@ export class EntranceBuilder extends HQBuilder {
     const handleM = paint(0x8a3b2a, 0.45);
     const film = this.filmTexture();
     const fw = 0.07, DH = 2.2, TOP = 2.66;
-    const filmY0 = 0.22, filmY1 = 1.08;
+    const filmY0 = 1.12, filmY1 = 1.42; // 눈높이 안전 띠
     // 세로 틀
     for (const z of [SHOP_Z0, -3.425, L.doorZ0, L.doorZ1, SHOP_Z1]) this.box(fw, TOP, fw + 0.02, st, x, 0, z);
     // 문 위 가로 틀 + 맨 위 틀 + 초록 채광창
@@ -168,68 +168,17 @@ export class EntranceBuilder extends HQBuilder {
   private filmTexture(): THREE.Material {
     const t = new CanvasTex(2048, 372);
     t.draw((c, w, h) => {
-      c.fillStyle = 'rgba(255,255,255,0.93)';
+      // 반투명 흰 시트 (안전 표시 띠) + 가는 회색 줄 + 작은 학교 이름
+      c.fillStyle = 'rgba(245,246,244,0.82)';
       c.fillRect(0, 0, w, h);
-      // 주황 물결 띠
-      c.strokeStyle = '#f39a2b';
-      c.lineWidth = 34;
-      c.lineCap = 'round';
-      c.beginPath();
-      c.moveTo(-20, 60);
-      for (let x = 0; x <= w + 40; x += 20) c.lineTo(x, 70 + Math.sin(x / 190) * 38);
-      c.stroke();
-      // 초록 언덕
-      c.fillStyle = '#8fd16a';
-      c.beginPath();
-      c.moveTo(0, h);
-      for (let x = 0; x <= w; x += 16) c.lineTo(x, h - 70 - Math.sin(x / 140) * 22 - Math.sin(x / 57) * 8);
-      c.lineTo(w, h);
-      c.fill();
-      c.fillStyle = '#6cbf4c';
-      c.beginPath();
-      c.moveTo(0, h);
-      for (let x = 0; x <= w; x += 16) c.lineTo(x, h - 38 - Math.sin(x / 90 + 1) * 14);
-      c.lineTo(w, h);
-      c.fill();
-      // 병아리·꽃·나비
-      let r = 3;
-      const rnd = () => ((r = (r * 16807) % 2147483647) / 2147483647);
-      for (let i = 0; i < 18; i++) {
-        const x = 60 + i * 110 + rnd() * 40, y = h - 110 - rnd() * 60;
-        if (i % 3 === 0) {
-          c.fillStyle = '#ffd43b';
-          c.beginPath();
-          c.arc(x, y, 18, 0, Math.PI * 2);
-          c.arc(x + 14, y - 16, 11, 0, Math.PI * 2);
-          c.fill();
-          c.fillStyle = '#f08c00';
-          c.fillRect(x + 23, y - 18, 8, 4);
-        } else if (i % 3 === 1) {
-          c.fillStyle = ['#ff8fab', '#ffffff', '#b197fc'][i % 3];
-          for (let k = 0; k < 5; k++) {
-            c.beginPath();
-            c.arc(x + Math.cos((k * Math.PI * 2) / 5) * 10, y + 30 + Math.sin((k * Math.PI * 2) / 5) * 10, 8, 0, Math.PI * 2);
-            c.fill();
-          }
-          c.fillStyle = '#ffd43b';
-          c.beginPath();
-          c.arc(x, y + 30, 6, 0, Math.PI * 2);
-          c.fill();
-        } else {
-          c.fillStyle = '#74c0fc';
-          c.beginPath();
-          c.ellipse(x - 9, y - 40, 11, 7, -0.5, 0, Math.PI * 2);
-          c.ellipse(x + 9, y - 40, 11, 7, 0.5, 0, Math.PI * 2);
-          c.fill();
-        }
-      }
-      // 작은 학교 이름 (띠 위)
-      c.fillStyle = '#e8590c';
-      c.font = `800 44px ${FONT}`;
+      c.fillStyle = 'rgba(120,128,135,0.9)';
+      c.fillRect(0, 96, w, 10);
+      c.fillRect(0, h - 40, w, 6);
+      c.fillStyle = '#5c6670';
+      c.font = `700 40px ${FONT}`;
       c.textAlign = 'left';
       c.textBaseline = 'middle';
-      c.fillText(SCHOOL_NAME, 70, 150);
-      c.fillText('Elementary School', w - 520, 150);
+      for (let x = 60; x < w; x += 700) c.fillText(SCHOOL_NAME, x, 52);
     });
     const m = new THREE.MeshBasicMaterial({ map: t.tex, transparent: true, toneMapped: false, side: THREE.FrontSide });
     return m;
@@ -249,74 +198,54 @@ export class EntranceBuilder extends HQBuilder {
     this.add(this.filmGeo(w, y1 - y0, zc), m, x, (y0 + y1) / 2, zc, { cast: false, receive: false, ry: Math.PI / 2 });
   }
 
-  // ───────── 캐노피: 깊고 두꺼운 슬래브 + 흰 천장(형광등) + 초록 간판 띠 + 타일 원기둥 ─────────
+  // ───────── 캐노피: 얇은 콘크리트 슬래브 + 흰 천장(매립등) + 화강석 마감 네모 기둥 + 금속 입체 글자 간판 ─────────
   private canopy() {
     const C = CANOPY, w = C.x1 - C.x0, d = C.z1 - C.z0, xc = (C.x0 + C.x1) / 2, zc = (C.z0 + C.z1) / 2;
-    const slab = this.box(w, C.top - C.bottom, d, paint(0xe9e5dc, 0.85), xc, C.bottom, zc);
+    const conc = concreteMat();
+    const slab = this.box(w, C.top - C.bottom, d, conc, xc, C.bottom, zc, true, TILE_EXT.concrete);
     this.blockers.push(slab);
-    // 천장판 + 형광등
-    const soffit = this.add(new THREE.PlaneGeometry(w - 0.1, d - 0.1), paint(0xf6f4ee, 0.9), xc, C.bottom - 0.005, zc, { cast: false });
+    // 천장판 + 매립 원형 등
+    const soffit = this.add(new THREE.PlaneGeometry(w - 0.1, d - 0.1), paint(0xf1efea, 0.9), xc, C.bottom - 0.005, zc, { cast: false });
     soffit.rotation.x = Math.PI / 2;
-    const led = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff8e8, emissiveIntensity: 1.5 });
-    led.userData.pbr = true; // 천장 등은 한 덩어리로 합쳐 그린다
+    const led = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff8e8, emissiveIntensity: 1.2 });
+    led.userData.pbr = true;
     for (const lx of [xc - 0.6, xc + 0.7]) for (const lz of [zc - 2.6, zc, zc + 2.6]) {
-      this.box(0.34, 0.05, 1.25, paint(0xdadde0, 0.4, 0.4), lx, C.bottom - 0.06, lz, false);
-      this.box(0.26, 0.012, 1.15, led, lx, C.bottom - 0.072, lz, false);
+      const l = this.add(new THREE.CylinderGeometry(0.12, 0.12, 0.012, 16), led, lx, C.bottom - 0.012, lz, { cast: false });
+      void l;
     }
-    // 초록 간판 띠 (앞·옆)
-    const green = paint(0x2a7a4b, 0.5, 0.1);
-    const fH = 0.78, fY = C.bottom - 0.12;
-    this.box(0.18, fH, d + 0.18, green, C.x1 + 0.09, fY, zc);
-    for (const z of [C.z0 - 0.09, C.z1 + 0.09]) this.box(w + 0.18, fH, 0.18, green, xc + 0.09, fY, z);
-    this.box(0.22, 0.05, d + 0.22, paint(0xf2f2ee, 0.4), C.x1 + 0.09, fY + fH, zc, false); // 위 테두리
-    this.box(0.22, 0.05, d + 0.22, paint(0xf2f2ee, 0.4), C.x1 + 0.09, fY - 0.05, zc, false); // 아래 테두리
-    this.nameSign(C.x1 + 0.185, fY + fH / 2, zc, d - 0.6, fH - 0.1);
-    // 굵은 원기둥 (하늘색 모자이크 타일) + 화강석 받침
-    const mosaic = this.mosaicMat();
-    for (const z of [C.z0 + 0.55, C.z1 - 0.55]) {
-      const cx = C.x1 - 0.5;
-      const col = this.add(new THREE.CylinderGeometry(0.27, 0.27, C.bottom, 28), mosaic, cx, C.bottom / 2, z);
-      void col;
-      this.add(new THREE.CylinderGeometry(0.33, 0.35, 0.16, 28), plinthMat(), cx, 0.08, z);
-      this.colliders.push({ ...aabb(cx, z, 0.62, 0.62), level: 0 });
+    // 앞 띠(파사드): 밝은 회색 알루미늄 판 + 위아래 테두리. 학교 이름은 짙은 회색 금속 입체 글자
+    const panelM = paint(0xd9dbd8, 0.45, 0.35), edgeM = paint(0x8d9194, 0.4, 0.5);
+    const fH = 0.62, fY = C.bottom - 0.02;
+    this.box(0.12, fH, d + 0.12, panelM, C.x1 + 0.06, fY, zc);
+    for (const z of [C.z0 - 0.06, C.z1 + 0.06]) this.box(w + 0.12, fH, 0.12, panelM, xc + 0.06, fY, z);
+    this.box(0.15, 0.04, d + 0.16, edgeM, C.x1 + 0.06, fY + fH, zc, false);
+    this.box(0.15, 0.04, d + 0.16, edgeM, C.x1 + 0.06, fY - 0.04, zc, false);
+    this.nameSign(C.x1 + 0.125, fY + fH / 2, zc, d - 1.6, fH - 0.18);
+    // 네모 기둥 (화강석 판 마감) + 받침
+    const gr = plinthMat();
+    for (const z of [C.z0 + 0.45, C.z1 - 0.45]) {
+      const cx = C.x1 - 0.45;
+      this.box(0.42, C.bottom, 0.42, gr, cx, 0, z, true, TILE_EXT.granitePlinth);
+      this.box(0.48, 0.12, 0.48, paint(0x8d8a83, 0.7), cx, 0, z);
+      this.colliders.push({ ...aabb(cx, z, 0.48, 0.48), level: 0 });
     }
   }
 
-  private mosaicMat(): THREE.Material {
-    const t = new CanvasTex(256, 256);
-    t.draw((c, w, h) => {
-      c.fillStyle = '#e8eef3';
-      c.fillRect(0, 0, w, h);
-      let r = 41;
-      const rnd = () => ((r = (r * 16807) % 2147483647) / 2147483647);
-      const tones = ['#4f86c6', '#5b93d1', '#3f76b8', '#6aa0da', '#7fb0e2', '#4a80c0'];
-      for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
-        c.fillStyle = tones[Math.floor(rnd() * tones.length)];
-        c.fillRect(x * 16 + 1, y * 16 + 1, 14, 14);
-      }
-    });
-    t.tex.wrapS = t.tex.wrapT = THREE.RepeatWrapping;
-    t.tex.repeat.set(3, 5);
-    const m = new THREE.MeshStandardMaterial({ map: t.tex, roughness: 0.35, metalness: 0.05 });
-    return m;
-  }
-
-  /** 학교 이름 간판: 초록 띠 위의 흰 글자 */
+  /** 학교 이름 간판: 금속 입체 글자 (글자 그림자로 두께감) */
   private nameSign(x: number, yc: number, z: number, W: number, H: number) {
     const t = new CanvasTex(2048, Math.round((2048 * H) / W));
     t.draw((c, cw, ch) => {
       c.clearRect(0, 0, cw, ch);
-      c.fillStyle = '#ffffff';
       c.textAlign = 'center';
       c.textBaseline = 'middle';
-      c.font = `800 ${Math.round(ch * 0.66)}px ${FONT}`;
-      (c as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = `${Math.round(ch * 0.28)}px`;
-      c.shadowColor = 'rgba(0,0,0,0.3)';
-      c.shadowOffsetY = 3;
-      c.shadowBlur = 4;
-      c.fillText(SCHOOL_NAME, cw / 2 + Math.round(ch * 0.14), ch / 2 + 4);
+      c.font = `800 ${Math.round(ch * 0.74)}px ${FONT}`;
+      (c as CanvasRenderingContext2D & { letterSpacing?: string }).letterSpacing = `${Math.round(ch * 0.22)}px`;
+      c.fillStyle = 'rgba(40,40,40,0.35)';
+      c.fillText(SCHOOL_NAME, cw / 2 + Math.round(ch * 0.11) + 6, ch / 2 + 9);
+      c.fillStyle = '#3c4146';
+      c.fillText(SCHOOL_NAME, cw / 2 + Math.round(ch * 0.11), ch / 2 + 4);
     });
-    const m = new THREE.MeshBasicMaterial({ map: t.tex, transparent: true, toneMapped: false });
+    const m = new THREE.MeshStandardMaterial({ map: t.tex, transparent: true, alphaTest: 0.3, roughness: 0.35, metalness: 0.6 });
     this.add(new THREE.PlaneGeometry(W, H), m, x + 0.005, yc, z, { cast: false, receive: false, ry: Math.PI / 2 });
   }
 
@@ -330,7 +259,7 @@ export class EntranceBuilder extends HQBuilder {
     this.ground(bw, pz1 - pz0, gD, TILE_EXT.granite, px1 - bw / 2, (pz0 + pz1) / 2, 0.014);
     for (const z of [pz0 + bw / 2, pz1 - bw / 2]) this.ground(px1 - px0, bw, gD, TILE_EXT.granite, (px0 + px1) / 2, z, 0.014);
     // 보도블록 길: 현관 앞에서 동쪽 교문 쪽으로 (마당 밖까지 이어 보이게)
-    const wx0 = px1, wx1 = 32, wz0 = DOOR_Z - 1.8, wz1 = DOOR_Z + 1.8;
+    const wx0 = px1, wx1 = 25.2, wz0 = DOOR_Z - 1.8, wz1 = DOOR_Z + 1.8;
     this.ground(wx1 - wx0, wz1 - wz0, paverMat(), TILE_EXT.paver, (wx0 + wx1) / 2, DOOR_Z, 0.01);
     for (const z of [wz0 - 0.07, wz1 + 0.07]) this.box(wx1 - wx0, 0.07, 0.14, plinthMat(), (wx0 + wx1) / 2, 0, z, false, TILE_EXT.granitePlinth);
     // 잔디 (마당 남·북 + 벽 쪽 구석)
@@ -347,99 +276,67 @@ export class EntranceBuilder extends HQBuilder {
     }
   }
 
-  // ───────── 조경: 화강석 경계석 화단(흙 + 낮은 관목 + 꽃 + 조경석), 현관 화분, 교훈석 ─────────
+  // ───────── 조경: 화강석 경계석 화단(흙 + 다듬은 회양목 생울타리 + 향나무·느티나무), 현관 옆 네모 화분, 교훈석 ─────────
   private planting() {
     const curbM = plinthMat(), soil = soilMat();
-    const curb = (x0: number, x1: number, z0: number, z1: number) => this.box(x1 - x0, 0.36, z1 - z0, curbM, (x0 + x1) / 2, 0, (z0 + z1) / 2, false, TILE_EXT.granitePlinth);
+    const curb = (x0: number, x1: number, z0: number, z1: number) => this.box(x1 - x0, 0.3, z1 - z0, curbM, (x0 + x1) / 2, 0, (z0 + z1) / 2, false, TILE_EXT.granitePlinth);
     const bed = (x0: number, x1: number, z0: number, z1: number, y = 0.02) => this.ground(x1 - x0, z1 - z0, soil, TILE_EXT.soil, (x0 + x1) / 2, (z0 + z1) / 2, y);
-    const R = rng(77);
-    // 남쪽·북쪽 화단 (마당 경계 밖으로 넓게)
+    const hedge = (x0: number, x1: number, z: number, h = 0.62, alongZ = false, seed = 1) => {
+      const m = makeHedge(Math.abs(x1 - x0), h, 0.5, seed);
+      m.position.set(alongZ ? z : (x0 + x1) / 2, this.y, alongZ ? (x0 + x1) / 2 : z);
+      if (alongZ) m.rotation.y = Math.PI / 2;
+      this.root.add(m);
+    };
+    const tree = (kind: 'zelkova' | 'pine' | 'juniper', x: number, z: number, seed: number, sc = 1) => {
+      const t = makeTree(kind, seed, sc);
+      t.position.set(x, this.y, z);
+      this.root.add(t);
+    };
+    // 남쪽·북쪽 화단 (마당 경계, 담장 x 25.1 안쪽까지)
     curb(14.9, 24.85, -7.45, -7.2);
     curb(14.9, 24.85, 4.2, 4.45);
-    bed(14.9, 27, -9.4, -7.45);
-    bed(14.9, 27, 4.45, 6.4);
-    // 동쪽 화단 (길 양옆)
+    bed(14.9, 25.1, -9.4, -7.45);
+    bed(14.9, 25.1, 4.45, 6.4);
+    // 경계석 바로 뒤 회양목 생울타리 (각지게 다듬음) + 뒤쪽 향나무·느티나무
+    hedge(15.2, 24.8, -7.8, 0.62, false, 3);
+    hedge(15.2, 19.6, 4.8, 0.62, false, 5);
+    hedge(21.8, 24.8, 4.8, 0.62, false, 7);
+    for (const [k, x, z, sd] of [['juniper', 16.2, -8.8, 11], ['juniper', 18.4, -8.9, 12], ['zelkova', 21.2, -8.8, 13], ['juniper', 23.9, -8.8, 14], ['juniper', 16.3, 5.8, 15], ['pine', 23.6, 5.7, 16]] as ['zelkova' | 'pine' | 'juniper', number, number, number][])
+      tree(k, x, z, sd, k === 'zelkova' ? 0.9 : 1);
+    // 교문 쪽 마당 끝: 담장 안쪽 경계석 + 낮은 생울타리 (교문 길 양옆)
     const wz0 = DOOR_Z - 1.8, wz1 = DOOR_Z + 1.8;
     curb(24.6, 24.85, -7.45, wz0 - 0.14);
     curb(24.6, 24.85, wz1 + 0.14, 4.45);
-    bed(24.85, 27, -7.45, wz0 - 0.14);
-    bed(24.85, 27, wz1 + 0.14, 4.45);
-    // 관목 줄
-    for (let x = 15.4; x < 26.8; x += 0.8 + R() * 0.25) {
-      this.shrub(x, -8.2 - R() * 0.5, 0.9 + R() * 0.35, R);
-      this.shrub(x + 0.3, 5.2 + R() * 0.5, 0.9 + R() * 0.35, R);
-    }
-    for (let z = -7.0; z < 4.2; z += 0.8 + R() * 0.2) if (z < wz0 - 0.4 || z > wz1 + 0.4) this.shrub(25.7 + R() * 0.5, z, 0.85 + R() * 0.3, R);
-    // 꽃 (화단 앞줄)
-    const flowerM = [0xf4a6c1, 0xffd36e, 0xffffff, 0xb48ee0, 0xff8a7a].map((c) => paint(c, 0.7));
-    const flowerGeo = new THREE.IcosahedronGeometry(0.06, 0);
-    const flowers = (x0: number, x1: number, z: number) => {
-      for (let x = x0; x < x1; x += 0.16 + R() * 0.14) this.add(flowerGeo, flowerM[Math.floor(R() * flowerM.length)], x, 0.12 + R() * 0.08, z + (R() - 0.5) * 0.3, { cast: false });
-    };
-    flowers(15.2, 24.6, -7.7);
-    flowers(15.2, 24.6, 4.7);
-    // 조경석
+    bed(24.85, 25.12, -7.45, wz0 - 0.14);
+    bed(24.85, 25.12, wz1 + 0.14, 4.45);
+    // 조경석 몇 개 (낮고 납작하게)
+    const R = rng(77);
     const rockM = paint(0x9b978e, 0.92);
-    for (const [x, z, s] of [[17.2, -8.6, 1.0], [21.9, -7.9, 0.75], [23.6, 5.6, 0.9], [25.4, -5.5, 0.7], [25.3, 2.6, 0.8]] as [number, number, number][]) {
-      const r = this.add(new THREE.DodecahedronGeometry(0.42 * s, 0), rockM, x, 0.12 * s, z);
-      r.scale.set(1.35, 0.62, 1.0);
+    for (const [x, z, sc] of [[19.9, -8.7, 0.8], [22.6, 5.6, 0.7]] as [number, number, number][]) {
+      const r = this.add(new THREE.DodecahedronGeometry(0.42 * sc, 0), rockM, x, 0.1 * sc, z);
+      r.scale.set(1.4, 0.5, 1.0);
       r.rotation.y = R() * 3;
     }
-    // 현관 동 옆 구석 화단 (벽에 붙은 낮은 화강석 화단)
+    // 현관 동 옆 구석 화단 (벽에 붙은 낮은 화강석 화단 + 생울타리)
     for (const [z0, z1] of [[-7.2, L.z0 - 0.12], [L.z1 + 0.12, 4.2]]) {
       const zc = (z0 + z1) / 2, d = z1 - z0;
       this.solid(1.0, 0.45, d, curbM, 15.45, 0, zc, TILE_EXT.granitePlinth);
       this.ground(0.86, d - 0.14, soil, TILE_EXT.soil, 15.45, zc, 0.452);
-      for (let z = z0 + 0.4; z < z1 - 0.2; z += 0.75) this.shrub(15.45 + (R() - 0.5) * 0.2, z, 0.75 + R() * 0.2, R, 0.45);
+      const h = makeHedge(d - 0.3, 0.5, 0.6, 9);
+      h.position.set(15.45, this.y + 0.45, zc);
+      h.rotation.y = Math.PI / 2;
+      this.root.add(h);
     }
-    // 현관 옆 화분들: 왼쪽 작은 화분 무리(제라늄), 오른쪽 하얀 받침 화분
-    const potM = paint(0xb5653f, 0.8), potW = paint(0xf3f1ea, 0.5);
-    const bloom = [paint(0xe5383b, 0.7), paint(0xff8fab, 0.7), paint(0xffb703, 0.7)];
-    for (const [px, pz, r] of [[18.75, -4.55, 0.2], [19.2, -4.75, 0.16], [18.85, -5.1, 0.17], [19.35, -5.2, 0.22]] as [number, number, number][]) {
-      this.add(new THREE.CylinderGeometry(r, r * 0.75, r * 1.6, 16), potM, px, r * 0.8, pz);
-      const leaf = this.add(new THREE.IcosahedronGeometry(r * 1.05, 1), this.leafMats[1], px, r * 1.6 + r * 0.6, pz);
-      leaf.scale.y = 0.75;
-      for (let i = 0; i < 5; i++) this.add(new THREE.IcosahedronGeometry(r * 0.25, 0), bloom[Math.floor(R() * 3)], px + (R() - 0.5) * r * 1.4, r * 2.3 + R() * r * 0.3, pz + (R() - 0.5) * r * 1.4, { cast: false });
-    }
-    this.colliders.push({ ...aabb(19.05, -4.88, 0.9, 0.95), level: 0 });
-    {
-      const ux = 19.0, uz = 1.35;
-      this.add(new THREE.CylinderGeometry(0.2, 0.26, 0.12, 20), potW, ux, 0.06, uz);
-      this.add(new THREE.CylinderGeometry(0.09, 0.13, 0.4, 16), potW, ux, 0.32, uz);
-      const bowl = new THREE.LatheGeometry([new THREE.Vector2(0.1, 0), new THREE.Vector2(0.38, 0.12), new THREE.Vector2(0.46, 0.3), new THREE.Vector2(0.44, 0.34)], 24);
-      this.add(bowl, potW, ux, 0.5, uz);
-      const bush = this.add(new THREE.IcosahedronGeometry(0.42, 1), this.leafMats[0], ux, 0.95, uz);
-      bush.scale.y = 0.6;
-      for (let i = 0; i < 16; i++) this.add(new THREE.IcosahedronGeometry(0.06, 0), bloom[i % 2], ux + (R() - 0.5) * 0.7, 1.02 + R() * 0.14, uz + (R() - 0.5) * 0.7, { cast: false });
-      this.colliders.push({ ...aabb(ux, uz, 0.9, 0.9), level: 0 });
-    }
-    // 둥글게 다듬은 큰 관목 + 향나무 (화단 모서리)
-    for (const [x, z, s2] of [[18.6, -8.3, 1.25], [21.2, -8.5, 1.1], [18.9, 5.4, 1.2], [22.4, 5.6, 1.15]] as [number, number, number][]) {
-      const ball = this.add(new THREE.IcosahedronGeometry(0.6 * s2, 2), this.leafMats[2], x, 0.5 * s2, z);
-      ball.scale.y = 0.85;
-    }
-    const juniper = paint(0x2f5d34, 0.85);
-    for (const [x, z] of [[16.3, -8.5], [24.0, -8.6], [16.3, 5.7], [24.2, 5.7], [26.0, -6.6], [26.0, 3.6]] as [number, number][]) {
-      this.add(new THREE.CylinderGeometry(0.06, 0.08, 0.4, 6), paint(0x6b4f3a, 0.9), x, 0.2, z);
-      for (const [y, r, h] of [[0.75, 0.55, 1.0], [1.35, 0.42, 0.85], [1.85, 0.26, 0.7]]) this.add(new THREE.ConeGeometry(r, h, 10), juniper, x, y, z);
+    // 현관 양옆 네모 화강석 화분 (낮은 회양목)
+    for (const [px, pz] of [[19.0, -4.9], [19.0, 1.35]] as [number, number][]) {
+      this.box(0.9, 0.5, 0.9, curbM, px, 0, pz, true, TILE_EXT.granitePlinth);
+      this.ground(0.8, 0.8, soil, TILE_EXT.soil, px, pz, 0.5);
+      const h = makeHedge(0.74, 0.42, 0.74, 21);
+      h.position.set(px, this.y + 0.5, pz);
+      this.root.add(h);
+      this.colliders.push({ ...aabb(px, pz, 0.9, 0.9), level: 0 });
     }
     this.mottoStone(20.6, 5.35);
-  }
-
-  /** 낮은 관목 한 덩이 (둥근 잎뭉치 2~4개). 가끔 철쭉 꽃 */
-  private shrub(x: number, z: number, s: number, R: () => number, y = 0) {
-    const n = 2 + Math.floor(R() * 3);
-    const m = this.leafMats[Math.floor(R() * this.leafMats.length)];
-    for (let i = 0; i < n; i++) {
-      const r = (0.26 + R() * 0.16) * s;
-      const b = this.add(new THREE.IcosahedronGeometry(r, 1), m, x + (R() - 0.5) * 0.5 * s, y + r * 0.7, z + (R() - 0.5) * 0.4 * s);
-      b.scale.y = 0.78;
-      b.rotation.y = R() * 3;
-    }
-    if (R() < 0.3) {
-      const pink = paint(0xe78fb3, 0.7);
-      for (let i = 0; i < 6; i++) this.add(new THREE.IcosahedronGeometry(0.05, 0), pink, x + (R() - 0.5) * 0.6 * s, y + 0.38 * s + R() * 0.12, z + (R() - 0.5) * 0.4 * s, { cast: false });
-    }
   }
 
   /** 교훈석: 북쪽 화단의 큰 돌에 새긴 교훈 */
