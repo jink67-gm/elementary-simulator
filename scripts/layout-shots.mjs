@@ -1,0 +1,65 @@
+// 학교 구조(현관 계단·한쪽 복도) 캡처 + 알람 화면. 사용: npm run build && node scripts/layout-shots.mjs (결과: test-results/layout/)
+import { spawn, execSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { mkdirSync } from 'node:fs';
+const { chromium } = await import('playwright').catch(() => createRequire(execSync('npm root -g').toString().trim() + '/')('playwright'));
+const OUT = 'test-results/layout';
+mkdirSync(OUT, { recursive: true });
+const PORT = 4192;
+const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe', detached: true });
+await new Promise((r) => setTimeout(r, 2500));
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+page.setDefaultTimeout(240000);
+await page.addInitScript(() => localStorage.setItem('elementary-simulator.settings.v1', JSON.stringify({ quality: 'high', autoRes: false, controls: 'keyboard' })));
+const errors = [];
+page.on('pageerror', (e) => errors.push(e.message));
+page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
+await page.goto(`http://localhost:${PORT}/elementary-simulator/?debug`);
+await page.waitForFunction(() => !!window.__sim, null, { timeout: 120000 });
+await page.evaluate(() => localStorage.removeItem('elementary-simulator.save.v1'));
+await page.getByText('새로 시작').click();
+await page.getByText('학교 갈 준비 완료!').click();
+await page.waitForTimeout(3500);
+await page.screenshot({ path: `${OUT}/a1_alarm.png` });
+await page.keyboard.press('Space');
+await page.waitForTimeout(1200);
+await page.screenshot({ path: `${OUT}/a2_snooze.png` });
+await page.keyboard.press('KeyE');
+await page.waitForTimeout(1500);
+await page.screenshot({ path: `${OUT}/a3_ready.png` });
+await page.waitForFunction(() => !!window.__sim.game.save && window.__sim.game.running, null, { timeout: 60000 });
+await page.addStyleTag({ content: 'body.shot-nohud .hud, body.shot-nohud .dialogue, body.shot-nohud .ui-layer { display: none !important; }' });
+const shot = async (name, pos, look, fov = 66) => {
+  await page.evaluate(([p, l, f]) => {
+    const g = window.__sim.game, T = g.tpc.cam.position.constructor;
+    g.dialogue.skipEverything();
+    g.tpc.override = { pos: new T(...p), look: new T(...l) };
+    g.tpc.first = true;
+    g.camera.fov = f;
+    g.camera.updateProjectionMatrix();
+    document.body.classList.add('shot-nohud');
+  }, [pos, look, fov]);
+  await page.waitForTimeout(2500);
+  await page.screenshot({ path: `${OUT}/${name}.png` });
+};
+const Y1 = -3.6;
+await shot('b1_enter_lobby', [17.6, Y1 + 1.55, -1.5], [11.0, Y1 + 1.6, -1.5]);
+await shot('b2_lobby_side', [17.2, Y1 + 1.6, 1.8], [11.5, Y1 + 0.9, -3.5]);
+await shot('b3_corridor_1f_south', [9.1, Y1 + 1.6, 1.5], [9.1, Y1 + 1.3, -15]);
+await shot('b4_corridor_1f_north', [9.1, Y1 + 1.6, -3.5], [9.1, Y1 + 1.3, 15]);
+await shot('b5_office_from_lobby', [12.0, Y1 + 1.6, 1.6], [5.0, Y1 + 1.2, -1.5]);
+await shot('b6_stair_top_2f', [8.4, 1.6, -1.5], [15.0, -1.0, -1.5]);
+await shot('b7_corridor_2f', [9.1, 1.6, -14.5], [9.1, 1.3, 10]);
+await shot('b8_elevator_1f', [8.0, Y1 + 1.5, -5.2], [11.0, Y1 + 1.1, -8.5]);
+await shot('b9_exterior', [27, Y1 + 3.5, -1.5], [14, Y1 + 3.0, -1.5]);
+const nav = await page.evaluate(() => {
+  const g = window.__sim.game;
+  const p = (a, b) => (g.nav.findPath(a, b) ?? []).length;
+  return { 현관_교실: p({ x: 17.0, z: -1.5, y: -3.6 }, { x: 0, z: 0, y: 0 }), 교실_급식실: p({ x: 0, z: 0, y: 0 }, { x: 9, z: 14.6, y: -3.6 }), 현관_교무실: p({ x: 17.0, z: -1.5, y: -3.6 }, { x: 5.0, z: -1.5, y: -3.6 }), 현관_보건실: p({ x: 17.0, z: -1.5, y: -3.6 }, { x: 5.0, z: -8.5, y: -3.6 }) };
+});
+console.log(JSON.stringify(nav));
+console.log('오류', errors.length, errors.slice(0, 3));
+await browser.close();
+try { process.kill(-server.pid); } catch {}
+process.exit(0);

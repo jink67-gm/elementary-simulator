@@ -579,6 +579,13 @@ export class Morning implements StoryHooks {
     // 잠긴 문들
     const locked: [string, string][] = [
       ['doorRestroom', '화장실… 지금은 괜찮은 것 같다.'],
+      ['doorRestroomM', '남자 화장실 — 지금은 괜찮다. 손 씻기는 급식 전에!'],
+      ['doorRestroomF', '여자 화장실 — 「깨끗하게 사용해요」 스티커가 붙어 있다.'],
+      ['doorRestroom2M', '2층 남자 화장실 — 쉬는 시간이면 줄이 길다.'],
+      ['doorRestroom2F', '2층 여자 화장실 — 거울 앞에서 누가 머리를 묶고 있다.'],
+      ['doorStaffWC', '교직원 화장실 — 학생은 학생 화장실을 써요.'],
+      ['elevator1', '엘리베이터 — 「다친 친구·짐 옮길 때만」. 오늘은 계단으로 가자!'],
+      ['elevator2', '엘리베이터 — 「다친 친구·짐 옮길 때만」. 계단은 복도 가운데에 있어.'],
       ['doorBroadcast', '방송실 — 「관계자 외 출입 금지」. 안에서 기계 소리가 웅웅 난다.'],
       ['doorScience', '과학실 — 「실험 준비 중」. 비커가 줄 맞춰 서 있다.'],
       ['door1_1', '1학년 교실에서 받아쓰기 소리가 들린다.'],

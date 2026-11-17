@@ -20,15 +20,24 @@ export function levelOfY(y: number): Level {
   return y > FLOOR1_Y / 2 ? 1 : 0;
 }
 
-/** 계단: 1층 z -6(아래) → 2층 z -14(위), 폭 x 11.1~13.7. 디딤판 16개 */
-export const STAIR = { x0: 11.1, x1: 13.7, zBottom: -6, zTop: -14, steps: 16, cx: 12.4 };
-/** 계단 위·아래 층계참에서 NPC가 지나가는 점 */
+/**
+ * 중앙 계단: 정문으로 들어와 현관 홀 정면에서 서쪽(복도 쪽)으로 오른다.
+ * 1층 x xBottom(16.0, 현관 문 쪽) → 2층 x xTop(11.5, 2층 복도 동쪽 벽 바로 옆). 폭 z z0~z1. 디딤판 16개
+ */
+export const STAIR = { xBottom: 16.0, xTop: 11.5, z0: -2.8, z1: -0.2, steps: 16, cz: -1.5 };
+/** 계단 위·아래에서 NPC가 지나가는 점 */
 export const STAIR_ENDS = {
-  top: { x: STAIR.cx, z: -15.0, y: 0 },
-  topStep: { x: STAIR.cx, z: STAIR.zTop - 0.1, y: 0 },
-  bottomStep: { x: STAIR.cx, z: STAIR.zBottom + 0.1, y: FLOOR1_Y },
-  bottom: { x: STAIR.cx, z: -5.25, y: FLOOR1_Y },
+  top: { x: 10.2, z: STAIR.cz, y: 0 },
+  topStep: { x: STAIR.xTop - 0.15, z: STAIR.cz, y: 0 },
+  bottomStep: { x: STAIR.xBottom + 0.1, z: STAIR.cz, y: FLOOR1_Y },
+  bottom: { x: 16.9, z: STAIR.cz, y: FLOOR1_Y },
 };
+/** 계단 위 높이 (계단 밖이면 null) */
+export function stairY(x: number, z: number): number | null {
+  if (z <= STAIR.z0 || z >= STAIR.z1 || x >= STAIR.xBottom || x <= STAIR.xTop - 0.4) return null;
+  const t = Math.min(1, (STAIR.xBottom - x) / (STAIR.xBottom - STAIR.xTop));
+  return FLOOR1_Y * (1 - t);
+}
 
 // ───────── 1층 급식실 동 (복도 북쪽 끝 너머) ─────────
 // 식사 공간 ─(벽: 배식창·식판 반납창·조리실 문·창고 문)─ 조리실 / 식재료·조리 도구 창고

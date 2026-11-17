@@ -10,6 +10,8 @@ import type { ItemId } from '../data/items';
 import type { Interactable } from '../interact/Interaction';
 import type { StoryEvent } from './StoryEvent';
 import { aabb, type Aabb } from '../world/Collision';
+import { CLASS_DOORS } from '../world/classroomLayout';
+import { STAIR } from '../world/rooms';
 import { CanvasTex, font } from '../world/canvasTex';
 import { openInfo } from '../minigames/SmallGames';
 import { openTimetable } from '../minigames/Timetable';
@@ -25,7 +27,7 @@ const DOORS: { id: CardId; x: number; z: number; ry: number }[] = [
   { id: 'break', x: 10.97, z: 6.0, ry: -Math.PI / 2 },
 ];
 const TAPES: [number, number, number][] = [
-  [10.55, 0.03, -14.6], // 계단 입구 앞 바닥
+  [10.55, 0.03, -3.6], // 계단 입구 앞 바닥
   [7.5, 1.27, 10.5], // 정수기 위
   [9.0, 0.03, 15.3], // 급식실 문 앞 바닥
 ];
@@ -58,7 +60,7 @@ export class HallwayEvent implements StoryEvent {
     this.buildDeco();
     // 교실 앞문·뒷문 막기 (시간이 멈춘 동안 교실 문이 안 열림)
     // + 계단 입구도 막는다 (시간이 멈춘 동안 2층에 갇힘)
-    this.blockers = [aabb(7.1, -4.6, 0.3, 1.6), aabb(7.1, 5.4, 0.3, 1.6), { ...aabb(11.1, -15.05, 0.3, 2.1), level: 1 }];
+    this.blockers = [...CLASS_DOORS.map((d) => aabb(7.1, (d.z0 + d.z1) / 2, 0.3, d.z1 - d.z0)), { ...aabb(11.1, STAIR.cz, 0.3, STAIR.z1 - STAIR.z0 + 0.2), level: 1 }];
     for (const b of this.blockers) {
       b.enabled = false;
       g.map.colliders.push(b);

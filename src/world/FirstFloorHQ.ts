@@ -1,5 +1,6 @@
 // 1층 방 꾸미기: 넓은 현관(실내화 신발장), 교무실, 보건실. 벽·문 자리는 SchoolMap.buildFirstFloor.
-// 좌표: 1층 바닥 y = FLOOR1_Y. 현관 x 11.1~18.0 z -4.5~1.0 / 교무실 x 11.1~14.9 z 1.0~8.0 / 보건실 z 8.0~12.0
+// 좌표: 1층 바닥 y = FLOOR1_Y. 현관 x 11.1~18.0 z -5.6~2.6 (가운데에 2층 계단) / 교무실·보건실은 복도 서쪽(운동장 쪽)
+// 교무실·보건실은 예전 자리(복도 동쪽, OFFICE_SRC·NURSE_SRC) 좌표로 짓고 통째로 180° 돌려 서쪽으로 옮긴다 (ROOM_MOVE)
 import * as THREE from 'three';
 import { aabb } from './Collision';
 import { CanvasTex, font } from './canvasTex';
@@ -10,9 +11,16 @@ import { SCHOOL_NAME } from '../data/school';
 import { TILE_EXT, graniteMat } from './exteriorTex';
 import { makeSlipperPair } from './slipper';
 
-export const LOBBY = { x0: 11.1, x1: 18.0, z0: -4.5, z1: 1.0, doorZ0: -2.6, doorZ1: -0.4 };
-export const OFFICE = { x0: 11.2, x1: 14.8, z0: 1.1, z1: 7.9, doorZ: 3.0 };
-export const NURSE = { x0: 11.2, x1: 14.8, z0: 8.1, z1: 11.9, doorZ: 10.0 };
+export const LOBBY = { x0: 11.1, x1: 18.0, z0: -5.6, z1: 2.6, doorZ0: -2.6, doorZ1: -0.4 };
+const OFFICE_SRC = { x0: 11.2, x1: 14.8, z0: 1.1, z1: 7.9, doorZ: 3.0 };
+const NURSE_SRC = { x0: 11.2, x1: 14.8, z0: 8.1, z1: 11.9, doorZ: 10.0 };
+/** 예전 자리 → 새 자리: (x, z) → (dx - x, dz - z) (y축 180° 회전 + 이동) */
+const ROOM_MOVE = { dx: 18.2, dz: 1.5 };
+const moved = (r: { x0: number; x1: number; z0: number; z1: number; doorZ: number }) => ({ x0: ROOM_MOVE.dx - r.x1, x1: ROOM_MOVE.dx - r.x0, z0: ROOM_MOVE.dz - r.z1, z1: ROOM_MOVE.dz - r.z0, doorZ: ROOM_MOVE.dz - r.doorZ });
+/** 복도 서쪽 교무실 (문: 복도 쪽 벽 x 7.1, 현관 정면) */
+export const OFFICE = moved(OFFICE_SRC);
+/** 복도 서쪽 보건실 (교무실 남쪽 옆) */
+export const NURSE = moved(NURSE_SRC);
 
 export class FirstFloorBuilder extends HQBuilder {
   private wood = pbr('oak', { color: 0xf3e2c8, roughness: 0.55 });
@@ -21,17 +29,43 @@ export class FirstFloorBuilder extends HQBuilder {
     this.y = FLOOR1_Y;
     this.level = 0;
     this.lobby();
+    // 교무실·보건실: 예전 좌표로 지은 뒤 180° 돌려 서쪽으로 (충돌 상자도 같이 옮긴다)
+    const prev = this.root, grp = new THREE.Group();
+    grp.position.set(ROOM_MOVE.dx, 0, ROOM_MOVE.dz);
+    grp.rotation.y = Math.PI;
+    prev.add(grp);
+    this.root = grp;
+    const c0 = this.colliders.length;
     this.office();
     this.nurse();
+    this.root = prev;
+    for (let i = c0; i < this.colliders.length; i++) {
+      const c = this.colliders[i];
+      Object.assign(c, { minX: ROOM_MOVE.dx - c.maxX, maxX: ROOM_MOVE.dx - c.minX, minZ: ROOM_MOVE.dz - c.maxZ, maxZ: ROOM_MOVE.dz - c.minZ });
+    }
   }
 
-  private room(x0: number, x1: number, z0: number, z1: number, floorMat: THREE.Material, tile: number, lamps: [number, number][]) {
+  private room(x0: number, x1: number, z0: number, z1: number, floorMat: THREE.Material, tile: number, lamps: [number, number][], hole?: { x0: number; x1: number; z0: number; z1: number }) {
     const w = x1 - x0, d = z1 - z0, xc = (x0 + x1) / 2, zc = (z0 + z1) / 2;
     const f = this.add(worldUV(new THREE.PlaneGeometry(w, d), w, d, 0, tile), floorMat, xc, 0.004, zc, { cast: false });
     f.rotation.x = -Math.PI / 2;
-    const c = this.add(worldUV(new THREE.PlaneGeometry(w, d), w, d, 0, TILE.ceiling), pbr('ceiling', { roughness: 0.95 }), xc, CEIL_H - 0.002, zc, { cast: true });
-    c.rotation.x = Math.PI / 2;
-    this.blockers.push(c);
+    // 천장 (hole이 있으면 그 둘레만: 계단이 뚫고 지나가는 자리)
+    const ceilRects: [number, number, number, number][] = hole
+      ? [[hole.x1, x1, z0, z1], [x0, hole.x1, z0, hole.z0], [x0, hole.x1, hole.z1, z1]]
+      : [[x0, x1, z0, z1]];
+    for (const [a0, a1, b0, b1] of ceilRects) {
+      const cw = a1 - a0, cd = b1 - b0;
+      if (cw <= 0.01 || cd <= 0.01) continue;
+      const c = this.add(worldUV(new THREE.PlaneGeometry(cw, cd), cw, cd, 0, TILE.ceiling), pbr('ceiling', { roughness: 0.95 }), (a0 + a1) / 2, CEIL_H - 0.002, (b0 + b1) / 2, { cast: true });
+      c.rotation.x = Math.PI / 2;
+      this.blockers.push(c);
+    }
+    if (hole) {
+      // 뚫린 천장 가장자리 (천장 속 두께가 보이는 띠)
+      const band = paint(0xf1efe8, 0.9);
+      for (const z of [hole.z0, hole.z1]) this.box(hole.x1 - hole.x0, 0.6, 0.04, band, (hole.x0 + hole.x1) / 2, CEIL_H, z, false);
+      this.box(0.04, 0.6, hole.z1 - hole.z0, band, hole.x1, CEIL_H, (hole.z0 + hole.z1) / 2, false);
+    }
     const led = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfffbf2, emissiveIntensity: 1.3, roughness: 0.5 });
     led.userData.pbr = true; // 천장 등은 한 덩어리로 합쳐 그린다
     for (const [lx, lz] of lamps) {
@@ -74,7 +108,8 @@ export class FirstFloorBuilder extends HQBuilder {
   // ───────── 현관: 바깥 신발 구역(화강석) | 실내화 구역(테라조), 학년별 신발장, 안내도·소식 게시판, 방향 표지판 ─────────
   private lobby() {
     const L = LOBBY;
-    this.room(L.x0, L.x1, L.z0, L.z1, pbr('terrazzo', { color: 0xc9c2b4, roughness: 0.7 }), TILE.terrazzo, [[12.6, -1.75], [15.2, -1.75], [17.0, -1.75]]);
+    // 천장은 계단이 지나가는 곳(x 11.1~14.9, 계단 폭)을 비운다
+    this.room(L.x0, L.x1, L.z0, L.z1, pbr('terrazzo', { color: 0xc9c2b4, roughness: 0.7 }), TILE.terrazzo, [[12.6, -4.3], [12.6, 1.3], [15.2, -4.3], [15.2, 1.3], [17.0, -1.5]], { x0: 11.0, x1: 14.95, z0: -2.95, z1: -0.05 });
     // 바깥 신발 구역 (문 쪽 짙은 화강석) + 노란 경계선 + 바닥 글씨
     const zoneX = 16.3;
     const outer = this.add(worldUV(new THREE.PlaneGeometry(L.x1 - zoneX, L.z1 - L.z0), L.x1 - zoneX, L.z1 - L.z0, 0, TILE_EXT.granite), graniteMat('dark'), (zoneX + L.x1) / 2, 0.007, (L.z0 + L.z1) / 2, { cast: false });
@@ -170,7 +205,8 @@ export class FirstFloorBuilder extends HQBuilder {
     this.cushionBench(12.7, L.z0 + 0.32, 1.25, 1);
     this.poster(['실내화로 갈아 신어요', '바깥 신발은 신발장에', '복도에서는 천천히 걸어요'], 1.0, 0.62, 15.75, 1.75, L.z0 + 0.11, 0, '#2a9d8f');
     // 천장에 매단 방향 표지판 (들어오는 쪽에서 보이게: 왼쪽 = 북쪽, 오른쪽 = 남쪽)
-    this.directionSign(11.55, 2.28, (L.z0 + L.z1) / 2);
+    this.directionSign(11.55, 2.28, L.z1 - 1.3);
+    this.directionSign(11.55, 2.28, L.z0 + 1.3);
   }
 
   /** 알루미늄 액자에 넣은 판 (북쪽 벽, 남쪽을 바라봄) */
@@ -211,22 +247,22 @@ export class FirstFloorBuilder extends HQBuilder {
         }
       };
       floor('2층', 92, [['강당', '#cdb4db', 100], ['6-1', '#ffd6a5', 82], ['5-1', '#fdffb6', 82], ['4-1', '#caffbf', 82], ['도서관', '#9bf6ff', 100], ['방송실', '#bdb2ff', 100], ['급식실 위', '#e9ecef', 106]]);
-      floor('1층', 200, [['1-1', '#ffd6a5', 82], ['2-1', '#fdffb6', 82], ['3-1', '#caffbf', 82], ['현관', '#ffadad', 92], ['교무실', '#a0c4ff', 96], ['행정실', '#a0c4ff', 96], ['급식실', '#ffc6ff', 122]]);
+      floor('1층', 200, [['1-1', '#ffd6a5', 72], ['보건실', '#ffb3c1', 84], ['교무실', '#a0c4ff', 90], ['행정실', '#a0c4ff', 84], ['2-1', '#fdffb6', 72], ['3-1', '#caffbf', 72], ['급식실', '#ffc6ff', 116]]);
       // 현재 위치
       c.fillStyle = '#e63946';
       c.beginPath();
-      c.arc(92 + 82 * 3 + 46, 316, 13, 0, Math.PI * 2);
+      c.arc(92 + 72 + 84 + 45, 316, 13, 0, Math.PI * 2);
       c.fill();
       c.font = font(22, true);
       c.textAlign = 'left';
-      c.fillText('지금 여기', 92 + 82 * 3 + 64, 318);
+      c.fillText('지금 여기 (현관 → 교무실 정면)', 92 + 72 + 84 + 64, 318);
       c.fillStyle = '#243447';
       c.font = font(24, true);
-      c.fillText('▶ 계단: 현관에서 복도로 나가 바로 오른쪽(남쪽)', 28, 380);
+      c.fillText('▶ 계단: 현관 바로 정면! 올라가면 2층 복도', 28, 380);
       c.fillText('▶ 6학년 교실: 계단으로 2층 → 복도 가운데', 28, 420);
       c.fillStyle = '#6c757d';
       c.font = font(20);
-      c.fillText('보건실은 교무실 옆 · 과학실은 1층 복도 끝', 28, 458);
+      c.fillText('교실·교무실은 운동장 쪽 · 화장실·엘리베이터는 현관 쪽', 28, 458);
     });
     return t;
   }
@@ -363,7 +399,7 @@ export class FirstFloorBuilder extends HQBuilder {
 
   // ───────── 교무실: 선생님 책상 네 개(마주 보기), 서류함, 일정 칠판, 복사기 ─────────
   private office() {
-    const O = OFFICE;
+    const O = OFFICE_SRC;
     this.room(O.x0 - 0.1, O.x1 + 0.1, O.z0 - 0.1, O.z1 + 0.1, pbr('laminate', { color: 0xe8e0d4, roughness: 0.6 }), TILE.laminate, [[13.0, 2.6], [13.0, 6.2]]);
     const grey = paint(0x9aa1a8, 0.5, 0.3);
     const screenMat = paint(0x1b1e22, 0.3);
@@ -399,7 +435,7 @@ export class FirstFloorBuilder extends HQBuilder {
 
   // ───────── 보건실: 침대 둘(커튼), 약장, 세면대, 키·몸무게 재기 ─────────
   private nurse() {
-    const N = NURSE;
+    const N = NURSE_SRC;
     this.room(N.x0 - 0.1, N.x1 + 0.1, N.z0 - 0.1, N.z1 + 0.1, pbr('floorTile', { color: 0xe9eef0, roughness: 0.55 }), TILE.floorTile, [[13.0, 10.0]]);
     const white = paint(0xf8f9fa, 0.5);
     for (const z of [8.75, 10.65]) {

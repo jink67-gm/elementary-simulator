@@ -137,34 +137,100 @@ export class Menus {
     this.setScreen(el('div', { class: 'screen title-screen' }, box));
   }
 
-  /** 08:25 알람. E로 일어나기 / Space로 5분 더 */
+  /**
+   * 08:25 알람 장면: 울리는 휴대폰 + 꿈 말풍선 + 6-1 반톡이 하나씩 올라온다 (오늘 하루 예고).
+   * E 일어나기 / Space 5분만 더 (두 번이면 늦잠 — 엄마·고양이가 깨운다).
+   * 일어나면 아침 준비 체크리스트가 저절로 지나가고(1·2로 아침밥 고르기) 학교로 출발한다.
+   */
   alarm(nick: string, look: number) {
     const box = el('div', { class: 'alarm-box' });
+    const room = el('div', { class: 'alarm-room' });
+    const dream = el('div', { class: 'alarm-dream' }, '💭 꿈속: 급식실에 돈가스가 산처럼… 산처럼 쌓여서…');
     const clock = el('div', { class: 'alarm-clock' }, '08:25');
+    const phone = el('div', { class: 'alarm-phone ringing' });
+    const chat = el('div', { class: 'alarm-chat' });
+    phone.append(el('div', { class: 'alarm-phone-head' }, '6학년 1반 단톡 (8)'), chat);
     const text = el('div', { class: 'alarm-text' }, '띠리리리리~ 띠리리리리~');
+    const shout = el('div', { class: 'alarm-shout hidden' });
+    room.append(dream, phone, shout);
     let snoozes = 0;
     let done = false;
-    const finish = (overslept: boolean) => {
+    let phase: 'ring' | 'ready' = 'ring';
+    const timers: number[] = [];
+    const later = (ms: number, f: () => void) => timers.push(window.setTimeout(f, ms));
+    const msgs: [string, string][] = [
+      ['민재', '오늘 급식 돈가스래!!! 🍖'],
+      ['서아', '1교시 국어야. 국어책 사물함에 있는 거 잊지 마~'],
+      ['현우', '2교시 수학은 태블릿 게임한대. 충전함 내가 챙길게'],
+      ['하린', '3교시 모둠 포스터! 색연필 가져와'],
+      ['AI 도우미', '안녕하세요! 오늘부터 6-1 학교생활 도우미로 함께해요. 소원을 말해 주세요 :)'],
+    ];
+    const pushMsg = (who: string, m: string) => {
+      const row = el('div', { class: 'alarm-msg' + (who === 'AI 도우미' ? ' ai' : '') }, el('b', {}, who), el('span', {}, m));
+      chat.append(row);
+      while (chat.children.length > 4) chat.firstElementChild?.remove();
+    };
+    msgs.forEach(([w, m], i) => later(700 + i * 1300, () => phase === 'ring' && pushMsg(w, m)));
+    const finish = (overslept: boolean, breakfast: string) => {
       if (done) return;
       done = true;
+      timers.forEach((t) => clearTimeout(t));
       window.removeEventListener('keydown', key);
       const save = newSave({ nickname: nick, look });
       if (overslept) save.flags.overslept = true;
+      save.flags['breakfast_' + breakfast] = true;
       this.setScreen(null);
       this.onStart(save);
     };
+    /** 아침 준비 체크리스트 (저절로 지나간다. 1·2로 아침밥 고르기) */
+    let breakfast = 'rice';
     const up = () => {
-      text.textContent = snoozes ? '헉! 벌써 8시 37분?! 뛰어!' : '벌떡! 오늘은 월요일. 가방 챙겨서 출발~';
-      setTimeout(() => finish(snoozes > 0), 1300);
+      if (phase !== 'ring') return;
+      phase = 'ready';
+      phone.classList.remove('ringing');
+      dream.classList.add('hidden');
+      shout.classList.add('hidden');
+      clock.textContent = snoozes ? '08:37' : '08:26';
+      text.textContent = snoozes ? '헉! 벌써 8시 37분?! 뛰어!' : '벌떡! 오늘은 월요일. 학교 갈 준비!';
+      const steps: [string, string][] = snoozes
+        ? [['🪥 양치·세수', '…는 3초 만에!'], ['🍞 아침밥', '토스트 물고 출발! (1 토스트 / 2 우유)'], ['🎒 가방 메기', '실내화 주머니까지 OK']]
+        : [['🪥 양치·세수', '거울 속 내가 오늘따라 멋지다'], ['🍚 아침밥', '1 밥이랑 계란말이 / 2 시리얼'], ['🎒 가방 메기', '필통… 어디 갔지? (학교 가면서 찾자)']];
+      const list = el('div', { class: 'alarm-check' });
+      room.replaceChildren(list);
+      buttons.replaceChildren(button('[E] 출발!', () => finish(snoozes > 0, breakfast), 'btn primary big'));
+      steps.forEach(([t, d], i) =>
+        later(250 + i * 650, () => {
+          list.append(el('div', { class: 'alarm-check-row' }, el('span', { class: 'tick' }, '✔'), el('b', {}, t), el('span', {}, d)));
+        }),
+      );
+      later(250 + steps.length * 650 + 700, () => finish(snoozes > 0, breakfast));
     };
     const snooze = () => {
+      if (phase !== 'ring') return;
       snoozes++;
-      if (snoozes >= 2) return up();
+      if (snoozes >= 2) {
+        shout.textContent = '🐱 야옹! (고양이가 얼굴 위에 앉았다) + 👩 「○○야! 8시 37분이야!!」'.replace('○○', nick);
+        shout.classList.remove('hidden');
+        return later(900, up);
+      }
       clock.textContent = '08:30';
       text.textContent = '(5분만 더… zzZ) 띠리리리리~!!';
+      dream.textContent = '💭 꿈속: …돈가스 산이 무너진다…!';
+      shout.textContent = '👩 「○○야~ 일어나! 지각한다!」'.replace('○○', nick);
+      shout.classList.remove('hidden');
+      phone.classList.add('louder');
     };
     const key = (e: KeyboardEvent) => {
       if (e.repeat) return;
+      if (phase === 'ready') {
+        if (e.code === 'Digit1' || e.code === 'Digit2') {
+          breakfast = e.code === 'Digit1' ? (snoozes ? 'toast' : 'rice') : snoozes ? 'milk' : 'cereal';
+          const label = { rice: '🍚 밥이랑 계란말이!', cereal: '🥣 시리얼 와삭와삭!', toast: '🍞 토스트 물고 출발!', milk: '🥛 우유 원샷!' }[breakfast];
+          text.textContent = label + ' 든든하다.';
+        }
+        else if (e.code === 'KeyE' || e.code === 'Enter') finish(snoozes > 0, breakfast);
+        return;
+      }
       if (e.code === 'KeyE' || e.code === 'Enter') up();
       else if (e.code === 'Space') {
         e.preventDefault();
@@ -172,11 +238,8 @@ export class Menus {
       }
     };
     window.addEventListener('keydown', key);
-    box.append(
-      clock,
-      text,
-      el('div', { class: 'title-btns row' }, button('[E] 일어나기', up, 'btn primary big'), button('[Space] 5분만 더…', snooze, 'btn big')),
-    );
+    const buttons = el('div', { class: 'title-btns row' }, button('[E] 일어나기', up, 'btn primary big'), button('[Space] 5분만 더…', snooze, 'btn big'));
+    box.append(clock, room, text, buttons);
     this.setScreen(el('div', { class: 'screen alarm-screen' }, box));
   }
 
