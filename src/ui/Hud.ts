@@ -6,6 +6,8 @@ import { SLOT_COUNT } from '../player/Inventory';
 interface Bubble {
   node: HTMLElement;
   anchor: () => THREE.Vector3;
+  /** 말하는 사람 이름 (같은 사람 말풍선은 하나만) */
+  name: string;
   until: number;
 }
 
@@ -114,32 +116,65 @@ export class Hud {
 
   /** NPC 머리 위 말풍선 (짧은 혼잣말) */
   bubble(name: string, text: string, anchor: () => THREE.Vector3, ms = 3200) {
-    const old = this.bubbles.find((b) => b.anchor === anchor);
-    if (old) {
+    // 같은 사람의 앞 말풍선은 지운다 (anchor 함수는 부를 때마다 새로 만들어지므로 이름으로 찾는다)
+    for (const old of this.bubbles.filter((b) => b.anchor === anchor || b.name === name)) {
       old.node.remove();
       this.bubbles.splice(this.bubbles.indexOf(old), 1);
     }
     const node = el('div', { class: 'bubble' }, el('b', {}, name + ':'), ' ', text);
     this.bubbleLayer.append(node);
-    this.bubbles.push({ node, anchor, until: performance.now() + ms });
+    this.bubbles.push({ node, anchor, name, until: performance.now() + ms });
   }
 
   showLockHint(v: boolean) {
     this.lockHint.classList.toggle('hidden', !v);
   }
 
-  updateBubbles(cam: THREE.Camera, w: number, h: number) {
+  /**
+   * 말풍선 자리: 머리 위에 붙이되 ① 서로 겹치면 위로 밀고 ② 대화창(이름표 포함)과 겹치면 대화창 위로 올린다.
+   * 대화창에서 지금 말하는 사람의 말풍선은 숨긴다 (같은 말이 두 군데 보이지 않게)
+   */
+  updateBubbles(cam: THREE.Camera, w: number, h: number, avoid: DOMRect | null = null, speaking = '') {
     const now = performance.now();
+    const placed: { l: number; r: number; t: number; b: number }[] = [];
+    const host = this.bubbleLayer.getBoundingClientRect();
+    const box = avoid ? { l: avoid.left - host.left - 8, r: avoid.right - host.left + 8, t: avoid.top - host.top - 30, b: avoid.bottom - host.top } : null;
+    // 물건·사람 앞 「E …」 안내도 가리지 않게 (먼저 자리를 차지)
+    if (!this.prompt.classList.contains('hidden')) {
+      const pr = this.prompt.getBoundingClientRect();
+      if (pr.width > 0) placed.push({ l: pr.left - host.left - 4, r: pr.right - host.left + 4, t: pr.top - host.top - 4, b: pr.bottom - host.top + 4 });
+    }
+    const items: { b: Bubble; x: number; y: number; z: number }[] = [];
     this.bubbles = this.bubbles.filter((b) => {
       if (now > b.until) {
         b.node.remove();
         return false;
       }
       const p = b.anchor().clone().project(cam);
-      const vis = p.z < 1 && p.z > -1 && Math.abs(p.x) < 1.1 && Math.abs(p.y) < 1.1;
+      const vis = p.z < 1 && p.z > -1 && Math.abs(p.x) < 1.1 && Math.abs(p.y) < 1.1 && !(speaking && b.name === speaking);
       b.node.style.display = vis ? '' : 'none';
-      if (vis) b.node.style.transform = `translate(${((p.x + 1) / 2) * w}px, ${((1 - p.y) / 2) * h}px) translate(-50%, -100%)`;
+      if (vis) items.push({ b, x: ((p.x + 1) / 2) * w, y: ((1 - p.y) / 2) * h, z: p.z });
       return true;
     });
+    // 가까운(화면 앞) 말풍선부터 자리를 잡는다
+    items.sort((a, c) => a.z - c.z);
+    const hit = (r: { l: number; r: number; t: number; b: number }, o: { l: number; r: number; t: number; b: number }) => r.l < o.r && r.r > o.l && r.t < o.b && r.b > o.t;
+    for (const it of items) {
+      const bw = it.b.node.offsetWidth || 160, bh = (it.b.node.offsetHeight || 34) + 8;
+      let y = it.y;
+      for (let k = 0; k < 12; k++) {
+        const r = { l: it.x - bw / 2, r: it.x + bw / 2, t: y - bh, b: y };
+        const other = placed.find((o) => hit(r, o)) ?? (box && hit(r, box) ? box : null);
+        if (!other) break;
+        y = other.t - 2; // 겹친 것 위로
+      }
+      if (y - bh < 0) {
+        it.b.node.style.display = 'none'; // 화면 위로 밀려나면 숨김
+        continue;
+      }
+      placed.push({ l: it.x - bw / 2, r: it.x + bw / 2, t: y - bh, b: y });
+      it.b.node.style.transform = `translate(${it.x}px, ${y}px) translate(-50%, -100%)`;
+    }
   }
+
 }

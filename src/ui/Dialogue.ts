@@ -31,6 +31,16 @@ export class Dialogue {
     return !!this.current;
   }
 
+  /** 화면에 떠 있는 대화창 자리 (말풍선이 피해 갈 곳). 없으면 null */
+  rect(): DOMRect | null {
+    return this.current && !this.box.classList.contains('hidden') ? this.box.getBoundingClientRect() : null;
+  }
+
+  /** 지금 대화창에서 말하는 사람 */
+  get speaker() {
+    return this.current?.line.who ?? '';
+  }
+
   get currentText() {
     return this.current ? `${this.current.line.who}: ${this.current.line.text}` : '';
   }

@@ -62,6 +62,9 @@ export interface RemoteControl {
   onExit(): void;
 }
 
+/** 바닥 무늬판(타일·화강석 판)은 바닥 높이보다 0.4~1cm 위에 깔려 있다: 얇은 물건(자·종이)이 그 밑에 묻히지 않게 살짝 띄운다 */
+const FLOOR_SKIN = 0.015;
+
 export class Game {
   renderer: THREE.WebGLRenderer;
   scene = new THREE.Scene();
@@ -522,7 +525,9 @@ export class Game {
         p.y += f.target.promptY ?? 0.9;
         const sp = p.project(this.camera);
         const w = this.renderer.domElement.clientWidth, h = this.renderer.domElement.clientHeight;
-        this.hud.setPrompt(f.eLabel, f.fLabel, sp.z < 1 ? { x: ((sp.x + 1) / 2) * w, y: ((1 - sp.y) / 2) * h } : { x: w / 2, y: h * 0.62 });
+        // 대화창이 떠 있는 동안에는 「E 말 걸기」 같은 안내를 숨긴다 (E는 대사 넘기기라 헷갈리고, 말풍선·이름표와 겹친다)
+        if (this.dialogue.active) this.hud.setPrompt(null, null, null);
+        else this.hud.setPrompt(f.eLabel, f.fLabel, sp.z < 1 ? { x: ((sp.x + 1) / 2) * w, y: ((1 - sp.y) / 2) * h } : { x: w / 2, y: h * 0.62 });
         if (!consumedE && input.pressed('E') && f.e) f.e.onInteract?.();
         else if (input.pressed('F') && f.f) f.f.onUse?.(this.inventory.held);
         else if (input.pressed('F') && this.inventory.held && !this.player.seat) this.dropHeld();
@@ -544,7 +549,7 @@ export class Game {
     } else this.player.char.setHidden(false);
     this.hud.showLockHint(this.controlMode === 'keyboard' && !input.pointerLocked && !input.captured && !this.cutscene);
     this.updateTouch();
-    this.hud.updateBubbles(this.camera, this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight);
+    this.hud.updateBubbles(this.camera, this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight, this.dialogue.rect(), this.dialogue.speaker);
 
     // 목표 화살표
     if (this.markerTarget && !this.cutscene) {
@@ -662,8 +667,8 @@ export class Game {
   give(id: ItemId) {
     if (!this.inventory.add(id)) {
       // 꽉 차면 발밑에 놓는다
-      const f = this.player.forward();
-      this.spawnItem(`drop${this.dropCount++}`, id, this.player.pos.x + f.x * 0.6, 0, this.player.pos.z + f.z * 0.6);
+      const d = this.dropSpot();
+      this.spawnItem(`drop${this.dropCount++}`, id, d.x, d.y, d.z);
       this.hud.toast(`손이 꽉 차서 ${itemDef(id).name}을(를) 발밑에 놓았어요.`, 'warn');
       return;
     }
@@ -677,12 +682,28 @@ export class Game {
   dropHeld() {
     const id = this.inventory.held;
     if (!id) return;
-    const f = this.player.forward();
+    const d = this.dropSpot();
     this.inventory.remove(id);
     const key = `drop${this.dropCount++}`;
-    this.spawnItem(key, id, this.player.pos.x + f.x * 0.6, 0, this.player.pos.z + f.z * 0.6, this.player.yaw);
+    this.spawnItem(key, id, d.x, d.y, d.z, this.player.yaw);
     this.story.onDropped?.(id, key);
     this.sfx.place();
+  }
+
+  /**
+   * 물건을 내려놓을 자리: 앞 0.6m 바닥 (지금 층·계단 높이). 그 자리가 벽·가구 속이면 조금 더 가까이,
+   * 그래도 막히면 발밑에 놓는다 (예전에는 높이가 늘 2층 바닥이라 1층에서 놓으면 위층 바닥 속으로 사라졌다)
+   */
+  private dropSpot(): { x: number; y: number; z: number } {
+    const p = this.player.pos, f = this.player.forward();
+    const cols = this.map.collidersFor(this.map.levelOf(p.y));
+    const blocked = (x: number, z: number) =>
+      cols.some((c) => c.enabled !== false && x > c.minX - 0.12 && x < c.maxX + 0.12 && z > c.minZ - 0.12 && z < c.maxZ + 0.12);
+    for (const d of [0.6, 0.4, 0.2]) {
+      const x = p.x + f.x * d, z = p.z + f.z * d;
+      if (!blocked(x, z)) return { x, y: this.map.groundY(x, z, p.y) + FLOOR_SKIN, z };
+    }
+    return { x: p.x, y: this.map.groundY(p.x, p.z, p.y) + FLOOR_SKIN, z: p.z };
   }
 
   /** 떨어뜨렸거나 잃어버린 필수 물건을 다시 손에 */
