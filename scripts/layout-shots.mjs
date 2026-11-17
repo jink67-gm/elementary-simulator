@@ -52,6 +52,8 @@ await shot('b5_office_from_lobby', [12.0, Y1 + 1.6, 1.6], [5.0, Y1 + 1.2, -1.5])
 await shot('b6_stair_top_2f', [8.4, 1.6, -1.5], [15.0, -1.0, -1.5]);
 await shot('b7_corridor_2f', [9.1, 1.6, -14.5], [9.1, 1.3, 10]);
 await shot('b8_elevator_1f', [8.0, Y1 + 1.5, -5.2], [11.0, Y1 + 1.1, -8.5]);
+await shot('c1_toilets_1f', [8.6, -3.6 + 1.5, -8.6], [11.0, -3.6 + 1.0, -13.0], 66);
+await shot('c2_stair_mouth_2f', [8.2, 1.6, 2.2], [11.0, 1.0, -2.0], 66);
 await shot('b9_exterior', [27, Y1 + 3.5, -1.5], [14, Y1 + 3.0, -1.5]);
 const nav = await page.evaluate(() => {
   const g = window.__sim.game;
