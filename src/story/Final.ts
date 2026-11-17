@@ -80,7 +80,7 @@ export class FinalEvent implements StoryEvent {
     this.objs.kiosk = kiosk;
     // 교사용 노트북 표시 (빛나는 화면)
     const tl = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.2), new THREE.MeshBasicMaterial({ color: 0x80ffdb }));
-    tl.position.set(-4.4, 1.3, -3.52); // 교사 책상 모니터
+    tl.position.set(-4.4, 1.3, -3.2); // 교사 책상 모니터
     tl.visible = false; // 상호작용 위치용 (노트북 모델은 지도에 있음)
     this.deco.add(tl);
     this.objs.teacherLaptop = tl;
@@ -163,7 +163,7 @@ export class FinalEvent implements StoryEvent {
         prompt: () => (this.active ? (this.st.records.has(rec) ? `${RECORD_NAMES[rec]} 다시 보기` : `컴퓨터 켜기 — ${RECORD_NAMES[rec]}`) : null),
         onInteract: () => void this.readRecord(rec),
       });
-    comp('teacherLaptop', 'poster', new THREE.Vector3(-4.4, 0, -2.55));
+    comp('teacherLaptop', 'poster', new THREE.Vector3(-4.4, 0, -2.2));
     comp('kiosk', 'lunch', new THREE.Vector3(CAFE_FRONT.x + 1.0, CAFE_FRONT.y, CAFE_FRONT.z));
     comp('broadcastLaptop', 'wishes', new THREE.Vector3(13.3, 0, 4.9));
     add({

@@ -15,15 +15,15 @@ export const DESK = { w: 0.8, d: 0.56, top: 0.68 };
 export const CHAIR = { seat: 0.38, gap: 0.25 };
 /** 모둠 가운데. 1모둠 = 창가 쪽, 2모둠 = 복도 쪽 */
 export const PODS = [
-  { x: -2.2, z: -1.1, name: '1모둠' },
-  { x: 2.2, z: -1.1, name: '2모둠' },
+  { x: -2.2, z: -0.7, name: '1모둠' },
+  { x: 2.2, z: -0.7, name: '2모둠' },
 ];
 /** 짝 책상 가운데 (일반 수업): 앞줄·뒷줄 × 창가 쪽·복도 쪽 */
 export const PAIRS = [
-  { x: -1.9, z: -2.3 },
-  { x: -1.9, z: 0.2 },
-  { x: 1.9, z: -2.3 },
-  { x: 1.9, z: 0.2 },
+  { x: -1.9, z: -1.9 },
+  { x: -1.9, z: 0.6 },
+  { x: 1.9, z: -1.9 },
+  { x: 1.9, z: 0.6 },
 ];
 /** 자리표 (두 배치에서 같은 학생 = 같은 책상).
  *  pods: [모둠, 책상이 놓인 쪽(-1 서 / 1 동), 줄(-1 칠판 쪽 / 1 뒤쪽)], pairs: [짝 번호, 짝 안에서 쪽(-1 서 / 1 동)] */
@@ -154,7 +154,7 @@ export const WEST_PILLAR = { x: ROOM.x0 + 0.15, z: 0.95, w: 0.7, d: 0.7 }; // �
 export const EAST_PILLAR = { x: 6.78, z: -0.15, w: 0.44, d: 1.0 };
 export const CLOCK_POS = { x: 6.55, y: 2.12, z: -0.15 };
 /** 교사용 책상 (앞 왼쪽, 창가 쪽) */
-export const TEACHER_DESK = { x: -4.15, z: -3.62, w: 2.34, d: 1.1, h: 0.99 };
+export const TEACHER_DESK = { x: -4.15, z: -3.3, w: 2.34, d: 1.1, h: 0.99 };
 /** 교사용 교과서 꽂이 선반 (교사 책상 옆, 창 아래) */
 export const TEACHER_SHELF = { x: ROOM.x0 + 0.2, z: -4.0, len: 1.85, d: 0.38, h: 0.82 };
 export const PURIFIER = { x: 6.66, z: 3.25 };

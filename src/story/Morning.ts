@@ -896,7 +896,7 @@ export class Morning implements StoryHooks {
     if (fromLoad) {
       if (p === 'arrival') {
         g.player.teleport(SPAWN.x, SPAWN.z, SPAWN.yaw, SPAWN.y);
-      } else if (p === 'group') g.player.teleport(-1.1, 0.2, -Math.PI / 2);
+      } else if (p === 'group') g.player.teleport(0, 0.0, -Math.PI / 2);
       else if (p === 'lunch') g.player.teleport(8.6, -3, 0);
       else if (p === 'break') g.player.teleport(-1.2, 1.0, Math.PI);
       else g.player.sitAt(seats.player);

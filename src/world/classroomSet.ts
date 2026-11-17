@@ -441,7 +441,7 @@ export function buildTeacherDeskItems(): THREE.Group {
 
 /** 교사 책상 아래: 컴퓨터 본체(진회색 타워), 멀티탭(6구), 전원선(본체·모니터 → 멀티탭, 가림판 안쪽을 따라 정리).
  *  책상 자기 좌표 (앉는 쪽 -z, 학생 쪽 +z). monitors = 모니터 두 대의 받침 위치(책상 위, x·z) */
-export function buildTeacherUnderDesk(w: number, d: number, h: number, monitors: [number, number][]): THREE.Group {
+export function buildTeacherUnderDesk(w: number, d: number, h: number, monitors: [number, number][], gapLocalZ = d / 2 + 0.033): THREE.Group {
   const g = new THREE.Group();
   const caseM = std(0x2a2d33, 0.45, 0.35), front = std(0x1c1e22, 0.35, 0.2), vent = std(0x0f1012, 0.8);
   // 본체: 왼쪽 옆판 가까이 (다리 공간 밖), 앞면이 선생님 쪽
@@ -483,8 +483,12 @@ export function buildTeacherUnderDesk(w: number, d: number, h: number, monitors:
     const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
     add(g, new THREE.TubeGeometry(curve, Math.max(10, pts.length * 10), r, 5, false), m, 0, 0, 0);
   };
-  const gapZ = d / 2 + 0.033, wallX = -w / 2 - 0.68; // 틈: 책상 앞 가장자리 바로 바깥(교사 책장 끝 ~ 창가 책장 시작), 창 벽 안쪽 면
-  run([[mx - MW / 2, 0.02, mz], [mx - MW / 2 - 0.04, 0.006, mz + 0.03], [mx - MW / 2 - 0.08, 0.005, gapZ], [-w / 2 + 0.1, 0.005, gapZ], [wallX + 0.12, 0.005, gapZ], [wallX + 0.03, 0.01, gapZ], [wallX + 0.02, 0.1, gapZ]], 0.005, wcord);
+  // 틈(교사 책장 끝 ~ 창가 책장 시작)과 창 벽 안쪽 면. 선은 가림판 밑으로 책상 앞에 나와, 책상 왼쪽 끝을 돌아 틈으로 들어간다
+  const gapZ = gapLocalZ, wallX = -w / 2 - 0.68, frontZ = d / 2 + 0.035, turnX = -w / 2 - 0.1;
+  const cordPts: [number, number, number][] = [[mx - MW / 2, 0.02, mz], [mx - MW / 2 - 0.04, 0.006, mz + 0.03], [mx - MW / 2 - 0.08, 0.005, frontZ], [turnX + 0.12, 0.005, frontZ]];
+  if (Math.abs(gapZ - frontZ) > 0.05) cordPts.push([turnX, 0.005, frontZ - 0.08], [turnX, 0.005, gapZ + 0.08], [turnX - 0.1, 0.005, gapZ]);
+  cordPts.push([wallX + 0.12, 0.005, gapZ], [wallX + 0.03, 0.01, gapZ], [wallX + 0.02, 0.1, gapZ]);
+  run(cordPts, 0.005, wcord);
   // 벽 콘센트 (틈 안쪽 벽, 흰 판 + 꽂힌 플러그)
   add(g, rbox(0.012, 0.11, 0.06, 0.004), white, wallX + 0.006, 0.13, gapZ);
   add(g, cyl(0.016, 0.017, 0.026, 14), std(0xeceff1, 0.4), wallX + 0.024, 0.13, gapZ, 0, 0, Math.PI / 2);

@@ -378,7 +378,9 @@ export class SchoolMap {
     // 책상 아래: 컴퓨터 본체·멀티탭·정리된 전선 (모니터 받침 위치 = 물품 묶음 기준 + 0.18×1.15 학생 쪽)
     // 모니터 두 대의 받침 위치 (물품 묶음은 π 돌려 1.15배: 묶음 안 x ±0.29, z -0.2)
     const monXZ = [-0.29, 0.29].map((mxi) => [items.position.x - mxi * 1.15, items.position.z + 0.2 * 1.15] as [number, number]);
-    tdesk.add(buildTeacherUnderDesk(TD.w, TD.d, TD.h, monXZ));
+    // 멀티탭 선이 들어갈 틈: 교사 책장 끝과 창가 책장 시작 사이 (책상 자기 좌표)
+    const gapWorldZ = (TEACHER_SHELF.z + TEACHER_SHELF.len / 2 + WINDOW_CAB.z0) / 2;
+    tdesk.add(buildTeacherUnderDesk(TD.w, TD.d, TD.h, monXZ, gapWorldZ - TD.z));
     // 작은 쓰레기통: 책상 아래 본체 앞 (선생님 쪽, 의자 다리 공간 밖)
     const tbin = buildSmallBin();
     tbin.position.set(-TD.w / 2 + 0.24, 0, -TD.d / 2 + 0.12);
