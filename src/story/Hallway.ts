@@ -27,7 +27,7 @@ const DOORS: { id: CardId; x: number; z: number; ry: number }[] = [
   { id: 'break', x: 10.97, z: 6.0, ry: -Math.PI / 2 },
 ];
 const TAPES: [number, number, number][] = [
-  [10.55, 0.03, -3.6], // 계단 입구 앞 바닥
+  [10.55, 0.03, -5.0], // 계단 입구 옆 창가 바닥
   [7.5, 1.27, 10.5], // 정수기 위
   [9.0, 0.03, 15.3], // 급식실 문 앞 바닥
 ];
