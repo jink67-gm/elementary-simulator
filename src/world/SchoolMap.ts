@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { aabb, type Aabb } from './Collision';
 import { CanvasTex, font, wrapText } from './canvasTex';
-import { mergeStatic } from './merge';
+import { mergeLocal, mergeStatic } from './merge';
 import { SCHOOL_NAME } from '../data/school';
 import type { PosterTheme } from '../core/SaveData';
 import { hasProp, placeInstances, placeOne, type Fit, type Placement } from './props';
@@ -445,6 +445,7 @@ export class SchoolMap {
       sign.position.set(0, 2.35, 0.04);
       g.add(sign);
     }
+    mergeLocal(g, isPbrMaterial, this.cameraBlockers); // 문 조각들을 재질별로 합침 (그리기 호출 줄이기)
     this.objs[name] = g;
     return g;
   }
@@ -1996,6 +1997,7 @@ export class SchoolMap {
     sign.rotation.y = Math.PI / 2;
     g.add(sign);
     this.colliders.push({ ...aabb(7.1, zc, 0.24, w), level: 1 });
+    mergeLocal(g, isPbrMaterial, this.cameraBlockers);
     this.objs.fireDoor = g;
   }
 
@@ -2352,18 +2354,14 @@ export class SchoolMap {
       for (let x = 4; x < w; x += 16) c.fillRect(x, 0, 5, h);
     });
     barT.tex.wrapS = THREE.RepeatWrapping;
+    barT.tex.repeat.set(12.2 / 0.16 / 8, 1); // 울타리 판 넷이 같은 길이 → 재질 하나
     const fence = paint(0xe0b22c, 0.55, 0.3);
     const barM = new THREE.MeshStandardMaterial({ map: barT.tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.55 });
     for (const [fx, zc] of [[27.45, gz - 8.4], [27.45, gz + 8.4], [33.85, gz - 8.4], [33.85, gz + 8.4]] as [number, number][]) {
       const L2 = 12.2;
       solid(0.05, 0.05, L2, fence, fx, 0.95, zc);
       solid(0.04, 0.04, L2, fence, fx, 0.2, zc);
-      const t = barT.tex.clone();
-      t.needsUpdate = true;
-      t.repeat.set(L2 / 0.16 / 8, 1);
-      const pm2 = barM.clone();
-      pm2.map = t;
-      const panel = new THREE.Mesh(new THREE.PlaneGeometry(L2, 0.73), pm2);
+      const panel = new THREE.Mesh(new THREE.PlaneGeometry(L2, 0.73), barM);
       panel.position.set(fx, Y + 0.585, zc);
       panel.rotation.y = Math.PI / 2;
       this.root.add(panel);
@@ -2392,14 +2390,13 @@ export class SchoolMap {
       for (let x = 4; x < w; x += 16) c.fillRect(x, 0, 4, h);
     });
     barT2.tex.wrapS = THREE.RepeatWrapping;
+    const wallFenceM = new THREE.MeshStandardMaterial({ map: barT2.tex, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5 });
     for (const s2 of [-1, 1]) {
       const za = gz + s2 * 2.65, zb = gz + s2 * 26, zc = (za + zb) / 2, L2 = Math.abs(zb - za);
       solid(0.32, 0.55, L2, stone, 25.3, 0, zc);
       solid(0.36, 0.06, L2, paint(0x8d8a83, 0.7), 25.3, 0.55, zc);
-      const t = barT2.tex.clone();
-      t.needsUpdate = true;
-      t.repeat.set(L2 / 0.12 / 8, 1);
-      const fm = new THREE.Mesh(new THREE.PlaneGeometry(L2, 1.0), new THREE.MeshStandardMaterial({ map: t, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.5 }));
+      barT2.tex.repeat.set(L2 / 0.12 / 8, 1); // 양쪽 담장이 같은 길이
+      const fm = new THREE.Mesh(new THREE.PlaneGeometry(L2, 1.0), wallFenceM);
       fm.position.set(25.3, Y + 1.13, zc);
       fm.rotation.y = Math.PI / 2;
       this.root.add(fm);

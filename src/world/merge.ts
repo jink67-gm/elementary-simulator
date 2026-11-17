@@ -70,3 +70,36 @@ export function mergeChildrenByColor(group: THREE.Object3D, material: THREE.Mate
   mesh.castShadow = true;
   group.add(mesh);
 }
+
+/** 그룹 안 직속 메시들을 재질별로 그룹 좌표 그대로 합친다 (문처럼 그룹 자체는 상호작용 대상이라 남겨 둘 때) */
+export function mergeLocal(group: THREE.Object3D, mergeable: (m: THREE.Material) => boolean, skip: THREE.Object3D[] = []) {
+  const by = new Map<THREE.Material, THREE.Mesh[]>();
+  for (const c of group.children) {
+    const m = c as THREE.Mesh;
+    if (m.isMesh && !skip.includes(m) && !Array.isArray(m.material) && mergeable(m.material) && m.children.length === 0) {
+      const l = by.get(m.material) ?? [];
+      l.push(m);
+      by.set(m.material, l);
+    }
+  }
+  for (const [mat, meshes] of by) {
+    if (meshes.length < 2) continue;
+    let geoms = meshes.map((m) => {
+      m.updateMatrix();
+      const g = m.geometry.clone();
+      g.applyMatrix4(m.matrix);
+      for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'uv') g.deleteAttribute(k);
+      if (!g.getAttribute('uv')) return null;
+      return g;
+    });
+    if (geoms.some((g) => !g)) continue;
+    if (geoms.some((g) => !g!.index)) geoms = geoms.map((g) => (g!.index ? g!.toNonIndexed() : g));
+    const merged = mergeGeometries(geoms as THREE.BufferGeometry[], false);
+    if (!merged) continue;
+    const mesh = new THREE.Mesh(merged, mat);
+    mesh.castShadow = meshes.some((m) => m.castShadow);
+    mesh.receiveShadow = true;
+    group.add(mesh);
+    for (const m of meshes) group.remove(m);
+  }
+}
