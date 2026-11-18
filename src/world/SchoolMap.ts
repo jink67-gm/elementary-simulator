@@ -2016,18 +2016,9 @@ export class SchoolMap {
       mm.material = m;
       return mm;
     };
-    // 나무 판 (벽 면을 덮음): 창 칸·문 자리를 뺀 아래~채광창 밑, 창 칸 아래(칸 뒤판)
+    // 아래 벽(창 아래·창과 문 사이)은 페인트 벽 그대로. 창 위~채광창 밑 띠만 나무
     const open: [number, number][] = [...bays, ...doors].sort((p, q) => p[0] - q[0]);
-    let z = z0;
-    for (const [a, c] of open) {
-      if (a - z > 0.01) b(0.02, T, a - z, wood, F + 0.01, 0, (z + a) / 2);
-      z = c;
-    }
-    if (z1 - z > 0.01) b(0.02, T, z1 - z, wood, F + 0.01, 0, (z + z1) / 2);
-    for (const [a, c] of bays) {
-      b(0.02, SILL, c - a, wood, F + 0.01, 0, (a + c) / 2); // 칸 뒤판
-      b(0.02, T - HEAD, c - a, wood, F + 0.01, HEAD, (a + c) / 2); // 창 위
-    }
+    for (const [a, c] of bays) b(0.02, T - HEAD, c - a, wood, F + 0.01, HEAD, (a + c) / 2);
     // 위 채광창 줄 (천장까지): 위·아래 틀 + 세로 살 + 유리(뒤에 밝은 안쪽 면)
     // 채광창은 복도 기둥(아치) 자리에서 끊는다 (기둥과 창이 겹치지 않게): 기둥 앞뒤로 나무 판
     const PH = 0.3; // 기둥 반 너비 + 여유
