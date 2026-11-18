@@ -48,6 +48,9 @@ export interface Seat {
 const WALL_H = 3;
 /** 복도 벽에 뚫는 문 자리 너비 (door()의 문짝·문선이 이 안에 들어간다) */
 const DOOR_GAP = 1.2;
+/** 복도 색 기둥(아치) 위치 — 층별 (CorridorBuilder arches와 같은 값) */
+const ARCHES_2F = [-13.3, -0.2, 7.0, 15.4];
+const ARCHES_1F = [-2.9, 8.2];
 /** 1층 바닥 높이 (우리 반이 있는 2층이 y = 0) */
 export { FLOOR1_Y, STAIR } from './rooms';
 /** 계단: x 범위, 아래(1층) z, 위(2층) z */
@@ -138,7 +141,7 @@ export class SchoolMap {
       windows: [[-5.4, 2.2], [6.9, 15.8]],
       // 다른 반 창은 frostedRoomFace (위 유리창을 겹치지 않는다)
       transoms: [],
-      arches: [-13.3, -0.2, 7.0, 15.4],
+      arches: ARCHES_2F,
       openDoors: [], // 6-1 문은 SchoolMap.buildSlidingDoor (열리고 닫히는 미닫이)
     });
     new CorridorBuilder(this.root, this.colliders, this.cameraBlockers).build({
@@ -148,7 +151,7 @@ export class SchoolMap {
       z1: 16.1,
       windows: [],
       transoms: [],
-      arches: [-2.9, 8.2],
+      arches: ARCHES_1F,
       openDoors: [],
     });
     new FirstFloorBuilder(this.root, this.colliders, this.cameraBlockers).build();
@@ -471,8 +474,11 @@ export class SchoolMap {
     }
     if (Math.abs(Math.abs(ry) - Math.PI / 2) < 0.01) {
       // 복도 벽의 문: 문 옆 위에 튀어나온 실명판
+      // 문 옆 위에 튀어나온 실명판: 기본은 +z 쪽, 그쪽에 복도 기둥(아치)이 있으면 반대쪽
       const west = ry > 0;
-      this.flagSign(label, west ? 7.1 : 11.1, z + 0.8, west ? 1 : -1);
+      const arches = this.baseY === 0 ? ARCHES_2F : ARCHES_1F;
+      const side = arches.some((a) => Math.abs(a - (z + 0.8)) < 0.75) ? -1 : 1;
+      this.flagSign(label, west ? 7.1 : 11.1, z + side * 0.8, west ? 1 : -1);
     } else {
       const t = this.plateTex(label, 256, 80);
       const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.225), t.material());
@@ -885,7 +891,7 @@ export class SchoolMap {
     this.door('doorRestroom2F', '여자 화장실', 10.97, -12.2, -Math.PI / 2, 0xe8a0a8, '#c9184a');
     this.elevatorDoor(-6.6, 2);
     // 서쪽(방 쪽) 벽: 5-1 | 계단실(남쪽 절반 = 3층 가는 방화문, 북쪽 절반 = 1층으로 내려가는 계단 입구) | 6-1 | 4-1
-    this.doorWallX(7.1, -16, STAIR.zS0, [-14.2]);
+    this.doorWallX(7.1, -16, STAIR.zS0, [-14.6]); // 5-1 문: 복도 기둥(-13.3)과 겹치지 않게 남쪽으로
     this.wallX(7.1, STAIR.zS1, STAIR.zN0);
     this.wallX(7.1, STAIR.zN1, -6.0);
     this.box(0.2, WALL_H - 2.2, STAIR.zN1 - STAIR.zN0, C.wall, 7.1, 2.2, (STAIR.zN0 + STAIR.zN1) / 2, { wall: true, shadow: false }); // 계단 입구 위 보
@@ -907,12 +913,12 @@ export class SchoolMap {
 
     // 문 장식 (잠긴 문들)
     this.door('doorBroadcast', '방송실', 10.97, 4.5, -Math.PI / 2, 0x9b8bb4);
-    this.door('doorClass1', '5-1', 7.23, -14.2, Math.PI / 2);
+    this.door('doorClass1', '5-1', 7.23, -14.6, Math.PI / 2);
     this.door('doorClass4', '4-1', 7.23, 8.4, Math.PI / 2);
     this.door('doorGym', '강당 ▲', 9, -15.97, 0, 0x7a9cc6);
     this.sign('1층 ▼', 7.215, 2.35, STAIR.zN1 + 0.42, Math.PI / 2);
     // 방 쪽 벽 창문 (다른 반: 불투명 유리)
-    this.frostedRoomFace(-16.0, STAIR.zS0, [-14.2, -12.4], [-13.3]);
+    this.frostedRoomFace(-16.0, STAIR.zS0, [-14.6, -12.4], [-13.3]);
     this.frostedRoomFace(ROOM.z1 + 0.1, 16.0, [8.4, 12.6], [7.0, 15.4]);
 
     // 우리 반 명패 (앞문·뒷문 옆에 튀어나온 판)
@@ -2189,7 +2195,7 @@ export class SchoolMap {
     this.door('doorCouncil', '학생자치실', 7.23, 9.6, Math.PI / 2, 0x90be6d);
     this.door('doorWee', 'Wee클래스', 7.23, 15.0, Math.PI / 2, 0xf4a261);
     // 방 쪽 벽 창문 (불투명 유리)
-    const arches1 = [-2.9, 8.2];
+    const arches1 = ARCHES_1F;
     this.frostedRoomFace(-16.0, S.zS0 - 0.15, [-13.6], arches1);
     this.frostedRoomFace(NURSE.z0, NURSE.z1, [NURSE.doorZ], arches1);
     this.frostedRoomFace(OFFICE.z0, OFFICE.z1, [OFFICE.doorZ], arches1);

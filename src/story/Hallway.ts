@@ -19,7 +19,7 @@ import { BROADCAST_LOGS, CARD_TEXT, CORRECT_ORDER, DOOR_CLOCK, EXTRA_HINT, check
 
 /** 시간 문 위치 (복도 서쪽 벽 x 7.23 / 동쪽 벽 x 10.97) — 순서는 일부러 섞음 */
 const DOORS: { id: CardId; x: number; z: number; ry: number }[] = [
-  { id: 'group', x: 7.23, z: -14.0, ry: Math.PI / 2 },
+  { id: 'group', x: 7.23, z: -14.6, ry: Math.PI / 2 }, // 5-1 문 자리에 겹쳐 나타남
   { id: 'lunch', x: 10.97, z: -6.0, ry: -Math.PI / 2 },
   { id: 'korean', x: 7.23, z: -12.4, ry: Math.PI / 2 },
   { id: 'art', x: 10.97, z: -8.5, ry: -Math.PI / 2 },
