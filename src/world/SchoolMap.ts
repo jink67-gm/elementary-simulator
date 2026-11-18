@@ -2022,30 +2022,18 @@ export class SchoolMap {
     const open: [number, number][] = [...bays, ...doors].sort((p, q) => p[0] - q[0]);
     for (const [a, c] of bays) b(0.02, T - HEAD, c - a, wood, F + 0.01, HEAD, (a + c) / 2);
     // 위 채광창 줄 (천장까지): 위·아래 틀 + 세로 살 + 유리(뒤에 밝은 안쪽 면)
-    // 채광창은 복도 기둥(아치) 자리에서 끊는다 (기둥과 창이 겹치지 않게): 기둥 앞뒤로 나무 판
-    const PH = 0.3; // 기둥 반 너비 + 여유
-    const runs: [number, number][] = [];
-    let rz = z0;
-    for (const pz of [...pillars].filter((q) => q > z0 && q < z1).sort((p, q) => p - q)) {
-      if (pz - PH > rz) runs.push([rz, pz - PH]);
-      b(0.02, TOP - T, PH * 2, wood, F + 0.01, T, pz);
-      rz = pz + PH;
-    }
-    if (z1 > rz) runs.push([rz, z1]);
+    // 위 채광창: 창·문 바로 위에만, 아래와 같은 너비로 (가운데 살 하나 = 두 칸). 그 사이는 페인트 벽
+    void pillars, void z0, void z1; // (벽 전체 구간·기둥은 이제 쓰지 않는다: 창·문 위에만 짓는다)
     const inner = paint(0xdfe6ea, 0.4);
-    for (const [ra, rb] of runs) {
-      const len = rb - ra, zc = (ra + rb) / 2;
+    for (const [ra, rb] of open) {
+      const len = rb - ra, zc = (ra + rb) / 2, gh = TOP - T - 0.11;
       b(0.07, 0.06, len, woodD, F + 0.035, T, zc);
       b(0.07, 0.05, len, woodD, F + 0.035, TOP - 0.05, zc);
-      this.plane(len, TOP - T - 0.11, inner, F + 0.004, T + 0.06 + (TOP - T - 0.11) / 2, zc, Math.PI / 2);
-      const tg = this.plane(len, TOP - T - 0.11, this.clearGlass(), F + 0.03, T + 0.06 + (TOP - T - 0.11) / 2, zc, Math.PI / 2);
+      for (const pz of [ra + 0.03, zc, rb - 0.03]) b(0.07, TOP - T, 0.05, woodD, F + 0.035, T, pz);
+      this.plane(len, gh, inner, F + 0.004, T + 0.06 + gh / 2, zc, Math.PI / 2);
+      const tg = this.plane(len, gh, this.clearGlass(), F + 0.03, T + 0.06 + gh / 2, zc, Math.PI / 2);
       tg.renderOrder = 2;
     }
-    const inPillar = (q: number) => pillars.some((pz) => Math.abs(q - pz) < PH + 0.02);
-    const posts = new Set<number>([z0, z1, ...open.flat(), ...pillars.flatMap((pz) => [pz - PH, pz + PH])]);
-    for (const [a, c] of open) for (let k = 1; k < Math.round((c - a) / 0.75); k++) posts.add(a + (k * (c - a)) / Math.round((c - a) / 0.75));
-    for (let q = z0; q < z1; q += 0.9) if (![...posts].some((p) => Math.abs(p - q) < 0.3)) posts.add(q);
-    for (const p of posts) if (!inPillar(p) || pillars.some((pz) => Math.abs(Math.abs(p - pz) - PH) < 0.01)) b(0.07, TOP - T, 0.05, woodD, F + 0.035, T, p);
     // 창 칸
     for (const [a, c] of bays) {
       const w = c - a, cz = (a + c) / 2;
