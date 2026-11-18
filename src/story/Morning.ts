@@ -398,6 +398,25 @@ export class Morning implements StoryHooks {
     const m = g.map;
     const add = (i: Interactable, glow = true) => (this.inter[i.id] = g.addInteractable(i, glow));
 
+    // 6-1 앞문·뒷문: E로 열고 닫기 (복도·교실 양쪽에서)
+    m.classDoors.forEach((d, i) => {
+      add(
+        {
+          id: 'classDoor' + i,
+          obj: m.objs[`classDoor${i}a`],
+          at: new THREE.Vector3(7.1, 1.0, d.zc),
+          radius: 1.6,
+          promptY: 0.6,
+          prompt: () => (d.want ? `${i === 0 ? '앞문' : '뒷문'} 닫기` : `${i === 0 ? '앞문' : '뒷문'} 열기`),
+          onInteract: () => {
+            m.setClassDoor(i, !d.want);
+            g.sfx.place();
+          },
+        },
+        false,
+      );
+    });
+
     // 내 자리 (앉기 / 가방·책·태블릿 놓기 / 만들기 / 손 들기)
     add({
       id: 'seat',
@@ -730,6 +749,7 @@ export class Morning implements StoryHooks {
     if (!this.save) return;
     this.t += dt;
     this.walkToSchool(dt);
+    this.classroomRules(dt);
     const info = SCHEDULE[this.period];
     // 시계
     const min = this.phase === 'lastMinute' ? info.end - 0.2 : clockMinutes(this.period, this.t, this.f('overslept'));
@@ -1081,6 +1101,44 @@ export class Morning implements StoryHooks {
     } else if (this.walkStage === 1 && p.x < 28.6 && Math.abs(p.z - GATE_Z) < 2.5) {
       this.walkStage = 2;
       g.bark(this.crossGuard, '잘 다녀와~', 2000);
+    }
+  }
+
+  private doorNagT = 0;
+  private exitNagT = 0;
+  /**
+   * 수업 시간 규칙: 국어·수학·미술·모둠(자료 조사 역할 빼고) 시간에는 교실 밖으로 못 나간다 (문턱 막기).
+   * 그때 문이 열려 있으면 선생님이 플레이어를 보고 닫아 달라고 한다.
+   */
+  private classroomRules(dt: number) {
+    const g = this.g, m = g.map, p = g.player.pos;
+    const lesson = (['korean', 'math', 'art', 'group'] as string[]).includes(this.period) && !(this.period === 'group' && this.save.groupRole === 'researcher');
+    m.setClassLock(lesson);
+    if (!lesson || g.cutscene) {
+      this.doorNagT = 0;
+      return;
+    }
+    const inClass = p.y > FLOOR1_Y / 2 && p.x < 7.1 && p.x > ROOM.x0 && p.z > ROOM.z0 && p.z < ROOM.z1;
+    const teacher = this.n('teacher');
+    const teacherIn = teacher.char.root.visible && teacher.pos.x < 7.1 && teacher.pos.x > ROOM.x0 && Math.abs(teacher.pos.y) < 1;
+    // 문 앞에서 나가려 하면
+    this.exitNagT = Math.max(0, this.exitNagT - dt);
+    const atDoor = m.classDoors.some((d) => p.x > 6.2 && p.x < 7.0 && Math.abs(p.z - d.zc) < 0.9);
+    if (inClass && atDoor && this.exitNagT === 0) {
+      this.exitNagT = 6;
+      if (teacherIn) this.bark('teacher', `${this.me}, 지금은 수업 시간이에요. 자리로 돌아가요~`, 2800);
+      else this.toast('수업 시간에는 교실 밖으로 나갈 수 없어요.', 'warn');
+    }
+    // 문이 열려 있으면 선생님이 닫아 달라고
+    const open = m.classDoors.findIndex((d) => d.want);
+    if (open < 0 || !inClass || !teacherIn) {
+      this.doorNagT = 0;
+      return;
+    }
+    this.doorNagT += dt;
+    if (this.doorNagT > 4 && Math.floor((this.doorNagT - 4) / 18) !== Math.floor((this.doorNagT - 4 - dt) / 18)) {
+      if (!teacher.seat && teacher.path.length === 0) teacher.faceTo(p.x, p.z);
+      this.bark('teacher', `${this.me}, ${open === 0 ? '앞문' : '뒷문'} 좀 닫아 줄래요? 복도 소리가 들어와요.`, 3200);
     }
   }
 

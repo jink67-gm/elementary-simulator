@@ -33,7 +33,7 @@ export class NavGrid {
       for (let c = 0; c < this.cols; c++) {
         const { x, z } = this.center(c, r);
         for (const b of boxes) {
-          if (b.enabled === false || (b.level !== undefined && b.level !== 'both' && b.level !== this.level)) continue;
+          if (b.enabled === false || b.tag === 'classDoor' || b.tag === 'classBlock' || (b.level !== undefined && b.level !== 'both' && b.level !== this.level)) continue; // 교실 문은 NPC가 열고 지나간다
           if (x > b.minX - inflate && x < b.maxX + inflate && z > b.minZ - inflate && z < b.maxZ + inflate) {
             this.blocked[r * this.cols + c] = 1;
             break;

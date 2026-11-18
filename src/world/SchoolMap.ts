@@ -847,7 +847,8 @@ export class SchoolMap {
   }
 
   /** 6-1 미닫이 문: 나무 틀 + 유리 + 레일. 문짝 두 장이 벽 앞(복도 쪽)에서 좌우로 밀린다 */
-  private classDoors: { leaves: THREE.Group[]; zc: number; w: number; open: number }[] = [];
+  /** 6-1 미닫이 두 개 (앞문·뒷문). want = 플레이어가 열어 둔 상태, open = 지금 열린 정도 0~1 */
+  classDoors: { leaves: THREE.Group[]; zc: number; w: number; open: number; want: boolean; collider: Aabb; block: Aabb }[] = [];
   private buildSlidingDoor(i: number, z0: number, z1: number) {
     const oak = pbr('oak', { roughness: 0.65 });
     const w = z1 - z0, zc = (z0 + z1) / 2, lw = w / 2 + 0.02, H = 2.08, x = 7.235;
@@ -891,25 +892,45 @@ export class SchoolMap {
     frame(0.03, 2.1, 0.09, 0, z1 + 0.045);
     frame(0.13, 0.1, w * 2 + 0.2, 2.1, zc, oak, 7.265); // 위 레일 덮개 (문이 밀려 들어가는 길이까지)
     frame(0.1, 0.008, w * 2 + 0.1, 0.002, zc, paint(0x9aa0a6, 0.35, 0.8), 7.26); // 바닥 레일
-    this.classDoors.push({ leaves, zc, w: lw, open: 0 });
+    // 닫힌 문은 막는다 (NPC는 스스로 열고 지나가므로 길 찾기에서는 빼는 태그)
+    const collider = { ...aabb(7.1, zc, 0.2, w, 'classDoor'), level: 1 as const };
+    // 수업 중 교실 밖으로 못 나가게 하는 문턱 (플레이어만, 필요할 때만 켬)
+    const block = { ...aabb(6.85, zc, 0.3, w, 'classBlock'), level: 1 as const, enabled: false };
+    this.colliders.push(collider, block);
+    this.classDoors.push({ leaves, zc, w: lw, open: 1, want: true, collider, block });
   }
 
   /** 미닫이 문·청소도구함 문 움직임. pts = 사람들 위치 (문 가까이 오면 열린다) */
-  updateClassroom(dt: number, pts: { x: number; y: number; z: number }[]) {
+  /**
+   * 6-1 문: 플레이어는 E로 열고 닫는다(want). NPC(친구·선생님)가 문 앞에 오면 스스로 열고 지나간 뒤 원래대로.
+   * npcPts = NPC 위치만 (플레이어는 넣지 않는다)
+   */
+  updateClassroom(dt: number, npcPts: { x: number; y: number; z: number }[]) {
     for (const d of this.classDoors) {
-      const near = pts.some((p) => Math.abs(p.y) < 1 && Math.abs(p.x - 7.1) < 1.7 && Math.abs(p.z - d.zc) < 1.5);
-      const target = near ? 1 : 0;
-      if (d.open === target) continue;
-      d.open = Math.max(0, Math.min(1, d.open + Math.sign(target - d.open) * dt * 2.4));
-      const k = d.open * d.open * (3 - 2 * d.open);
-      d.leaves[0].position.z = d.zc - d.w / 2 - k * (d.w - 0.1);
-      d.leaves[1].position.z = d.zc + d.w / 2 + k * (d.w - 0.1);
+      const npcNear = npcPts.some((p) => Math.abs(p.y) < 1 && Math.abs(p.x - 7.1) < 1.5 && Math.abs(p.z - d.zc) < 1.3);
+      const target = d.want || npcNear ? 1 : 0;
+      if (d.open !== target) {
+        d.open = Math.max(0, Math.min(1, d.open + Math.sign(target - d.open) * dt * 2.4));
+        const k = d.open * d.open * (3 - 2 * d.open);
+        d.leaves[0].position.z = d.zc - d.w / 2 - k * (d.w - 0.1);
+        d.leaves[1].position.z = d.zc + d.w / 2 + k * (d.w - 0.1);
+      }
+      d.collider.enabled = d.open < 0.6;
     }
     const ct = this.cleanOpen ? 1.75 : 0;
     this.cleanDoors.forEach((h, i) => {
       const target = i === 0 ? -ct : ct;
       h.rotation.y += (target - h.rotation.y) * Math.min(1, dt * 6);
     });
+  }
+
+  /** 6-1 문 열기·닫기 (i = 0 앞문, 1 뒷문) */
+  setClassDoor(i: number, open: boolean) {
+    this.classDoors[i].want = open;
+  }
+  /** 수업 중 교실 밖으로 못 나가게 (문턱 막기) */
+  setClassLock(on: boolean) {
+    for (const d of this.classDoors) d.block.enabled = on;
   }
 
   private buildHallway() {
