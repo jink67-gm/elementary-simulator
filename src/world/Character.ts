@@ -31,6 +31,9 @@ export type Pose = 'stand' | 'walk' | 'sit' | 'raise' | 'cheer' | 'run';
  * fist 작은 주먹 쥐기 · lean 몸 앞으로 · wave 작은 손짓 · nod 고개 끄덕 · lookUp 고개 들기 · shrug 갸웃
  * carry 두 손으로 물건 들기 · place 내려놓기 · tablet 태블릿 만지기
  */
+/** 서 있을 때 몸을 바닥 위로 띄우는 높이 (바닥 무늬판과 신발 바닥이 겹치지 않게) */
+const FOOT_LIFT = 0.012;
+
 export type Gesture = 'none' | 'fist' | 'lean' | 'wave' | 'nod' | 'lookUp' | 'shrug' | 'carry' | 'place' | 'tablet';
 
 function box(w: number, h: number, d: number, color: number, y = 0): THREE.Mesh {
@@ -177,7 +180,7 @@ export class Character {
     const k = 1 - Math.exp(-dt * 12);
     const lerp = (o: THREE.Object3D, x: number) => (o.rotation.x += (x - o.rotation.x) * k);
 
-    const sitY = sitting ? -0.18 : 0;
+    const sitY = sitting ? -0.18 : FOOT_LIFT; // 서 있을 때 신발 바닥이 바닥판(0.4cm)에 묻혀 자글거리지 않게 살짝 띄움
     this.body.position.y += (sitY - this.body.position.y) * k;
     lerp(this.legL, sitting ? -1.45 : swing);
     lerp(this.legR, sitting ? -1.45 : -swing);

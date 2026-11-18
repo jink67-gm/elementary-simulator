@@ -139,8 +139,9 @@ export class ClassroomBuilder extends HQBuilder {
     for (const { z0, z1 } of CLASS_DOORS) {
       const zc = (z0 + z1) / 2, w = z1 - z0;
       this.box(0.2, 0.08, w + 0.16, this.wood, 7.09, 2.1, zc, false, TILE.oak);
-      this.box(0.2, 2.1, 0.08, this.wood, 7.09, 0, z0 - 0.04, false, TILE.oak);
-      this.box(0.2, 2.1, 0.08, this.wood, 7.09, 0, z1 + 0.04, false, TILE.oak);
+      // 문틀 옆판은 벽 끝면에서 6mm 비켜 (같은 면이 겹치면 자글거린다)
+      this.box(0.19, 2.1, 0.08, this.wood, 7.09, 0, z0 - 0.034, false, TILE.oak);
+      this.box(0.19, 2.1, 0.08, this.wood, 7.09, 0, z1 + 0.034, false, TILE.oak);
       this.box(0.24, 0.012, w, paint(0x9aa0a6, 0.4, 0.6), 7.1, 0.0, zc, false);
       // 문 위 고정 유리 느낌의 밝은 판 (안쪽)
       this.box(0.012, 0.5, w - 0.1, paint(0xe4ebee, 0.3), 6.995, 2.3, zc, false);

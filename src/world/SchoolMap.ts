@@ -411,10 +411,11 @@ export class SchoolMap {
     if (inWall) {
       // 문 자리 안쪽 마감 (양옆·위 문선): 벽 두께만큼 깊은 나무/회색 판
       const jamb = wc ? paint(0xa9b0b6, 0.4, 0.4) : pbr('oak', { color: 0xe2c9a6, roughness: 0.6 });
-      const jt = (gap - W) / 2;
-      for (const s2 of [-1, 1]) part(jt, H + 0.1, 0.22, jamb, s2 * (gap / 2 - jt / 2), 0, -0.13);
-      part(gap, 0.1, 0.22, jamb, 0, H, -0.13);
-      part(gap, 0.02, 0.22, paint(0x8d8f91, 0.5), 0, 0, -0.13); // 문턱
+      // 문선은 벽 뚫린 면보다 5mm 안쪽 (같은 면에 겹치면 자글거린다)
+      const jt = (gap - W) / 2 - 0.006;
+      for (const s2 of [-1, 1]) part(jt, H + 0.094, 0.21, jamb, s2 * (gap / 2 - 0.006 - jt / 2), 0, -0.13);
+      part(gap - 0.012, 0.094, 0.21, jamb, 0, H, -0.13);
+      part(gap - 0.012, 0.02, 0.21, paint(0x8d8f91, 0.5), 0, 0.002, -0.13); // 문턱
       if (name !== 'doorBroadcast') {
         // 닫힌 문: 벽 대신 막는다
         const wx = x + Math.sin(ry) * -0.13, wz = z + Math.cos(ry) * -0.13;
@@ -498,7 +499,8 @@ export class SchoolMap {
       const west = ry > 0;
       const arches = this.baseY === 0 ? ARCHES_2F : ARCHES_1F;
       const side = arches.some((a) => Math.abs(a - (z + 0.8)) < 0.75) ? -1 : 1;
-      this.flagSign(label, west ? 7.1 : 11.1, z + side * 0.8, west ? 1 : -1);
+      // 교실 문은 위 채광창 줄 앞면(x 7.27)에서 튀어나오게 (채광창과 겹치지 않게)
+      this.flagSign(label, west ? (cls ? 7.27 : 7.1) : 11.1, z + side * 0.8, west ? 1 : -1);
     } else {
       const t = this.plateTex(label, 256, 80);
       const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.225), t.material());
@@ -967,8 +969,8 @@ export class SchoolMap {
     this.classFront(7.22, 16.0, [[9.35, 11.55], [11.85, 13.85]], [[8.2 - CLASS_GAP / 2, 8.2 + CLASS_GAP / 2], [15.0 - CLASS_GAP / 2, 15.0 + CLASS_GAP / 2]], false, ARCHES_2F);
 
     // 우리 반 명패 (앞문·뒷문 옆에 튀어나온 판)
-    this.flagSign('6-1', 7.1, CLASS_DOORS[0].z1 + 0.4, 1, '#ffe8d6', '#d62828');
-    this.flagSign('6-1', 7.1, CLASS_DOORS[1].z1 + 0.35, 1, '#ffe8d6', '#d62828');
+    this.flagSign('6-1', 7.27, CLASS_DOORS[0].z1 + 0.4, 1, '#ffe8d6', '#d62828'); // 채광창 줄 앞면에서
+    this.flagSign('6-1', 7.27, CLASS_DOORS[1].z1 + 0.35, 1, '#ffe8d6', '#d62828');
     // 교실 복도 쪽 벽: 나무 칸막이 (아래 칸 + 필름 창 + 위 채광창)
     this.classFront(-6.0, 6.78, HALL_WINDOWS, CLASS_DOORS.map((d) => [d.z0, d.z1] as [number, number]), true, ARCHES_2F);
 

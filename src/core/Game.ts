@@ -68,7 +68,7 @@ const FLOOR_SKIN = 0.015;
 export class Game {
   renderer: THREE.WebGLRenderer;
   scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(60, 1, 0.05, 120);
+  camera = new THREE.PerspectiveCamera(60, 1, 0.1, 120); // near 0.1: 깊이 정밀도 (면이 겹친 곳 자글거림 줄이기)
   tpc = new ThirdPersonCamera(this.camera);
   map = new SchoolMap();
   /** 두 층 길찾기 (층이 다르면 계단으로) */
