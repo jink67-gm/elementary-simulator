@@ -620,8 +620,9 @@ export class Morning implements StoryHooks {
       ['doorGym', '체육관: 오늘 체육은 5교시! 지금은 잠겨 있다.'],
       ['cafeteriaDoor', '급식실에서 고소한 냄새가 난다… 아직은 준비 중.'],
     ];
+    // (사건4에는 5-1·4-1 앞문 자리에 시간 문이 겹치므로 그 두 문은 안내를 끈다)
     for (const [id, msg] of locked.filter(([id]) => m.objs[id]))
-      add({ id, obj: m.objs[id], at: id === 'cafeteriaDoor' ? cafe(CAFE.door.x, CAFE.door.z - 0.4) : undefined, radius: 1.8, promptY: 1.6, prompt: () => ((id === 'cafeteriaDoor' && (this.period === 'lunch' || this.period === 'cutlet')) || (id === 'doorBroadcast' && this.period === 'cutlet') || (id === 'doorGym' && this.period === 'dodgeball') ? null : '문 살펴보기'), onInteract: () => this.toast(msg) }, false);
+      add({ id, obj: m.objs[id], at: id === 'cafeteriaDoor' ? cafe(CAFE.door.x, CAFE.door.z - 0.4) : undefined, radius: 1.8, promptY: 1.6, prompt: () => ((id === 'cafeteriaDoor' && (this.period === 'lunch' || this.period === 'cutlet')) || (id === 'doorBroadcast' && this.period === 'cutlet') || (id === 'doorGym' && this.period === 'dodgeball') || ((id === 'doorClass1' || id === 'doorClass4') && this.period === 'hallway') ? null : '문 살펴보기'), onInteract: () => this.toast(msg) }, false);
 
     // NPC 대화·건네주기
     for (const id of Object.keys(g.npcs) as MainNpcId[]) {

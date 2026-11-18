@@ -23,12 +23,12 @@ const DOORS: { id: CardId; x: number; z: number; ry: number }[] = [
   { id: 'lunch', x: 10.97, z: -6.0, ry: -Math.PI / 2 },
   { id: 'korean', x: 7.23, z: -12.4, ry: Math.PI / 2 },
   { id: 'art', x: 10.97, z: -8.5, ry: -Math.PI / 2 },
-  { id: 'math', x: 7.23, z: 15.0, ry: Math.PI / 2 }, // 4-1 뒷문 자리에 겹쳐 나타남
+  { id: 'math', x: 7.23, z: 8.2, ry: Math.PI / 2 }, // 4-1 앞문 자리에 겹쳐 나타남 (뒷문은 무한 복도 경계 너머)
   { id: 'break', x: 10.97, z: 6.0, ry: -Math.PI / 2 },
 ];
 const TAPES: [number, number, number][] = [
   [10.55, 0.03, -5.0], // 계단 입구 옆 창가 바닥
-  [7.5, 1.27, 10.5], // 정수기 위
+  [7.5, 1.27, 6.4], // 정수기 위 (6-1·4-1 사이 벽)
   [9.0, 0.03, 15.3], // 급식실 문 앞 바닥
 ];
 const START: [number, number, number] = [9, -13.5, Math.PI];
