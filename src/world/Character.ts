@@ -153,6 +153,9 @@ export class Character {
     this.pose = p;
   }
 
+  /** 오른팔을 앞으로 뻗어 들고 있기 (교통 봉사 깃발처럼). 걷거나 서 있을 때 계속 유지 */
+  holdOut = false;
+
   private gestureKind: Gesture = 'none';
   private gestureT = 0;
   private gestureDur = 0;
@@ -187,7 +190,7 @@ export class Character {
       lerp(this.armL, -2.6 - w);
     } else {
       lerp(this.armL, sitting ? -0.7 : -swing * 0.8);
-      lerp(this.armR, sitting ? -0.7 : swing * 0.8);
+      lerp(this.armR, sitting ? -0.7 : this.holdOut ? -1.5 : swing * 0.8);
     }
     // 작은 동작 (자세 위에 덧붙임)
     let leanX = 0, headNod = 0, headTilt = 0;

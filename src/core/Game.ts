@@ -612,6 +612,7 @@ export class Game {
 
   addInteractable(i: Interactable, glow = true): Interactable {
     if (glow && !i.noGlow) ownMaterials(i.obj);
+    else i.noGlow = true; // 재질을 복제하지 않은 물체는 빛내지 않는다 (공유 재질이라 학교 전체가 같이 빛남)
     return this.interactions.add(i);
   }
 

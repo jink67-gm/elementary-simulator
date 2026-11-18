@@ -11,7 +11,7 @@ import type { GroupRole, PeriodId, PosterTheme, SaveData, Wish } from '../core/S
 import { itemDef, type ItemId } from '../data/items';
 import type { Line } from '../ui/Dialogue';
 import { Npc } from '../npc/Npc';
-import { ENTRANCE_DZ, GATE_Z, LOBBY } from '../world/FirstFloorHQ';
+import { ENTRANCE_DZ, GATE_Z } from '../world/FirstFloorHQ';
 import type { Interactable } from '../interact/Interaction';
 import { SCHEDULE, clockMinutes, formatClock, nextPeriod } from './schedule';
 import { itemHalfHeight, makeItemMesh } from '../world/itemMesh';
@@ -593,6 +593,8 @@ export class Morning implements StoryHooks {
       ['doorWee', 'Wee클래스 — 「고민이 있으면 언제든 놀러 와요」.'],
       ['fireDoor', '방화문이 닫혀 있다. 「3층은 지금 올라갈 수 없어요」 — 우리 교실은 2층!'],
       ['doorAdmin', '행정실 — 선생님들이 서류를 정리하고 계신다. 조용히 지나가자.'],
+      ['doorOffice', '교무실 — 선생님들이 회의 중이시다. 지금은 들어가지 않는 게 좋겠다.'],
+      ['doorNurse', '보건실 — 「아프면 언제든 오세요」 팻말. 지금은 괜찮아!'],
       ['doorClass1', '옆 반은 벌써 조용하다… 살금살금 지나가자.'],
       ['doorGym', '체육관: 오늘 체육은 5교시! 지금은 잠겨 있다.'],
       ['cafeteriaDoor', '급식실에서 고소한 냄새가 난다… 아직은 준비 중.'],
@@ -918,7 +920,7 @@ export class Morning implements StoryHooks {
     switch (p) {
       case 'arrival':
         this.n('seoa').sitAt(seats.seoa);
-        this.n('minjae').place(26.7, GATE_Z + 1.3, Math.PI / 2, F1); // 교문 앞 보도에서 기다린다 (등굣길)
+        this.n('minjae').place(-1.1, 2.6, Math.PI / 2); // 교실에서 먼저 와 있다
         this.n('junho').place(4.3, -1.6, 0.6);
         this.n('harin').place(-3.3, 3.9, Math.PI);
         teacher.place(9.6, 12, Math.PI);
@@ -1023,7 +1025,6 @@ export class Morning implements StoryHooks {
   // ───────────────────────── 등굣길 (횡단보도 → 교문 → 현관) ─────────────────────────
   /** 교통 봉사 어머니(횡단보도)·당번 선생님(현관 안) — 등교 시간에만 */
   private crossGuard: Npc | null = null;
-  private duty: Npc | null = null;
   private walkStage = 0;
   private makeWalkCast() {
     if (this.crossGuard) return;
@@ -1031,8 +1032,10 @@ export class Morning implements StoryHooks {
     this.crossGuard = new Npc({ id: 'guard', name: '교통 봉사 어머니', look: { skin: 0xf0c8a4, hair: 0x2b1d14, shirt: 0xf2c230, pants: 0x3d405b, hairStyle: 'bob', height: 1.24 } }, g.nav);
     // 노란 깃발 (「어린이 보호」)
     const flag = new THREE.Group();
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.9, 8), new THREE.MeshStandardMaterial({ color: 0x9aa1a8, metalness: 0.6, roughness: 0.3 }));
-    pole.position.y = 0.3;
+    // 깃대는 손에서 옆으로 수평 (땅과 평행), 천은 깃대에 매달려 아래로. 손 기준 좌표: 팔을 앞으로 뻗으면 x = 옆, -z = 아래
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.95, 8), new THREE.MeshStandardMaterial({ color: 0x9aa1a8, metalness: 0.6, roughness: 0.3 }));
+    pole.rotation.z = Math.PI / 2;
+    pole.position.x = 0.38;
     const cv = document.createElement('canvas');
     cv.width = 128;
     cv.height = 96;
@@ -1046,49 +1049,36 @@ export class Morning implements StoryHooks {
     c.fillText('보호', 64, 74);
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
-    const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.26), new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: 0.8 }));
-    cloth.position.set(0, 0.62, 0.17);
-    cloth.rotation.y = Math.PI / 2;
+    const cloth = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.3), new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: 0.8 }));
+    cloth.rotation.x = Math.PI / 2; // 천이 깃대 아래로 늘어진다 (세로로 선 면)
+    cloth.position.set(0.62, 0, -0.16);
     flag.add(pole, cloth);
     this.crossGuard.char.hand.add(flag);
-    this.duty = new Npc({ id: 'duty', name: '당번 선생님', look: { skin: 0xeec39a, hair: 0x1c1c1c, shirt: 0x6c8ebf, pants: 0x343a40, hairStyle: 'short', height: 1.3, glasses: true } }, g.nav);
-    g.scene.add(this.crossGuard.char.root, this.duty.char.root);
+    (this.crossGuard.char as { holdOut?: boolean }).holdOut = true; // 서 있을 때 깃발을 앞으로 뻗어 수평으로
+    g.scene.add(this.crossGuard.char.root);
   }
   /** 등교 시간: 인물 배치 (교시 시작·불러오기) */
   private placeWalkCast() {
     this.makeWalkCast();
     const on = this.period === 'arrival';
     this.crossGuard!.char.root.visible = on;
-    this.duty!.char.root.visible = on;
     this.walkStage = 0;
     if (!on) return;
     this.crossGuard!.place(34.05, GATE_Z - 1.5, -Math.PI / 2, F1);
-    this.duty!.place(LOBBY.x1 - 1.3, GATE_Z + 1.4, Math.PI / 2 + 0.5, F1);
   }
-  /** 다가가면 한마디씩: 횡단보도 → (건너면) 민재 합류 → 현관 당번 선생님 */
+  /** 횡단보도에서 교통 봉사 어머니가 한마디 (깃발은 계속 수평으로 들고 있음) */
   private walkToSchool(dt: number) {
     if (this.period !== 'arrival' || !this.crossGuard?.char.root.visible) return;
     const g = this.g, p = g.player.pos;
     this.crossGuard.update(dt);
-    this.duty!.update(dt);
     const near = (n: Npc, r: number) => Math.hypot(n.pos.x - p.x, n.pos.z - p.z) < r && Math.abs(n.pos.y - p.y) < 1;
     if (this.walkStage === 0 && near(this.crossGuard, 3.2)) {
       this.walkStage = 1;
-      this.crossGuard.char.gesture('wave', 2.4);
+      this.crossGuard.char.gesture('nod', 1.2);
       g.bark(this.crossGuard, '초록불이에요~ 손 들고 천천히 건너요!', 3200);
     } else if (this.walkStage === 1 && p.x < 28.6 && Math.abs(p.z - GATE_Z) < 2.5) {
       this.walkStage = 2;
-      const mj = this.n('minjae');
-      mj.char.gesture('wave', 1.6);
-      g.bark(mj, `${this.me}! 같이 가자~ 오늘 급식 돈가스래!`, 3200);
       g.bark(this.crossGuard, '잘 다녀와~', 2000);
-      setTimeout(() => {
-        if (this.period === 'arrival') void mj.walkTo(-1.1, 2.6, Math.PI / 2, 2.6, 0);
-      }, 1200);
-    } else if (this.walkStage <= 2 && near(this.duty!, 3.0)) {
-      this.walkStage = 3;
-      this.duty!.char.gesture('wave', 1.6);
-      g.bark(this.duty!, '좋은 아침! 실내화로 갈아 신고~ 계단은 복도 건너편이에요.', 3600);
     }
   }
 
