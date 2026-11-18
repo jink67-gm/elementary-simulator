@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { aabb, type Aabb } from './Collision';
 import { CanvasTex, font, wrapText } from './canvasTex';
 import { mergeLocal, mergeStatic } from './merge';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SCHOOL_NAME } from '../data/school';
 import type { PosterTheme } from '../core/SaveData';
 import { hasProp, placeInstances, placeOne, type Fit, type Placement } from './props';
@@ -15,7 +16,7 @@ import { EntranceBuilder } from './EntranceHQ';
 import { buildTabletCart } from './props/tabletCart';
 import { buildCutleryBin, buildTray } from './props/items';
 import { drawKidPoster } from './props/posterArt';
-import { TILE_EXT, brickMat, plinthMat, stuccoMat } from './exteriorTex';
+import { TILE_EXT, brickMat, concreteMat, plinthMat, stuccoMat } from './exteriorTex';
 import { makeTree } from './landscape';
 import { BACK_DZ, ROOM, TEACHER_DESK, TEACHER_SHELF, ART_CAB, BOOKSHELF, CLASS_DOORS, CHAIR, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, BIG_EXHIBIT, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, deskBoxes, lockerCell, seatOf, type DeskLayout } from './classroomLayout';
 import { buildCleaningCabinet, buildFabricRecycling, buildLockerCarcass, buildOfficeChair, buildStudentChair, buildStudentDesk, buildSmallBin, buildTeacherDesk, buildTeacherDeskItems, buildTeacherShelf, buildTeacherUnderDesk, buildTrashBin, lockerDoorGeo, lockerHandle, mdf } from './classroomSet';
@@ -2270,15 +2271,15 @@ export class SchoolMap {
     this.colliders.push({ ...aabb(25.3, gz - 2.25, 0.7, 0.7), level: 0 }, { ...aabb(25.3, gz + 2.25, 0.7, 0.7), level: 0 });
     // 보도 (학교 쪽 x 25.6~27.7, 건너편 x 33.7~36.6): 보도블록, 찻길 쪽 연석
     const paver = new THREE.MeshStandardMaterial({ color: 0xc9b59a, roughness: 0.9 });
-    flat(2.1, 60, paver, 26.65, gz, 0.012);
-    flat(2.9, 60, paver, 35.15, gz, 0.012);
+    flat(2.1, 140, paver, 26.65, gz, 0.012);
+    flat(3.5, 140, paver, 35.45, gz, 0.012);
     const curb = paint(0xa7a59f, 0.8);
     for (const [x0, x1] of [[27.6, 27.75], [33.6, 33.75]]) {
-      solid(x1 - x0, 0.14, 26, curb, (x0 + x1) / 2, 0, gz - 15.2);
-      solid(x1 - x0, 0.14, 26, curb, (x0 + x1) / 2, 0, gz + 15.2);
+      solid(x1 - x0, 0.14, 66, curb, (x0 + x1) / 2, 0, gz - 35.2);
+      solid(x1 - x0, 0.14, 66, curb, (x0 + x1) / 2, 0, gz + 35.2);
     }
     // 찻길: 아스팔트 + 어린이 보호구역(빨간 바닥) + 노란 중앙선 + 흰 정지선 + 횡단보도
-    flat(5.9, 80, new THREE.MeshStandardMaterial({ color: 0x4a4d52, roughness: 0.95 }), 30.7, gz, 0.015);
+    flat(5.9, 140, new THREE.MeshStandardMaterial({ color: 0x4a4d52, roughness: 0.95 }), 30.7, gz, 0.015);
     flat(5.9, 20, new THREE.MeshStandardMaterial({ color: 0xa8483d, roughness: 0.9 }), 30.7, gz, 0.018);
     const white = new THREE.MeshBasicMaterial({ color: 0xf2f2ee }), yellow = new THREE.MeshBasicMaterial({ color: 0xf2c230 });
     for (const dx of [-0.08, 0.08]) {
@@ -2486,6 +2487,7 @@ export class SchoolMap {
       solid(0.04, 0.04, L2, dark, 25.3, 0.68, zc);
       for (let z2 = Math.min(za, zb) + 0.02; z2 <= Math.max(za, zb); z2 += 2.4) solid(0.07, 1.1, 0.07, dark, 25.3, 0.58, z2);
     }
+    this.noiseBarrier(37.25, gz, 120);
     // 걸을 수 있는 길 둘레 (교문 ~ 건너편 보도)
     const x0 = 24.6, x1 = 36.6, xc = (x0 + x1) / 2;
     this.colliders.push(
@@ -2493,6 +2495,109 @@ export class SchoolMap {
       { ...aabb(xc, gz + 2.05, x1 - x0, 0.3), level: 0 },
       { ...aabb(x1, gz, 0.3, 4.4), level: 0 },
     );
+  }
+
+  /**
+   * 건너편 보도 뒤 도로 방음벽 (등굣길 시작 자리 뒤가 허전하지 않게): 콘크리트 받침 + 회색 H형 기둥(2.5m 간격)
+   * + 아래 불투명 골판 금속판 + 위 투명 아크릴판(가로 살) + 도로 쪽으로 휘어진 윗부분. x = 벽 가운데, 길이 len (z 방향)
+   */
+  private noiseBarrier(x: number, zc: number, len: number) {
+    const Y = FLOOR1_Y;
+    const conc = concreteMat();
+    const base = new THREE.Mesh(worldUV(new THREE.BoxGeometry(0.45, 1.0, len), 0.45, 1.0, len, TILE_EXT.concrete), conc);
+    base.position.set(x + 0.05, Y + 0.5, zc);
+    base.receiveShadow = base.castShadow = true;
+    this.root.add(base);
+    const H0 = 1.0, H1 = 2.4, H2 = 5.6; // 받침 위 ~ 불투명판 ~ 투명판 끝
+    // 불투명 골판 (밝은 회색 + 세로 골 그늘 + 아래 파란 띠)
+    const rib = new CanvasTex(128, 64);
+    rib.draw((c, w, h) => {
+      c.fillStyle = '#d9dcdc';
+      c.fillRect(0, 0, w, h);
+      for (let i = 0; i < w; i += 8) {
+        c.fillStyle = 'rgba(90,98,104,0.28)';
+        c.fillRect(i, 0, 2, h);
+        c.fillStyle = 'rgba(255,255,255,0.5)';
+        c.fillRect(i + 3, 0, 1, h);
+      }
+      c.fillStyle = '#5b8fb9';
+      c.fillRect(0, h - 6, w, 4);
+    });
+    rib.tex.wrapS = THREE.RepeatWrapping;
+    rib.tex.repeat.set(len / 2.5, 1);
+    const ribM = new THREE.MeshStandardMaterial({ map: rib.tex, roughness: 0.6, metalness: 0.3, side: THREE.DoubleSide });
+    const op = new THREE.Mesh(new THREE.PlaneGeometry(len, H1 - H0), ribM);
+    op.position.set(x, Y + (H0 + H1) / 2, zc);
+    op.rotation.y = Math.PI / 2;
+    op.receiveShadow = true;
+    this.root.add(op);
+    // 투명 아크릴 (하늘이 비치는 옅은 청록 + 가로 살)
+    const acr = new CanvasTex(64, 256);
+    acr.draw((c, w, h) => {
+      c.clearRect(0, 0, w, h);
+      c.fillStyle = 'rgba(200,225,232,0.32)';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = 'rgba(120,135,145,0.85)';
+      for (let y = 0; y < h; y += 64) c.fillRect(0, y, w, 4);
+      c.fillStyle = 'rgba(255,255,255,0.35)';
+      c.fillRect(0, 10, w, 2);
+    });
+    acr.tex.wrapS = acr.tex.wrapT = THREE.RepeatWrapping;
+    acr.tex.repeat.set(len / 2.5, 1);
+    const acrM = new THREE.MeshStandardMaterial({ map: acr.tex, transparent: true, roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false });
+    const tp = new THREE.Mesh(new THREE.PlaneGeometry(len, H2 - H1), acrM);
+    tp.position.set(x, Y + (H1 + H2) / 2, zc);
+    tp.rotation.y = Math.PI / 2;
+    tp.renderOrder = 2;
+    this.root.add(tp);
+    // 도로 쪽으로 휘어진 윗부분 (세 조각으로 꺾어 곡선처럼)
+    const arcR = 1.6;
+    let px = x, py = H2;
+    for (let i = 0; i < 3; i++) {
+      const a0 = (i / 3) * (Math.PI / 3), a1 = ((i + 1) / 3) * (Math.PI / 3);
+      const nx = x - arcR * (1 - Math.cos(a1)), ny = H2 + arcR * Math.sin(a1);
+      const seg = Math.hypot(nx - px, ny - py);
+      const pm = acrM.clone();
+      pm.map = acr.tex.clone();
+      pm.map.needsUpdate = true;
+      pm.map.repeat.set(len / 2.5, (seg / (H2 - H1)) * 1.0);
+      const piece = new THREE.Mesh(new THREE.PlaneGeometry(len, seg), pm);
+      piece.position.set((px + nx) / 2, Y + (py + ny) / 2, zc);
+      piece.rotation.order = 'YXZ';
+      piece.rotation.set(-(a0 + a1) / 2, Math.PI / 2, 0);
+      piece.renderOrder = 2;
+      this.root.add(piece);
+      px = nx;
+      py = ny;
+    }
+    // 기둥 (2.5m 간격): 곧은 부분 + 휜 윗부분, 맨 위 가로 띠
+    const postM = paint(0x6f7b84, 0.45, 0.5);
+    const posts: THREE.BufferGeometry[] = [];
+    for (let z = zc - len / 2; z <= zc + len / 2 + 0.01; z += 2.5) {
+      const g1 = new THREE.BoxGeometry(0.16, H2 - H0, 0.2);
+      g1.translate(x + 0.1, Y + (H0 + H2) / 2, z);
+      posts.push(g1);
+      let qx = x + 0.1, qy = H2;
+      for (let i = 0; i < 3; i++) {
+        const a1 = ((i + 1) / 3) * (Math.PI / 3);
+        const nx = x + 0.1 - arcR * (1 - Math.cos(a1)), ny = H2 + arcR * Math.sin(a1);
+        const seg = Math.hypot(nx - qx, ny - qy);
+        const g2 = new THREE.BoxGeometry(0.14, seg + 0.04, 0.18);
+        g2.rotateZ(Math.atan2(qx - nx, ny - qy));
+        g2.translate((qx + nx) / 2, Y + (qy + ny) / 2, z);
+        posts.push(g2);
+        qx = nx;
+        qy = ny;
+      }
+    }
+    for (const [yy, xx] of [[H1, x + 0.02], [H2, x + 0.02]] as [number, number][]) {
+      const rail = new THREE.BoxGeometry(0.1, 0.12, len);
+      rail.translate(xx, Y + yy, zc);
+      posts.push(rail);
+    }
+    const pm2 = new THREE.Mesh(mergeGeometries(posts.map((g) => g.toNonIndexed()))!, postM);
+    pm2.castShadow = pm2.receiveShadow = true;
+    this.root.add(pm2);
   }
 
   /**
