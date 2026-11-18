@@ -23,7 +23,7 @@ const DOORS: { id: CardId; x: number; z: number; ry: number }[] = [
   { id: 'lunch', x: 10.97, z: -6.0, ry: -Math.PI / 2 },
   { id: 'korean', x: 7.23, z: -12.4, ry: Math.PI / 2 },
   { id: 'art', x: 10.97, z: -8.5, ry: -Math.PI / 2 },
-  { id: 'math', x: 7.23, z: 12.6, ry: Math.PI / 2 },
+  { id: 'math', x: 7.23, z: 15.0, ry: Math.PI / 2 }, // 4-1 뒷문 자리에 겹쳐 나타남
   { id: 'break', x: 10.97, z: 6.0, ry: -Math.PI / 2 },
 ];
 const TAPES: [number, number, number][] = [

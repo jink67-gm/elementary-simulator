@@ -596,6 +596,8 @@ export class Morning implements StoryHooks {
       ['doorOffice', '교무실 — 선생님들이 회의 중이시다. 지금은 들어가지 않는 게 좋겠다.'],
       ['doorNurse', '보건실 — 「아프면 언제든 오세요」 팻말. 지금은 괜찮아!'],
       ['doorClass1', '옆 반은 벌써 조용하다… 살금살금 지나가자.'],
+      ['doorClass4', '4학년 동생들 반. 안에서 받아쓰기 소리가 들린다.'],
+      ['doorClass4b', '4학년 동생들 반 뒷문. 살금살금…'],
       ['doorGym', '체육관: 오늘 체육은 5교시! 지금은 잠겨 있다.'],
       ['cafeteriaDoor', '급식실에서 고소한 냄새가 난다… 아직은 준비 중.'],
     ];

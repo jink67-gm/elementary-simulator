@@ -48,8 +48,13 @@ export interface Seat {
 const WALL_H = 3;
 /** 복도 벽에 뚫는 문 자리 너비 (door()의 문짝·문선이 이 안에 들어간다) */
 const DOOR_GAP = 1.2;
+/** 교실 문 자리 (6-1처럼 넓은 두 짝 미닫이) */
+const CLASS_GAP = 1.7;
+type DoorSpot = number | [number, number];
+const spotZ = (d: DoorSpot) => (typeof d === 'number' ? d : d[0]);
+const spotW = (d: DoorSpot) => (typeof d === 'number' ? DOOR_GAP : d[1]);
 /** 복도 색 기둥(아치) 위치 — 층별 (CorridorBuilder arches와 같은 값) */
-const ARCHES_2F = [-13.3, -0.2, 7.0, 15.4];
+const ARCHES_2F = [-13.3, -0.2, 7.0];
 const ARCHES_1F = [-2.9, 8.2];
 /** 1층 바닥 높이 (우리 반이 있는 2층이 y = 0) */
 export { FLOOR1_Y, STAIR } from './rooms';
@@ -221,12 +226,13 @@ export class SchoolMap {
     this.box(0.22, 0.12, z1 - z0, C.wallTrim, x, 0, (z0 + z1) / 2, { wall: false, shadow: false });
   }
   /** x 벽 (z0~z1)에 문 자리(DOOR_GAP)를 뚫어 짓는다: 문 옆 벽 + 문 위 인방 */
-  private doorWallX(x: number, z0: number, z1: number, doors: number[]) {
+  private doorWallX(x: number, z0: number, z1: number, doors: DoorSpot[]) {
     let z = z0;
-    for (const d of [...doors].sort((a, b) => a - b)) {
-      const a = d - DOOR_GAP / 2, b = d + DOOR_GAP / 2;
+    for (const d of [...doors].sort((a, b) => spotZ(a) - spotZ(b))) {
+      const dz = spotZ(d), w = spotW(d);
+      const a = dz - w / 2, b = dz + w / 2;
       if (a > z) this.wallX(x, z, a);
-      this.box(0.2, this.wallH - 2.2, DOOR_GAP, C.wall, x, 2.2, d, { wall: true, shadow: false });
+      this.box(0.2, this.wallH - 2.2, w, C.wall, x, 2.2, dz, { wall: true, shadow: false });
       z = b;
     }
     if (z1 > z) this.wallX(x, z, z1);
@@ -384,7 +390,9 @@ export class SchoolMap {
     this.root.add(g);
     const wc = label.includes('화장실');
     const solidWood = name === 'doorPrincipal';
-    const W = wc ? 0.95 : 1.1, H = 2.1;
+    const cls = /^\d-\d$/.test(label); // 교실 문: 6-1처럼 넓은 두 짝 미닫이
+    const gap = cls ? CLASS_GAP : DOOR_GAP;
+    const W = cls ? gap - 0.1 : wc ? 0.95 : 1.1, H = 2.1;
     const oak = pbr('oak', { roughness: 0.6 });
     // 복도 벽의 문은 벽에 뚫린 자리(DOOR_GAP) 안, 벽 두께 가운데에 들어간다 (문짝 = leafG, 벽 앞면에서 0.12 안쪽)
     const inWall = Math.abs(Math.abs(ry) - Math.PI / 2) < 0.01;
@@ -403,14 +411,14 @@ export class SchoolMap {
     if (inWall) {
       // 문 자리 안쪽 마감 (양옆·위 문선): 벽 두께만큼 깊은 나무/회색 판
       const jamb = wc ? paint(0xa9b0b6, 0.4, 0.4) : pbr('oak', { color: 0xe2c9a6, roughness: 0.6 });
-      const jt = (DOOR_GAP - W) / 2;
-      for (const s2 of [-1, 1]) part(jt, H + 0.1, 0.22, jamb, s2 * (DOOR_GAP / 2 - jt / 2), 0, -0.13);
-      part(DOOR_GAP, 0.1, 0.22, jamb, 0, H, -0.13);
-      part(DOOR_GAP, 0.02, 0.22, paint(0x8d8f91, 0.5), 0, 0, -0.13); // 문턱
+      const jt = (gap - W) / 2;
+      for (const s2 of [-1, 1]) part(jt, H + 0.1, 0.22, jamb, s2 * (gap / 2 - jt / 2), 0, -0.13);
+      part(gap, 0.1, 0.22, jamb, 0, H, -0.13);
+      part(gap, 0.02, 0.22, paint(0x8d8f91, 0.5), 0, 0, -0.13); // 문턱
       if (name !== 'doorBroadcast') {
         // 닫힌 문: 벽 대신 막는다
         const wx = x + Math.sin(ry) * -0.13, wz = z + Math.cos(ry) * -0.13;
-        this.colliders.push({ ...aabb(wx, wz, 0.24, DOOR_GAP), level: this.curLevel });
+        this.colliders.push({ ...aabb(wx, wz, 0.24, gap), level: this.curLevel });
       }
     }
     // 문틀 (벽에서 살짝 튀어나온 테두리)
@@ -460,6 +468,28 @@ export class SchoolMap {
       // 판문 몰딩 두 칸 + 레버
       for (const py of [0.25, 1.2]) part(W - 0.3, 0.75, 0.012, pbr('oak', { color: 0x7a5c46, roughness: 0.5 }), 0, py, 0.017);
       part(0.14, 0.03, 0.04, steel, W / 2 - 0.16, 1.0, 0.03);
+    } else if (cls) {
+      // 교실 문 (6-1과 같은 모양): 두 짝 미닫이, 짝마다 위쪽 큰 유리(안쪽 커튼) + 가운데 손잡이
+      const lw = W / 2;
+      part(0.02, H - 0.02, 0.05, paint(0x5c4a3a, 0.6), 0, 0.01, 0.0); // 두 짝 사이 틈
+      for (const sx of [-1, 1]) {
+        const cx = sx * lw / 2;
+        const gw = lw - 0.22, gh = 0.95, gy = 1.02;
+        // 유리 테두리 살
+        part(gw + 0.06, 0.04, 0.05, oak, cx, gy - 0.04, 0.005);
+        part(gw + 0.06, 0.04, 0.05, oak, cx, gy + gh, 0.005);
+        for (const e of [-1, 1]) part(0.04, gh, 0.05, oak, cx + e * (gw / 2 + 0.01), gy, 0.005);
+        // 안쪽 커튼 (교실 안은 짓지 않으므로) + 유리
+        const cur = new THREE.Mesh(new THREE.PlaneGeometry(gw, gh), this.blindMaterial());
+        cur.position.set(cx, gy + gh / 2, 0.021);
+        leafG.add(cur);
+        const gl = new THREE.Mesh(new THREE.PlaneGeometry(gw, gh), this.clearGlass());
+        gl.position.set(cx, gy + gh / 2, 0.03);
+        gl.renderOrder = 2;
+        leafG.add(gl);
+        part(0.03, 0.2, 0.03, paint(0xc9ced3, 0.28, 0.85), sx * 0.07, 0.9, 0.035); // 손잡이
+      }
+      part(W + 0.2, 0.06, 0.06, oak, 0, H - 0.06, 0.04); // 레일 덮개
     } else {
       // 미닫이: 위쪽 불투명 유리창(나무 살) + 오목 손잡이 + 아래 판
       const gw = W * 0.55;
@@ -891,7 +921,7 @@ export class SchoolMap {
     this.door('doorRestroom2F', '여자 화장실', 10.97, -12.2, -Math.PI / 2, 0xe8a0a8, '#c9184a');
     this.elevatorDoor(-6.6, 2);
     // 서쪽(방 쪽) 벽: 5-1 | 계단실(남쪽 절반 = 3층 가는 방화문, 북쪽 절반 = 1층으로 내려가는 계단 입구) | 6-1 | 4-1
-    this.doorWallX(7.1, -16, STAIR.zS0, [-14.6]); // 5-1 문: 복도 기둥(-13.3)과 겹치지 않게 남쪽으로
+    this.doorWallX(7.1, -16, STAIR.zS0, [[-14.6, CLASS_GAP]]); // 5-1 문: 복도 기둥(-13.3)과 겹치지 않게 남쪽으로
     this.wallX(7.1, STAIR.zS1, STAIR.zN0);
     this.wallX(7.1, STAIR.zN1, -6.0);
     this.box(0.2, WALL_H - 2.2, STAIR.zN1 - STAIR.zN0, C.wall, 7.1, 2.2, (STAIR.zN0 + STAIR.zN1) / 2, { wall: true, shadow: false }); // 계단 입구 위 보
@@ -899,7 +929,7 @@ export class SchoolMap {
     this.wallX(11.1, 2.2, 3.9);
     this.wallX(11.1, 5.1, 6.9);
     this.wallX(11.1, 15.8, 16);
-    this.doorWallX(7.1, 7.2, 16, [8.4]);
+    this.doorWallX(7.1, 7.2, 16, [[8.2, CLASS_GAP], [15.0, CLASS_GAP]]); // 4-1 앞문·뒷문 (6-1과 같은 배치)
     this.wallZ(-16.1, 7, 8.4);
     this.wallZ(-16.1, 9.6, 11);
     this.box(1.2, 0.8, 0.2, C.wall, 9, 2.2, -16.1);
@@ -914,12 +944,13 @@ export class SchoolMap {
     // 문 장식 (잠긴 문들)
     this.door('doorBroadcast', '방송실', 10.97, 4.5, -Math.PI / 2, 0x9b8bb4);
     this.door('doorClass1', '5-1', 7.23, -14.6, Math.PI / 2);
-    this.door('doorClass4', '4-1', 7.23, 8.4, Math.PI / 2);
+    this.door('doorClass4', '4-1', 7.23, 8.2, Math.PI / 2);
+    this.door('doorClass4b', '4-1', 7.23, 15.0, Math.PI / 2);
     this.door('doorGym', '강당 ▲', 9, -15.97, 0, 0x7a9cc6);
     this.sign('1층 ▼', 7.215, 2.35, STAIR.zN1 + 0.42, Math.PI / 2);
     // 방 쪽 벽 창문 (다른 반: 불투명 유리)
-    this.frostedRoomFace(-16.0, STAIR.zS0, [-14.6, -12.4], [-13.3]);
-    this.frostedRoomFace(ROOM.z1 + 0.1, 16.0, [8.4, 12.6], [7.0, 15.4]);
+    this.frostedRoomFace(-16.0, STAIR.zS0, [[-14.6, CLASS_GAP], -12.4], [-13.3]);
+    this.frostedRoomFace(ROOM.z1 + 0.1, 16.0, [[8.2, CLASS_GAP], [15.0, CLASS_GAP]], [7.0]);
 
     // 우리 반 명패 (앞문·뒷문 옆에 튀어나온 판)
     this.flagSign('6-1', 7.1, CLASS_DOORS[0].z1 + 0.4, 1, '#ffe8d6', '#d62828');
@@ -957,27 +988,27 @@ export class SchoolMap {
     const bulletin = this.plane(1.9, 1.11, bb.material(), 10.93, 1.6, -10.5, -Math.PI / 2);
     this.objs.bulletin = bulletin;
 
-    // 정수기
+    // 정수기 (6-1 뒷문과 4-1 앞문 사이 벽)
     {
       // 흰 몸통(모서리 둥근) + 스테인리스 앞판 + 물 받는 곳 + 꼭지 두 개
       const body = new THREE.Mesh(new RoundedBoxGeometry(0.42, 1.25, 0.46, 3, 0.05), paint(0xf4f5f2, 0.35));
-      body.position.set(7.5, 0.625, 10.5);
+      body.position.set(7.5, 0.625, 6.4);
       body.castShadow = body.receiveShadow = true;
       const front = new THREE.Mesh(new RoundedBoxGeometry(0.02, 0.62, 0.36, 2, 0.008), paint(0xc8cdd2, 0.25, 0.85));
-      front.position.set(7.72, 0.62, 10.5);
+      front.position.set(7.72, 0.62, 6.4);
       const recess = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.3, 0.3), paint(0x2b2f33, 0.6));
-      recess.position.set(7.72, 1.0, 10.5);
+      recess.position.set(7.72, 1.0, 6.4);
       const tray = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.03, 0.3), paint(0x8d939a, 0.4, 0.6));
-      tray.position.set(7.76, 0.86, 10.5);
+      tray.position.set(7.76, 0.86, 6.4);
       const panel = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.08, 0.22), paint(0x4ea8de, 0.3));
-      panel.position.set(7.725, 1.2, 10.5);
+      panel.position.set(7.725, 1.2, 6.4);
       this.root.add(body, front, recess, tray, panel);
-      for (const z of [10.43, 10.57]) {
+      for (const z of [6.33, 6.47]) {
         const tap = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.06, 8), paint(0xdee2e6, 0.25, 0.9));
         tap.position.set(7.74, 1.1, z);
         this.root.add(tap);
       }
-      this.colliders.push(aabb(7.5, 10.5, 0.42, 0.46));
+      this.colliders.push(aabb(7.5, 6.4, 0.42, 0.46));
     }
   }
 
@@ -2059,12 +2090,12 @@ export class SchoolMap {
    * 다른 방의 복도 쪽 벽 창문 (6-1과 같은 나무틀 미닫이창, 유리는 불투명).
    * 지금 층 서쪽 벽(x 7.1)의 복도 쪽 면에 붙인다. doors = 문 가운데 z (문 자리는 비운다)
    */
-  private frostedRoomFace(z0: number, z1: number, doors: number[], avoid: number[] = []) {
+  private frostedRoomFace(z0: number, z1: number, doors: DoorSpot[], avoid: number[] = []) {
     // 다른 방 복도 쪽 창: 나무틀 미닫이 + 맑은 유리 + 안쪽에 내려 둔 블라인드 (방 안은 보이지 않는다).
     // 문 자리(DOOR_GAP)와 복도 기둥(avoid) 옆은 비우고, 남는 구간이 짧으면 창을 넣지 않는다.
     const oak = pbr('oak', { roughness: 0.6 });
     const sill = 1.05, top = 2.15, h = top - sill, fx = 7.21;
-    const busy = [...doors.map((d) => [d - DOOR_GAP / 2 - 0.3, d + DOOR_GAP / 2 + 0.3] as [number, number]), ...avoid.map((a) => [a - 0.45, a + 0.45] as [number, number])].sort((p, q) => p[0] - q[0]);
+    const busy = [...doors.map((d) => [spotZ(d) - spotW(d) / 2 - 0.3, spotZ(d) + spotW(d) / 2 + 0.3] as [number, number]), ...avoid.map((a) => [a - 0.45, a + 0.45] as [number, number])].sort((p, q) => p[0] - q[0]);
     const free: [number, number][] = [];
     let z = z0 + 0.3;
     const end = z1 - 0.3;
