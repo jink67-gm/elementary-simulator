@@ -59,7 +59,8 @@ export class GymBuilder extends HQBuilder {
       line(white, 9, z1, 10, 0.05);
     }
     // 양쪽 끝 반원 (노란 선)
-    for (const [z, rot] of [[cz0, 0], [cz1, Math.PI]] as [number, number][]) {
+    // 반원은 코트 안쪽으로 (회전 0 = -z 쪽). 예전에는 반대로 돌아 문 쪽 반원이 복도까지 나갔다
+    for (const [z, rot] of [[cz0, Math.PI], [cz1, 0]] as [number, number][]) {
       const arc = this.add(new THREE.RingGeometry(2.6, 2.67, 40, 1, 0, Math.PI), yellow, 9, 0.007, z, { cast: false, receive: false });
       arc.rotation.set(-Math.PI / 2, 0, rot);
     }
