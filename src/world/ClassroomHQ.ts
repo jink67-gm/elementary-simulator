@@ -117,10 +117,11 @@ export class ClassroomBuilder extends HQBuilder {
     for (const [z0, z1] of HALL_WINDOWS) {
       const len = z1 - z0, zc = (z0 + z1) / 2, h = top - sill;
       // 벽 두께(0.2)를 감싸는 나무 틀: 위·아래·양옆 + 가운데 세로 살 + 창턱
-      this.box(0.26, 0.06, len + 0.12, this.wood, 7.1, sill - 0.06, zc, true, TILE.oak);
-      this.box(0.26, 0.06, len + 0.12, this.wood, 7.1, top, zc, true, TILE.oak);
-      for (const z of [z0 - 0.03, z1 + 0.03]) this.box(0.26, h, 0.06, this.wood, 7.1, sill, z, true, TILE.oak);
-      this.box(0.3, 0.025, len + 0.16, this.wood, 7.08, sill - 0.085, zc, true, TILE.oak);
+      // (복도 쪽 면은 SchoolMap.classFront가 덮으므로 벽 두께 안·교실 쪽만)
+      this.box(0.2, 0.06, len + 0.12, this.wood, 7.09, sill - 0.06, zc, true, TILE.oak);
+      this.box(0.2, 0.06, len + 0.12, this.wood, 7.09, top, zc, true, TILE.oak);
+      for (const z of [z0 - 0.03, z1 + 0.03]) this.box(0.2, h, 0.06, this.wood, 7.09, sill, z, true, TILE.oak);
+      this.box(0.22, 0.025, len + 0.16, this.wood, 7.0, sill - 0.085, zc, true, TILE.oak);
       const n = 2, pw = len / n;
       for (let i = 1; i < n; i++) this.box(0.08, h, 0.05, this.wood, 7.1, sill, z0 + i * pw, true, TILE.oak);
       for (let i = 0; i < n; i++) {
@@ -137,9 +138,9 @@ export class ClassroomBuilder extends HQBuilder {
     // 문틀 (안쪽) + 문지방
     for (const { z0, z1 } of CLASS_DOORS) {
       const zc = (z0 + z1) / 2, w = z1 - z0;
-      this.box(0.25, 0.08, w + 0.16, this.wood, 7.1, 2.1, zc, false, TILE.oak);
-      this.box(0.25, 2.1, 0.08, this.wood, 7.1, 0, z0 - 0.04, false, TILE.oak);
-      this.box(0.25, 2.1, 0.08, this.wood, 7.1, 0, z1 + 0.04, false, TILE.oak);
+      this.box(0.2, 0.08, w + 0.16, this.wood, 7.09, 2.1, zc, false, TILE.oak);
+      this.box(0.2, 2.1, 0.08, this.wood, 7.09, 0, z0 - 0.04, false, TILE.oak);
+      this.box(0.2, 2.1, 0.08, this.wood, 7.09, 0, z1 + 0.04, false, TILE.oak);
       this.box(0.24, 0.012, w, paint(0x9aa0a6, 0.4, 0.6), 7.1, 0.0, zc, false);
       // 문 위 고정 유리 느낌의 밝은 판 (안쪽)
       this.box(0.012, 0.5, w - 0.1, paint(0xe4ebee, 0.3), 6.995, 2.3, zc, false);
