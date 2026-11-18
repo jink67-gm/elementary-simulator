@@ -427,7 +427,7 @@ export class SchoolMap {
     for (const s2 of [-1, 1]) part(0.08, H, 0.1, frameM, s2 * (W / 2 + 0.06), 0, -0.01);
     // 문짝 (문 자리 안. 뒤는 방이라 보이지 않는다)
     tgt = leafG;
-    const leafM = wc ? paint(0xd5d9dc, 0.45, 0.15) : solidWood ? pbr('oak', { color: 0x8a6a52, roughness: 0.5 }) : cls ? pbr('oak', { color: 0xe7a86c, roughness: 0.55 }) : oak;
+    const leafM = wc ? paint(0xd5d9dc, 0.45, 0.15) : solidWood ? pbr('oak', { color: 0x8a6a52, roughness: 0.5 }) : cls ? pbr('oak', { color: 0xffffff, roughness: 0.55 }) : oak;
     void color;
     const leaf = part(W, H - 0.01, 0.045, leafM, 0, 0.005, -0.01);
     this.cameraBlockers.push(leaf); // 닫힌 문 너머로 카메라가 빠지지 않게
@@ -855,7 +855,7 @@ export class SchoolMap {
         return m;
       };
       // 사진 같은 교실 문: 통 나무판 + 볼록한 판 네 칸 + 눈높이 가로 유리 + 손잡이
-      const body = new THREE.Mesh(worldUV(new THREE.BoxGeometry(0.04, H, lw), 0.04, H, lw, TILE.oak), pbr('oak', { color: 0xe7a86c, roughness: 0.55 }));
+      const body = new THREE.Mesh(worldUV(new THREE.BoxGeometry(0.04, H, lw), 0.04, H, lw, TILE.oak), pbr('oak', { color: 0xffffff, roughness: 0.55 }));
       body.position.y = 0.01 + H / 2;
       body.castShadow = body.receiveShadow = true;
       leaf.add(body);
@@ -2007,12 +2007,12 @@ export class SchoolMap {
    */
   private classFront(z0: number, z1: number, bays: [number, number][], doors: [number, number][], seeThrough: boolean, pillars: number[] = []) {
     const F = 7.2;
-    const wood = pbr('oak', { color: 0xe7a86c, roughness: 0.55 }), woodD = pbr('oak', { color: 0xc98a52, roughness: 0.55 });
+    const wood = pbr('oak', { color: 0xffffff, roughness: 0.55 }), woodD = pbr('oak', { color: 0xead2b0, roughness: 0.55 });
     const film = new THREE.MeshStandardMaterial({ color: 0xf2f4f5, transparent: true, opacity: 0.92, roughness: 0.6 });
     film.userData.pbr = true;
     const T = 2.2, TOP = 2.97, SILL = 1.0, HEAD = 2.12;
     const b = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) => {
-      const mm = this.box(w, h, d, 0xe7a86c, x, y, z, { shadow: false });
+      const mm = this.box(w, h, d, 0xffffff, x, y, z, { shadow: false });
       mm.material = m;
       return mm;
     };
@@ -2084,7 +2084,7 @@ export class SchoolMap {
 
   /** 교실 문 짝 꾸밈 (사진처럼): 볼록한 판 네 칸 + 눈높이 작은 가로 유리 + 손잡이. g = 문짝 그룹(자기 좌표 x = 두께, z = 너비) */
   private classLeafDecor(g: THREE.Object3D, lw: number, H: number, face: number, handleSide: number) {
-    const mold = pbr('oak', { color: 0xd3955c, roughness: 0.5 });
+    const mold = pbr('oak', { color: 0xf2e0c4, roughness: 0.5 });
     const add = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) => {
       const mm = new THREE.Mesh(new THREE.BoxGeometry(d, h, w), m);
       mm.position.set(x, y + h / 2, z);
