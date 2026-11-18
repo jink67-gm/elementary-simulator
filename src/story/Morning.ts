@@ -36,7 +36,7 @@ import type { StoryEvent } from './StoryEvent';
 
 const never = () => new Promise<never>(() => {});
 /** 등교 시작: 1층 현관 앞 마당 (서쪽 현관을 바라봄) */
-const SPAWN = { x: 35.4, z: GATE_Z, y: FLOOR1_Y, yaw: -Math.PI / 2 }; // 학교 건너편 보도 (횡단보도 → 교문 → 현관이 한 줄로 보이게)
+const SPAWN = { x: 35.0, z: GATE_Z, y: FLOOR1_Y, yaw: -Math.PI / 2 }; // 학교 건너편 보도 (횡단보도 → 교문 → 현관이 한 줄로 보이게)
 const ROLE_ITEMS: Record<GroupRole, ItemId> = { speaker: 'roleSpeaker', maker: 'roleMaker', researcher: 'roleResearcher', organizer: 'roleOrganizer' };
 const ROLE_NAMES: Record<GroupRole, string> = { speaker: '발표', maker: '제작', researcher: '자료', organizer: '정리' };
 const WISH_THEME: Record<Wish, PosterTheme> = { lunch: 'food', break: 'rest', sport: 'play', clean: 'friends' };

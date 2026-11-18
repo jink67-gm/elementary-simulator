@@ -291,6 +291,7 @@ export class EntranceBuilder extends HQBuilder {
       const t = makeTree(kind, seed, sc);
       t.position.set(x, this.y, z);
       this.root.add(t);
+      this.blockers.push(...t.children);
     };
     // 남쪽·북쪽 화단 (마당 경계, 담장 x 25.1 안쪽까지)
     curb(14.9, 24.85, -7.45, -7.2);

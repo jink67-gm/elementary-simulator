@@ -2584,6 +2584,7 @@ export class SchoolMap {
     const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), [fm, fm, plain, plain, sm, sm]);
     body.position.set(x, Y + H / 2, z);
     this.root.add(body);
+    this.cameraBlockers.push(body);
     // 1층 필로티 (짙은 돌 + 기둥 사이 그늘)
     const base = new THREE.Mesh(new THREE.BoxGeometry(W - 0.6, 3, D - 0.6), new THREE.MeshLambertMaterial({ color: 0x5f5a54 }));
     base.position.set(x, FLOOR1_Y + 1.5, z);
@@ -2666,6 +2667,7 @@ export class SchoolMap {
     op.rotation.y = Math.PI / 2;
     op.receiveShadow = true;
     this.root.add(op);
+    this.cameraBlockers.push(base, op); // 카메라가 방음벽 뒤로 빠지면 캐릭터 쪽으로 당긴다
     // 투명 아크릴 (하늘이 비치는 옅은 청록 + 가로 살)
     const acr = new CanvasTex(128, 256);
     acr.draw((c, w, h) => {
@@ -2697,6 +2699,7 @@ export class SchoolMap {
     tp.rotation.y = Math.PI / 2;
     tp.renderOrder = 2;
     this.root.add(tp);
+    this.cameraBlockers.push(tp);
     // 도로 쪽으로 휘어진 윗부분 (세 조각으로 꺾어 곡선처럼)
     const arcR = 1.6;
     let px = x, py = H2;
@@ -2714,6 +2717,7 @@ export class SchoolMap {
       piece.rotation.set(-(a0 + a1) / 2, Math.PI / 2, 0);
       piece.renderOrder = 2;
       this.root.add(piece);
+      this.cameraBlockers.push(piece);
       px = nx;
       py = ny;
     }
@@ -2884,6 +2888,7 @@ export class SchoolMap {
       const t = makeTree(i % 3 === 1 ? 'pine' : 'zelkova', i + 3, 0.95 + ((i * 7) % 4) * 0.06);
       t.position.set(x, FLOOR1_Y, z);
       this.root.add(t);
+      this.cameraBlockers.push(...t.children); // 줄기·잎 뭉치 안으로 카메라가 들어가지 않게
     }
     // 길 건너 아파트 단지 (방음벽 너머로 보이는 배경)
     const blocks: [number, number, number, string, number][] = [
