@@ -2498,6 +2498,117 @@ export class SchoolMap {
   }
 
   /**
+   * 아파트 한 동 (배경): 앞뒤 = 베란다 줄(흰 난간·유리·커튼), 옆 = 색 띠 + 「10X동」 번호 + 작은 창,
+   * 아래 1층 필로티(짙은 돌), 옥상 난간 + 엘리베이터 기계실 + 물탱크. 크기 8 × 층수·2.8 × 18 (앞면이 학교 쪽 -x)
+   */
+  private apartmentBlock(x: number, z: number, floors: number, accent: string, no: number, seed: number) {
+    const FH = 2.8, W = 8, D = 18, H = floors * FH, Y = FLOOR1_Y + 3;
+    let r = seed * 97 + 13;
+    const rnd = () => ((r = (r * 16807) % 2147483647) / 2147483647);
+    // 앞·뒤: 한 층 4세대 줄 (512 × 128 = 18m × 1층)
+    const front = new CanvasTex(512, 128);
+    front.draw((c, w, h) => {
+      c.fillStyle = '#ece6da';
+      c.fillRect(0, 0, w, h);
+      const uw = w / 4;
+      for (let u = 0; u < 4; u++) {
+        const x0 = u * uw;
+        // 유리 (위는 하늘 반사, 아래는 어둡게) + 커튼/블라인드 몇 집
+        const g = c.createLinearGradient(0, 14, 0, 92);
+        g.addColorStop(0, '#a9c7da');
+        g.addColorStop(1, '#4a6174');
+        c.fillStyle = g;
+        c.fillRect(x0 + 8, 14, uw - 16, 78);
+        const cur = rnd();
+        if (cur < 0.55) {
+          c.fillStyle = ['#f3ead6', '#e9e4ef', '#f6f1e7', '#e0d6c4'][Math.floor(rnd() * 4)];
+          const cw = (uw - 16) * (0.3 + rnd() * 0.4);
+          c.fillRect(x0 + 8 + (rnd() < 0.5 ? 0 : uw - 16 - cw), 18, cw, 74);
+        }
+        c.fillStyle = 'rgba(255,255,255,0.35)';
+        c.fillRect(x0 + 8, 22, uw - 16, 3);
+        // 창 가운데 살
+        c.fillStyle = '#c9c4ba';
+        c.fillRect(x0 + uw / 2 - 1.5, 18, 3, 74);
+        // 베란다 난간 (흰 판 + 위 손잡이)
+        c.fillStyle = '#f8f7f4';
+        c.fillRect(x0 + 4, 70, uw - 8, 30);
+        c.fillStyle = 'rgba(150,150,150,0.5)';
+        c.fillRect(x0 + 4, 70, uw - 8, 2);
+        // 에어컨 실외기 (가끔)
+        if (rnd() < 0.3) {
+          c.fillStyle = '#d7d9d6';
+          c.fillRect(x0 + uw - 34, 78, 22, 16);
+          c.fillStyle = '#9aa0a3';
+          c.beginPath();
+          c.arc(x0 + uw - 23, 86, 6, 0, Math.PI * 2);
+          c.fill();
+        }
+        // 세대 사이 벽
+        c.fillStyle = '#dcd5c8';
+        c.fillRect(x0, 0, 5, h);
+      }
+      // 층 사이 슬래브 띠
+      c.fillStyle = '#d4cdbf';
+      c.fillRect(0, 100, w, 10);
+      c.fillStyle = 'rgba(0,0,0,0.08)';
+      c.fillRect(0, 110, w, 3);
+    });
+    front.tex.wrapS = front.tex.wrapT = THREE.RepeatWrapping;
+    front.tex.repeat.set(1, floors);
+    // 옆: 색 띠 + 동 번호 + 계단실 작은 창
+    const side = new CanvasTex(256, 1024);
+    side.draw((c, w, h) => {
+      c.fillStyle = '#ece6da';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = accent;
+      c.fillRect(0, 0, 46, h);
+      c.fillRect(w - 46, 0, 46, h);
+      c.fillStyle = 'rgba(255,255,255,0.25)';
+      c.fillRect(46, 0, 6, h);
+      c.fillRect(w - 52, 0, 6, h);
+      c.fillStyle = '#7d8f9c';
+      for (let k = 0; k < floors; k++) {
+        const y = 150 + (k * (h - 170)) / floors;
+        c.fillRect(w / 2 - 14, y, 28, 18);
+      }
+      c.fillStyle = '#5a6570';
+      c.font = font(64, true);
+      c.textAlign = 'center';
+      c.fillText(`${no}동`, w / 2, 90);
+    });
+    const plain = new THREE.MeshLambertMaterial({ color: 0xd9d3c7 });
+    const fm = new THREE.MeshLambertMaterial({ map: front.tex });
+    const sm = new THREE.MeshLambertMaterial({ map: side.tex });
+    // 박스 면 순서: +x, -x, +y, -y, +z, -z
+    const body = new THREE.Mesh(new THREE.BoxGeometry(W, H, D), [fm, fm, plain, plain, sm, sm]);
+    body.position.set(x, Y + H / 2, z);
+    this.root.add(body);
+    // 1층 필로티 (짙은 돌 + 기둥 사이 그늘)
+    const base = new THREE.Mesh(new THREE.BoxGeometry(W - 0.6, 3, D - 0.6), new THREE.MeshLambertMaterial({ color: 0x5f5a54 }));
+    base.position.set(x, FLOOR1_Y + 1.5, z);
+    this.root.add(base);
+    for (const dz of [-D / 2 + 0.4, -D / 4, 0, D / 4, D / 2 - 0.4]) {
+      const col = new THREE.Mesh(new THREE.BoxGeometry(W - 0.2, 3, 0.6), new THREE.MeshLambertMaterial({ color: 0xb8afa2 }));
+      col.position.set(x, FLOOR1_Y + 1.5, z + dz);
+      this.root.add(col);
+    }
+    // 옥상: 난간 + 기계실 + 물탱크
+    const roofM = new THREE.MeshLambertMaterial({ color: 0xcfc8bb });
+    const top = Y + H;
+    for (const [w2, d2, ox, oz] of [[W, 0.25, 0, -D / 2 + 0.125], [W, 0.25, 0, D / 2 - 0.125], [0.25, D, -W / 2 + 0.125, 0], [0.25, D, W / 2 - 0.125, 0]] as [number, number, number, number][]) {
+      const rim = new THREE.Mesh(new THREE.BoxGeometry(w2, 1.0, d2), roofM);
+      rim.position.set(x + ox, top + 0.5, z + oz);
+      this.root.add(rim);
+    }
+    const house = new THREE.Mesh(new THREE.BoxGeometry(4, 3.2, 5), new THREE.MeshLambertMaterial({ color: 0xe2dccf }));
+    house.position.set(x + 0.5, top + 1.6, z + (rnd() < 0.5 ? -3 : 3));
+    const tank = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2, 2.6), new THREE.MeshLambertMaterial({ color: 0x8fb3c9 }));
+    tank.position.set(x - 1.5, top + 1.0, z - house.position.z + z);
+    this.root.add(house, tank);
+  }
+
+  /**
    * 건너편 보도 뒤 도로 방음벽 (등굣길 시작 자리 뒤가 허전하지 않게): 콘크리트 받침 + 회색 H형 기둥(2.5m 간격)
    * + 아래 불투명 골판 금속판 + 위 투명 아크릴판(가로 살) + 도로 쪽으로 휘어진 윗부분. x = 벽 가운데, 길이 len (z 방향)
    */
@@ -2508,23 +2619,47 @@ export class SchoolMap {
     base.position.set(x + 0.05, Y + 0.5, zc);
     base.receiveShadow = base.castShadow = true;
     this.root.add(base);
+    // 받침 위 두겁 + 보도 쪽 배수 구멍 줄
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.08, len), paint(0xb4b3ad, 0.85));
+    cap.position.set(x + 0.05, Y + 1.04, zc);
+    this.root.add(cap);
+    const holes: THREE.BufferGeometry[] = [];
+    for (let z = zc - len / 2 + 1.25; z < zc + len / 2; z += 2.5) {
+      const hg = new THREE.BoxGeometry(0.01, 0.08, 0.18);
+      hg.translate(x - 0.175, Y + 0.12, z);
+      holes.push(hg);
+    }
+    const hm = new THREE.Mesh(mergeGeometries(holes)!, paint(0x3a3d40, 0.9));
+    this.root.add(hm);
     const H0 = 1.0, H1 = 2.4, H2 = 5.6; // 받침 위 ~ 불투명판 ~ 투명판 끝
     // 불투명 골판 (밝은 회색 + 세로 골 그늘 + 아래 파란 띠)
-    const rib = new CanvasTex(128, 64);
+    const rib = new CanvasTex(256, 64);
     rib.draw((c, w, h) => {
-      c.fillStyle = '#d9dcdc';
-      c.fillRect(0, 0, w, h);
-      for (let i = 0; i < w; i += 8) {
-        c.fillStyle = 'rgba(90,98,104,0.28)';
-        c.fillRect(i, 0, 2, h);
-        c.fillStyle = 'rgba(255,255,255,0.5)';
-        c.fillRect(i + 3, 0, 1, h);
+      // 판 두 장(2.5m씩): 색이 아주 조금 다름 + 세로 골 + 이음 틀 + 아래 파란 띠 + 빗물 얼룩
+      for (const [x0, base] of [[0, '#d9dcdc'], [w / 2, '#d2d6d7']] as [number, string][]) {
+        c.fillStyle = base;
+        c.fillRect(x0, 0, w / 2, h);
+        for (let i = 4; i < w / 2; i += 8) {
+          c.fillStyle = 'rgba(90,98,104,0.26)';
+          c.fillRect(x0 + i, 0, 2, h);
+          c.fillStyle = 'rgba(255,255,255,0.45)';
+          c.fillRect(x0 + i + 3, 0, 1, h);
+        }
+        const g = c.createLinearGradient(0, h * 0.55, 0, h);
+        g.addColorStop(0, 'rgba(110,105,95,0)');
+        g.addColorStop(1, 'rgba(110,105,95,0.18)');
+        c.fillStyle = g;
+        c.fillRect(x0, 0, w / 2, h);
+        c.fillStyle = '#7d8890';
+        c.fillRect(x0, 0, 3, h); // 판 이음 틀
       }
       c.fillStyle = '#5b8fb9';
-      c.fillRect(0, h - 6, w, 4);
+      c.fillRect(0, h - 9, w, 5);
+      c.fillStyle = '#8a9399';
+      c.fillRect(0, 0, w, 3);
     });
     rib.tex.wrapS = THREE.RepeatWrapping;
-    rib.tex.repeat.set(len / 2.5, 1);
+    rib.tex.repeat.set(len / 5, 1);
     const ribM = new THREE.MeshStandardMaterial({ map: rib.tex, roughness: 0.6, metalness: 0.3, side: THREE.DoubleSide });
     const op = new THREE.Mesh(new THREE.PlaneGeometry(len, H1 - H0), ribM);
     op.position.set(x, Y + (H0 + H1) / 2, zc);
@@ -2532,19 +2667,31 @@ export class SchoolMap {
     op.receiveShadow = true;
     this.root.add(op);
     // 투명 아크릴 (하늘이 비치는 옅은 청록 + 가로 살)
-    const acr = new CanvasTex(64, 256);
+    const acr = new CanvasTex(128, 256);
     acr.draw((c, w, h) => {
       c.clearRect(0, 0, w, h);
-      c.fillStyle = 'rgba(200,225,232,0.32)';
+      c.fillStyle = 'rgba(196,222,230,0.3)';
       c.fillRect(0, 0, w, h);
-      c.fillStyle = 'rgba(120,135,145,0.85)';
+      // 조류 충돌 방지 점 (세로 점선, 10cm 간격)
+      c.fillStyle = 'rgba(70,80,88,0.55)';
+      for (let x = 6; x < w; x += 10) for (let y = 4; y < h; y += 7) c.fillRect(x, y, 2, 2);
+      // 위쪽 하늘 반사 띠 + 아래 먼지
+      c.fillStyle = 'rgba(255,255,255,0.28)';
+      c.fillRect(0, 14, w, 3);
+      c.fillRect(0, 22, w, 1);
+      const g = c.createLinearGradient(0, h * 0.7, 0, h);
+      g.addColorStop(0, 'rgba(120,115,100,0)');
+      g.addColorStop(1, 'rgba(120,115,100,0.22)');
+      c.fillStyle = g;
+      c.fillRect(0, 0, w, h);
+      // 판 틀 (가로 살 + 판 양옆 세로 틀)
+      c.fillStyle = 'rgba(110,123,132,0.95)';
       for (let y = 0; y < h; y += 64) c.fillRect(0, y, w, 4);
-      c.fillStyle = 'rgba(255,255,255,0.35)';
-      c.fillRect(0, 10, w, 2);
+      c.fillRect(0, 0, 3, h);
     });
     acr.tex.wrapS = acr.tex.wrapT = THREE.RepeatWrapping;
     acr.tex.repeat.set(len / 2.5, 1);
-    const acrM = new THREE.MeshStandardMaterial({ map: acr.tex, transparent: true, roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide, depthWrite: false });
+    const acrM = new THREE.MeshStandardMaterial({ map: acr.tex, transparent: true, roughness: 0.08, metalness: 0.25, envMapIntensity: 1.5, side: THREE.DoubleSide, depthWrite: false });
     const tp = new THREE.Mesh(new THREE.PlaneGeometry(len, H2 - H1), acrM);
     tp.position.set(x, Y + (H1 + H2) / 2, zc);
     tp.rotation.y = Math.PI / 2;
@@ -2574,9 +2721,19 @@ export class SchoolMap {
     const postM = paint(0x6f7b84, 0.45, 0.5);
     const posts: THREE.BufferGeometry[] = [];
     for (let z = zc - len / 2; z <= zc + len / 2 + 0.01; z += 2.5) {
-      const g1 = new THREE.BoxGeometry(0.16, H2 - H0, 0.2);
-      g1.translate(x + 0.1, Y + (H0 + H2) / 2, z);
-      posts.push(g1);
+      // H형강: 가운데 판 + 앞뒤 날개
+      const web = new THREE.BoxGeometry(0.16, H2 - H0, 0.03);
+      web.translate(x + 0.1, Y + (H0 + H2) / 2, z);
+      posts.push(web);
+      for (const fx2 of [0.02, 0.18]) {
+        const fl = new THREE.BoxGeometry(0.025, H2 - H0, 0.2);
+        fl.translate(x + fx2, Y + (H0 + H2) / 2, z);
+        posts.push(fl);
+      }
+      // 아래 고정판
+      const pl = new THREE.BoxGeometry(0.3, 0.03, 0.3);
+      pl.translate(x + 0.1, Y + H0 + 0.1, z);
+      posts.push(pl);
       let qx = x + 0.1, qy = H2;
       for (let i = 0; i < 3; i++) {
         const a1 = ((i + 1) / 3) * (Math.PI / 3);
@@ -2728,23 +2885,11 @@ export class SchoolMap {
       t.position.set(x, FLOOR1_Y, z);
       this.root.add(t);
     }
-    const apt = new CanvasTex(128, 256);
-    apt.draw((c, w, h) => {
-      c.fillStyle = '#e9e4da';
-      c.fillRect(0, 0, w, h);
-      c.fillStyle = '#9fb3c2';
-      for (let y = 6; y < h; y += 14) for (let x = 6; x < w; x += 20) c.fillRect(x, y, 12, 8);
-    });
-    apt.tex.wrapS = apt.tex.wrapT = THREE.RepeatWrapping;
-    for (let i = 0; i < 5; i++) {
-      const hgt = 26 + (i % 3) * 6;
-      const t = apt.tex.clone();
-      t.needsUpdate = true;
-      t.repeat.set(2, hgt / 14);
-      const b = new THREE.Mesh(new THREE.BoxGeometry(8, hgt, 18), new THREE.MeshLambertMaterial({ map: t }));
-      b.position.set(58 + (i % 2) * 9, FLOOR1_Y + hgt / 2, -40 + i * 20);
-      this.root.add(b);
-    }
+    // 길 건너 아파트 단지 (방음벽 너머로 보이는 배경)
+    const blocks: [number, number, number, string, number][] = [
+      [74, -46, 15, '#7a9cc6', 101], [86, -24, 18, '#c98f6b', 102], [74, -2, 13, '#7fb08a', 103], [86, 20, 20, '#7a9cc6', 104], [74, 42, 15, '#c98f6b', 105],
+    ];
+    blocks.forEach(([bx, bz, floors, accent, no], i) => this.apartmentBlock(bx, bz, floors, accent, no, i));
     // 멀리 보이는 산 (분위기)
     const hill = new THREE.Mesh(new THREE.SphereGeometry(30, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x8fa894 }));
     hill.scale.set(2.4, 0.3, 1.6);
