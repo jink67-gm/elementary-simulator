@@ -547,7 +547,7 @@ export class Game {
       head.y += 1.2 * this.player.char.scale;
       this.player.char.setHidden(head.distanceTo(this.camera.position) < 0.9);
     } else this.player.char.setHidden(false);
-    this.hud.showLockHint(this.controlMode === 'keyboard' && !input.pointerLocked && !input.captured && !this.cutscene);
+    this.hud.showLockHint(this.controlMode === 'keyboard' && !input.pointerLocked && !input.captured && !this.cutscene && !this.dialogue.active);
     this.updateTouch();
     this.hud.updateBubbles(this.camera, this.renderer.domElement.clientWidth, this.renderer.domElement.clientHeight, this.dialogue.rect(), this.dialogue.speaker);
 

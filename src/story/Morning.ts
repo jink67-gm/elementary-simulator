@@ -1103,7 +1103,19 @@ export class Morning implements StoryHooks {
     }
     const takenOver = () => this.phase === 'teacher';
     if (!this.f('bagOnDesk')) {
-      g.setObjective('가방 메고 2층 6-1 교실 내 책상에 걸기 (횡단보도 → 교문 → 현관 → 복도 건너 계단 → 2층 6-1 → 내 책상에서 E)', this.inter.seat);
+      // 두 단계: ① 6-1 교실까지 등교 (길은 화살표가 안내) ② 교실에 들어오면 책상 고리에 가방 걸기
+      const inClass = () => {
+        const p = g.player.pos;
+        return p.y > FLOOR1_Y / 2 && p.x > ROOM.x0 && p.x < ROOM.x1 && p.z > ROOM.z0 && p.z < ROOM.z1;
+      };
+      if (!inClass()) {
+        g.setObjective('6-1 교실로 등교하기', this.inter.seat);
+        await this.until(() => inClass() || this.f('bagOnDesk') || takenOver());
+      }
+      if (!this.f('bagOnDesk') && !takenOver()) {
+        g.setObjective('내 책상 옆 고리에 가방 걸기 (E)', this.inter.seat);
+        this.toast('6-1 교실 도착!', 'good');
+      }
       await this.until(() => this.f('bagOnDesk'));
     }
     if (takenOver()) return;

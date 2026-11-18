@@ -1660,7 +1660,7 @@ export class SchoolMap {
   }
 
   /** 소화기 + 받침대 (복도 벽 앞 바닥). dir: 벽에서 복도 쪽 (+1 = +x) */
-  private extinguisher(x: number, z: number, dir: 1 | -1) {
+  private extinguisher(x: number, z: number, dir: 1 | -1, wallSign = true) {
     const red = paint(0xc92a2a, 0.35, 0.1), blk = paint(0x212529, 0.6);
     const stand = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.24), paint(0xb0b5ba, 0.4, 0.6));
     stand.position.set(x, this.baseY + 0.025, z);
@@ -1677,7 +1677,11 @@ export class SchoolMap {
     label.position.set(x + dir * 0.076, this.baseY + 0.3, z);
     label.rotation.y = dir * Math.PI / 2;
     this.root.add(stand, body, head, lever, hose, label);
-    // 벽 위 「소화기」 표지
+    // 벽 위 「소화기」 표지 (벽이 창이면 붙이지 않는다)
+    if (!wallSign) {
+      this.colliders.push({ ...aabb(x, z, 0.26, 0.26), level: this.curLevel });
+      return;
+    }
     const t = new CanvasTex(128, 48);
     t.draw((c, w, h) => {
       c.fillStyle = '#c92a2a';
@@ -2061,7 +2065,7 @@ export class SchoolMap {
     // 우리 반 앞쪽 칠판 아래 수납장 충돌 상자 (모습은 ClassroomHQ)
     this.colliders.push({ ...aabb(0, ROOM.z0 + 0.21, 7.4, 0.42), level: 1 });
     // 복도: 소화기(받침대), 층 표지, 피난 안내도, 창 아래 낮은 책장
-    this.extinguisher(7.42, 1.2, 1);
+    this.extinguisher(7.42, 1.2, 1, false); // 6-1 복도 창 앞: 표지는 붙이지 않음
     this.extinguisher(10.78, -7.3, -1);
     this.windowShelf(10.78, -3.0, 2.0);
     this.windowShelf(10.78, 10.6, 2.4);
