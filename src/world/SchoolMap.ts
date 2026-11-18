@@ -85,7 +85,6 @@ export class SchoolMap {
   private baseY = 0;
   /** 지금 짓고 있는 층 (충돌 상자에 붙는다) */
   private curLevel: 0 | 1 | 'both' = 1;
-  private ceilMat: THREE.MeshLambertMaterial | undefined;
   private lampMat: THREE.MeshBasicMaterial | undefined;
   private levelCache: [Aabb[], Aabb[]] = [[], []];
   private levelCacheLen = -1;
@@ -244,7 +243,8 @@ export class SchoolMap {
 
   /** 천장 (아래를 보는 판) + 천장 등. 카메라가 천장을 뚫고 올라가지 않게 막는다 */
   private ceiling(w: number, d: number, x: number, z: number, lights = true, h = WALL_H) {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), this.ceilMat ??= new THREE.MeshLambertMaterial({ color: 0xf4f2ea }));
+    // 복도와 같은 흡음 텍스 천장 (색만 있는 재질은 그늘에서 누렇게 보였다)
+    const m = new THREE.Mesh(worldUV(new THREE.PlaneGeometry(w, d), w, d, 0, TILE.ceiling), pbr('ceiling', { roughness: 0.95 }));
     m.rotation.x = Math.PI / 2;
     m.position.set(x, this.baseY + h, z);
     m.castShadow = true; // 지붕 역할: 해가 천장을 뚫고 들어오지 않게
@@ -1696,6 +1696,8 @@ export class SchoolMap {
     l3.material = concrete;
     rail(S.zS0 + 0.06, -FLOOR1_Y, 1);
     this.floorPlate('2', 6.35, 1.65, S.zN1 - 0.006, Math.PI);
+    // 계단실 천장(3.4m)과 복도 벽 위(3.0m) 사이 틈 막기: 복도 쪽 벽을 계단실 너비만큼 3.45m까지 올림
+    this.box(0.2, 0.45, dAll + 0.4, C.wall, 7.1, WALL_H, zAll, { wall: true, shadow: false });
     this.ceiling(7.0 - x0, dAll + 0.4, (x0 + 7.0) / 2, zAll, true, 3.4);
     this.baseY = 0;
     this.curLevel = 1;
