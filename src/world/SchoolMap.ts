@@ -1150,7 +1150,8 @@ export class SchoolMap {
 
     // ── 급식실 문 (1층 복도 북쪽 끝, 미닫이) ──
     const d = CAFE.door;
-    const doorMesh = this.box(d.w, 2.2, 0.08, 0xd9d9d9, d.x, 0, d.z - 0.05, { ownMat: true });
+    // 문 높이 = 문 위 벽(인방) 아래까지 2.3m (예전 2.2m라 위에 틈이 보였다)
+    const doorMesh = this.box(d.w, 2.3, 0.08, 0xd9d9d9, d.x, 0, d.z - 0.05, { ownMat: true });
     doorMesh.material = paint(0xb9c3c9, 0.4, 0.5).clone();
     this.cameraBlockers.push(doorMesh);
     const window = this.box(1.2, 0.5, 0.09, 0x9ad0ec, d.x, 1.4, d.z - 0.05, { ownMat: true, shadow: false });
@@ -1158,7 +1159,11 @@ export class SchoolMap {
     this.root.remove(doorMesh, window);
     g.add(doorMesh, window);
     this.root.add(g);
-    this.sign('급식실', d.x, 2.45, d.z - 0.12, Math.PI, '#e76f51');
+    // 문틀 (복도 쪽 면): 양옆 + 위
+    const fr = paint(0x9aa3aa, 0.4, 0.45);
+    for (const sx of [-1, 1]) this.box(0.1, 2.38, 0.06, 0x9aa3aa, d.x + sx * (d.w / 2 + 0.05), 0, d.z - 0.13, { shadow: false }).material = fr;
+    this.box(d.w + 0.2, 0.08, 0.06, 0x9aa3aa, d.x, 2.3, d.z - 0.13, { shadow: false }).material = fr;
+    this.sign('급식실', d.x, 2.55, d.z - 0.14, Math.PI, '#e76f51');
     const collider = { ...aabb(d.x, d.z, d.w, 0.3), level: 0 as const };
     this.colliders.push(collider);
     this.cafeteriaDoor = { mesh: g, collider, open: 0 };
@@ -2200,7 +2205,6 @@ export class SchoolMap {
     this.door('doorRestroomF', '여자 화장실', 10.97, -4.4, -Math.PI / 2, 0xe8a0a8, '#c9184a');
     this.door('doorStaffWC', '교직원 화장실', 10.97, 4.6, -Math.PI / 2, 0xc7a27a);
     this.door('doorRestroom', '화장실', 10.97, 13.5, -Math.PI / 2);
-    this.sign('급식실 ▲', 9, 2.55, 15.9, Math.PI, '#e76f51');
     // 동쪽 바깥벽 (화장실·엘리베이터 칸)
     this.wallX(14.9, LOBBY.z1, 16.1);
     this.wallX(14.9, -16.1, LOBBY.z0);
