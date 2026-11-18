@@ -143,7 +143,7 @@ export class SchoolMap {
       level: 1,
       z0: -16.1,
       z1: 16.1,
-      windows: [[-5.4, 2.2], [6.9, 15.8]],
+      windows: [[-5.4, -0.5], [0.1, 2.2], [7.3, 15.8]], // 복도 기둥(-0.2, 7.0) 자리는 벽 (기둥과 창이 겹치지 않게)
       // 다른 반 창은 frostedRoomFace (위 유리창을 겹치지 않는다)
       transoms: [],
       arches: ARCHES_2F,
@@ -427,7 +427,7 @@ export class SchoolMap {
     for (const s2 of [-1, 1]) part(0.08, H, 0.1, frameM, s2 * (W / 2 + 0.06), 0, -0.01);
     // 문짝 (문 자리 안. 뒤는 방이라 보이지 않는다)
     tgt = leafG;
-    const leafM = wc ? paint(0xd5d9dc, 0.45, 0.15) : solidWood ? pbr('oak', { color: 0x8a6a52, roughness: 0.5 }) : cls ? pbr('oak', { color: 0xf6cf9a, roughness: 0.55 }) : oak;
+    const leafM = wc ? paint(0xd5d9dc, 0.45, 0.15) : solidWood ? pbr('oak', { color: 0x8a6a52, roughness: 0.5 }) : cls ? pbr('oak', { color: 0xe7a86c, roughness: 0.55 }) : oak;
     void color;
     const leaf = part(W, H - 0.01, 0.045, leafM, 0, 0.005, -0.01);
     this.cameraBlockers.push(leaf); // 닫힌 문 너머로 카메라가 빠지지 않게
@@ -855,7 +855,7 @@ export class SchoolMap {
         return m;
       };
       // 사진 같은 교실 문: 통 나무판 + 볼록한 판 네 칸 + 눈높이 가로 유리 + 손잡이
-      const body = new THREE.Mesh(worldUV(new THREE.BoxGeometry(0.04, H, lw), 0.04, H, lw, TILE.oak), pbr('oak', { color: 0xf6cf9a, roughness: 0.55 }));
+      const body = new THREE.Mesh(worldUV(new THREE.BoxGeometry(0.04, H, lw), 0.04, H, lw, TILE.oak), pbr('oak', { color: 0xe7a86c, roughness: 0.55 }));
       body.position.y = 0.01 + H / 2;
       body.castShadow = body.receiveShadow = true;
       leaf.add(body);
@@ -939,7 +939,8 @@ export class SchoolMap {
     this.box(0.2, WALL_H - 2.2, STAIR.zN1 - STAIR.zN0, C.wall, 7.1, 2.2, (STAIR.zN0 + STAIR.zN1) / 2, { wall: true, shadow: false }); // 계단 입구 위 보
     this.fireDoor();
     this.wallX(11.1, 2.2, 3.9);
-    this.wallX(11.1, 5.1, 6.9);
+    this.wallX(11.1, 5.1, 7.3);
+    this.wallX(11.1, -0.5, 0.1); // 복도 기둥 뒤 벽 (창 사이)
     this.wallX(11.1, 15.8, 16);
     this.doorWallX(7.1, 7.2, 16, [[8.2, CLASS_GAP], [15.0, CLASS_GAP]]); // 4-1 앞문·뒷문 (6-1과 같은 배치)
     this.wallZ(-16.1, 7, 8.4);
@@ -962,14 +963,14 @@ export class SchoolMap {
     this.sign('1층 ▼', 7.215, 2.35, STAIR.zN1 + 0.42, Math.PI / 2);
     // 방 쪽 벽 창문 (다른 반: 불투명 유리)
     // 5-1·4-1도 같은 나무 칸막이 (5-1은 시간 문 자리라 창 없이 판만)
-    this.classFront(-16.0, STAIR.zS0, [], [[-14.6 - CLASS_GAP / 2, -14.6 + CLASS_GAP / 2]], false);
-    this.classFront(7.22, 16.0, [[9.35, 11.55], [11.85, 13.85]], [[8.2 - CLASS_GAP / 2, 8.2 + CLASS_GAP / 2], [15.0 - CLASS_GAP / 2, 15.0 + CLASS_GAP / 2]], false);
+    this.classFront(-16.0, STAIR.zS0, [], [[-14.6 - CLASS_GAP / 2, -14.6 + CLASS_GAP / 2]], false, ARCHES_2F);
+    this.classFront(7.22, 16.0, [[9.35, 11.55], [11.85, 13.85]], [[8.2 - CLASS_GAP / 2, 8.2 + CLASS_GAP / 2], [15.0 - CLASS_GAP / 2, 15.0 + CLASS_GAP / 2]], false, ARCHES_2F);
 
     // 우리 반 명패 (앞문·뒷문 옆에 튀어나온 판)
     this.flagSign('6-1', 7.1, CLASS_DOORS[0].z1 + 0.4, 1, '#ffe8d6', '#d62828');
     this.flagSign('6-1', 7.1, CLASS_DOORS[1].z1 + 0.35, 1, '#ffe8d6', '#d62828');
     // 교실 복도 쪽 벽: 나무 칸막이 (아래 칸 + 필름 창 + 위 채광창)
-    this.classFront(-6.0, 6.78, HALL_WINDOWS, CLASS_DOORS.map((d) => [d.z0, d.z1] as [number, number]), true);
+    this.classFront(-6.0, 6.78, HALL_WINDOWS, CLASS_DOORS.map((d) => [d.z0, d.z1] as [number, number]), true, ARCHES_2F);
 
     // 게시판 (자료 조사)
     const bb = new CanvasTex(512, 300);
@@ -2004,14 +2005,14 @@ export class SchoolMap {
    * + 천장까지 위 채광창 줄 + 나머지는 나무 판. bays = 창 칸(z 범위), doors = 문 자리(z 범위, 위에 채광창만)
    * seeThrough: 창이 실제로 뚫려 있는 교실(6-1)이면 유리만, 아니면 맑은 유리 뒤에 커튼
    */
-  private classFront(z0: number, z1: number, bays: [number, number][], doors: [number, number][], seeThrough: boolean) {
+  private classFront(z0: number, z1: number, bays: [number, number][], doors: [number, number][], seeThrough: boolean, pillars: number[] = []) {
     const F = 7.2;
-    const wood = pbr('oak', { color: 0xf6cf9a, roughness: 0.55 }), woodD = pbr('oak', { color: 0xe2ad72, roughness: 0.55 });
+    const wood = pbr('oak', { color: 0xe7a86c, roughness: 0.55 }), woodD = pbr('oak', { color: 0xc98a52, roughness: 0.55 });
     const film = new THREE.MeshStandardMaterial({ color: 0xf2f4f5, transparent: true, opacity: 0.92, roughness: 0.6 });
     film.userData.pbr = true;
     const T = 2.2, TOP = 2.97, SILL = 1.0, HEAD = 2.12;
     const b = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) => {
-      const mm = this.box(w, h, d, 0xf6cf9a, x, y, z, { shadow: false });
+      const mm = this.box(w, h, d, 0xe7a86c, x, y, z, { shadow: false });
       mm.material = m;
       return mm;
     };
@@ -2028,28 +2029,35 @@ export class SchoolMap {
       b(0.02, T - HEAD, c - a, wood, F + 0.01, HEAD, (a + c) / 2); // 창 위
     }
     // 위 채광창 줄 (천장까지): 위·아래 틀 + 세로 살 + 유리(뒤에 밝은 안쪽 면)
-    const len = z1 - z0, zc = (z0 + z1) / 2;
-    b(0.07, 0.06, len, woodD, F + 0.035, T, zc);
-    b(0.07, 0.05, len, woodD, F + 0.035, TOP - 0.05, zc);
+    // 채광창은 복도 기둥(아치) 자리에서 끊는다 (기둥과 창이 겹치지 않게): 기둥 앞뒤로 나무 판
+    const PH = 0.3; // 기둥 반 너비 + 여유
+    const runs: [number, number][] = [];
+    let rz = z0;
+    for (const pz of [...pillars].filter((q) => q > z0 && q < z1).sort((p, q) => p - q)) {
+      if (pz - PH > rz) runs.push([rz, pz - PH]);
+      b(0.02, TOP - T, PH * 2, wood, F + 0.01, T, pz);
+      rz = pz + PH;
+    }
+    if (z1 > rz) runs.push([rz, z1]);
     const inner = paint(0xdfe6ea, 0.4);
-    const tPane = this.plane(len, TOP - T - 0.11, inner, F + 0.004, T + 0.06 + (TOP - T - 0.11) / 2, zc, Math.PI / 2);
-    void tPane;
-    const tg = this.plane(len, TOP - T - 0.11, this.clearGlass(), F + 0.03, T + 0.06 + (TOP - T - 0.11) / 2, zc, Math.PI / 2);
-    tg.renderOrder = 2;
-    const posts = new Set<number>([z0, z1, ...open.flat()]);
+    for (const [ra, rb] of runs) {
+      const len = rb - ra, zc = (ra + rb) / 2;
+      b(0.07, 0.06, len, woodD, F + 0.035, T, zc);
+      b(0.07, 0.05, len, woodD, F + 0.035, TOP - 0.05, zc);
+      this.plane(len, TOP - T - 0.11, inner, F + 0.004, T + 0.06 + (TOP - T - 0.11) / 2, zc, Math.PI / 2);
+      const tg = this.plane(len, TOP - T - 0.11, this.clearGlass(), F + 0.03, T + 0.06 + (TOP - T - 0.11) / 2, zc, Math.PI / 2);
+      tg.renderOrder = 2;
+    }
+    const inPillar = (q: number) => pillars.some((pz) => Math.abs(q - pz) < PH + 0.02);
+    const posts = new Set<number>([z0, z1, ...open.flat(), ...pillars.flatMap((pz) => [pz - PH, pz + PH])]);
     for (const [a, c] of open) for (let k = 1; k < Math.round((c - a) / 0.75); k++) posts.add(a + (k * (c - a)) / Math.round((c - a) / 0.75));
     for (let q = z0; q < z1; q += 0.9) if (![...posts].some((p) => Math.abs(p - q) < 0.3)) posts.add(q);
-    for (const p of posts) b(0.07, TOP - T, 0.05, woodD, F + 0.035, T, p);
+    for (const p of posts) if (!inPillar(p) || pillars.some((pz) => Math.abs(Math.abs(p - pz) - PH) < 0.01)) b(0.07, TOP - T, 0.05, woodD, F + 0.035, T, p);
     // 창 칸
     for (const [a, c] of bays) {
       const w = c - a, cz = (a + c) / 2;
-      // 아래 열린 칸 (2~3열 × 4단) + 받침
-      const cols = Math.max(2, Math.round(w / 0.8)), rows = 4, D = 0.32, ch = SILL - 0.08;
-      b(D, 0.08, w, paint(0x6f6a64, 0.7), F + D / 2, 0, cz);
-      b(D + 0.04, 0.035, w + 0.04, wood, F + D / 2 + 0.01, SILL - 0.035, cz); // 위판 (= 창턱)
-      for (let i = 0; i <= cols; i++) b(D, ch, 0.02, wood, F + D / 2, 0.08, a + 0.01 + (i * (w - 0.02)) / cols);
-      for (let r = 1; r < rows; r++) b(D, 0.02, w, wood, F + D / 2, 0.08 + (r * ch) / rows - 0.01, cz);
-      this.colliders.push({ ...aabb(F + D / 2, cz, D, w), level: this.curLevel });
+      // 창 아래: 나무 판 + 얇은 창턱 (칸 선반은 두지 않음)
+      b(0.06, 0.035, w + 0.04, wood, F + 0.03, SILL - 0.035, cz);
       // 창틀 + 가운데 살
       b(0.07, HEAD - SILL, 0.06, woodD, F + 0.035, SILL, a + 0.03);
       b(0.07, HEAD - SILL, 0.06, woodD, F + 0.035, SILL, c - 0.03);
@@ -2076,7 +2084,7 @@ export class SchoolMap {
 
   /** 교실 문 짝 꾸밈 (사진처럼): 볼록한 판 네 칸 + 눈높이 작은 가로 유리 + 손잡이. g = 문짝 그룹(자기 좌표 x = 두께, z = 너비) */
   private classLeafDecor(g: THREE.Object3D, lw: number, H: number, face: number, handleSide: number) {
-    const mold = pbr('oak', { color: 0xecbd84, roughness: 0.5 });
+    const mold = pbr('oak', { color: 0xd3955c, roughness: 0.5 });
     const add = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) => {
       const mm = new THREE.Mesh(new THREE.BoxGeometry(d, h, w), m);
       mm.position.set(x, y + h / 2, z);
