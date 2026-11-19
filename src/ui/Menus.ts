@@ -290,7 +290,6 @@ export class Menus {
       row('전체 음량', range(0, 1, 0.05, s.volume, (v) => (s.volume = v))),
       row('배경음악', range(0, 1, 0.05, s.bgmVolume, (v) => (s.bgmVolume = v))),
       row('효과음', range(0, 1, 0.05, s.sfxVolume, (v) => (s.sfxVolume = v))),
-      row('환경음 (교실·복도 소리)', range(0, 1, 0.05, s.ambVolume, (v) => (s.ambVolume = v))),
       row('전체 음소거', mute),
       row('그래픽 품질', select<'low' | 'mid' | 'high'>([['low', '낮음 (느린 컴퓨터)'], ['mid', '보통'], ['high', '높음']], s.quality, (v) => (s.quality = v))),
       row('대사 속도', select<'slow' | 'normal' | 'fast'>([['slow', '천천히'], ['normal', '보통'], ['fast', '빠르게']], s.textSpeed, (v) => (s.textSpeed = v))),

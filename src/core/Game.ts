@@ -67,6 +67,10 @@ export interface RemoteControl {
 
 /** 바닥 무늬판(타일·화강석 판)은 바닥 높이보다 0.4~1cm 위에 깔려 있다: 얇은 물건(자·종이)이 그 밑에 묻히지 않게 살짝 띄운다 */
 const FLOOR_SKIN = 0.015;
+/** 교실·복도 환경음 (파일에 잡음이 커서 끔) */
+const USE_AMBIENCE = false;
+/** 발소리 (어색하다는 평가로 끔) */
+const USE_STEPS = false;
 
 export class Game {
   renderer: THREE.WebGLRenderer;
@@ -618,7 +622,9 @@ export class Game {
     sfx.setTalking(this.dialogue.active);
     const p = this.player.pos;
     const place = placeAt(p.x, p.y, p.z);
-    sfx.setAmbience(ms ? ambienceFor(place, ms.period, ms.eventActive) : null);
+    // 환경음·발소리는 끔 (사용자 평가: 환경음 파일의 「쏴아」 잡음, 발소리가 어색함). 켜려면 USE_AMBIENCE·USE_STEPS
+    sfx.setAmbience(USE_AMBIENCE && ms ? ambienceFor(place, ms.period, ms.eventActive) : null);
+    if (!USE_STEPS) return;
     // 발소리: 실제로 움직인 거리만큼 (벽에 막혀 제자리걸음이면 소리 없음). 한 걸음 ≈ 1m (걷기 애니메이션 보폭)
     const hv = Math.hypot(this.playerVel.x, this.playerVel.z);
     const onGround = p.y - this.map.groundY(p.x, p.z, p.y) < 0.06;

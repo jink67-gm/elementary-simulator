@@ -2028,7 +2028,8 @@ export class SchoolMap {
   private classFront(z0: number, z1: number, bays: [number, number][], doors: [number, number][], seeThrough: boolean, pillars: number[] = []) {
     const F = 7.2;
     const wood = pbr('oak', { color: 0xffffff, roughness: 0.55 }), woodD = pbr('oak', { color: 0xead2b0, roughness: 0.55 });
-    const film = new THREE.MeshStandardMaterial({ color: 0xf2f4f5, transparent: true, opacity: 0.92, roughness: 0.6 });
+    // 양면: 교실 안에서 복도 쪽을 볼 때도 필름이 보인다 (예전엔 한쪽 면만 그려 안에서는 맑은 유리처럼 보였다)
+    const film = new THREE.MeshStandardMaterial({ color: 0xf2f4f5, transparent: true, opacity: 0.92, roughness: 0.6, side: THREE.DoubleSide });
     film.userData.pbr = true;
     const T = 2.2, TOP = 2.97, SILL = 1.0, HEAD = 2.12;
     const b = (w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) => {

@@ -56,34 +56,17 @@ const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dial
   check('효과음 미리 받음 (28개)', a.loaded >= 28, a.loaded);
   check('정문 밖은 환경음 없음', a.amb === null, a.amb);
 
-  // 걷기 → 발소리 (실외 타일), 멈추면 끊김
+  // 발소리·환경음은 끔 (사용자 평가) → 걸어도 발소리 없음, 교실·복도 환경음 없음
   await skip(page);
   let t0 = await now(page);
-  await page.keyboard.down('KeyW');
-  await page.waitForTimeout(3500);
-  await page.keyboard.up('KeyW');
-  const walked = await since(page, t0, 'stepTile');
-  await page.waitForTimeout(1000);
-  const t1 = await now(page);
-  await page.waitForTimeout(800);
-  const after = await since(page, t1, 'step');
-  check('4. 걸으면 발소리 (걸음마다)', walked >= 1 && walked <= 12, walked);
-  check('4. 멈추면 발소리 멈춤', after === 0, after);
-
-  // 교실 안: 나무 발소리 + 교실 환경음
   await page.evaluate(() => { const g = window.__sim.game; g.player.teleport(2, 0, Math.PI, 0); g.tpc.behind(g.player.yaw); });
-  await page.waitForTimeout(1600);
-  t0 = await now(page);
   await page.keyboard.down('KeyW');
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(2500);
   await page.keyboard.up('KeyW');
-  check('4. 교실에서는 나무 마루 발소리', (await since(page, t0, 'stepWood')) >= 1);
   a = await A(page);
-  check('교실 환경음', a.amb === 'classroom', a.amb);
+  check('발소리 꺼짐', (await since(page, t0, 'step')) === 0);
+  check('교실 환경음 꺼짐', a.amb === null, a.amb);
   check('1~2. 등교 중 교실에 들어와도 BGM은 탐험곡 (장소보다 상태)', a.bgmNow === 'explore', a.bgmNow);
-  await page.evaluate(() => { const g = window.__sim.game; g.player.teleport(9, -1, Math.PI, 0); });
-  await page.waitForTimeout(1600);
-  check('복도 환경음 (페이드 전환)', (await A(page)).amb === 'corridor');
 
   // 문: 6-1 앞문 E로 닫기 → 실제로 움직일 때 미닫이문 소리 1번
   await page.evaluate(() => { const g = window.__sim.game; g.player.teleport(8.0, -3.7, -Math.PI / 2, 0); g.tpc.behind(g.player.yaw); });
@@ -104,7 +87,7 @@ const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dial
   await page.keyboard.press('KeyE');
   await page.waitForFunction(() => window.__sim.state().flags.bagOnDesk, null, { timeout: 10000 });
   await page.waitForTimeout(500);
-  check('4. 가방 걸기 소리 1번', (await since(page, t0, 'bag')) === 1);
+  check('가방 걸기 파일 소리 안 냄', (await since(page, t0, 'bag')) === 0);
   check('새 할 일(사물함) → 퀘스트 시작음 1번', (await waitLog(page, t0, 'questStart')) === 1);
   // 사물함 → 국어책 → 책상에 올리면 교과서 펼치기
   await page.evaluate(() => window.__sim.goto('locker', 0.7));
@@ -179,9 +162,8 @@ const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dial
   const robotLog = (await A(page)).log.filter((l) => l.t >= t0).map((l) => l.id);
   check('6. 청소 로봇: AI 소원 실행음 + 로봇 작동음', robotLog.includes('wish') && robotLog.includes('robot'), robotLog);
   await period('dodgeball', 'robot');
-  const hw = await period('hallway', 'hallway');
-  check('무한 복도(시간 멈춤): 환경음 없음', hw.amb === null, hw.amb);
-  // 무한 복도 끝 → 반대쪽 (순간이동 소리)
+  await period('hallway', 'hallway');
+    // 무한 복도 끝 → 반대쪽 (순간이동 소리)
   await page.evaluate(() => window.__sim.game.dialogue.skipEverything());
   t0 = await now(page);
   await page.evaluate(() => { const g = window.__sim.game; g.player.teleport(9, 15.4, 0, 0); });
@@ -225,7 +207,7 @@ const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dial
   check('처음 화면: 음악 끔', a.bgm === null && !Object.values(a.tracks).some((t) => t.playing && t.gain > 0.05), a.tracks);
   await page.locator('.title-screen button', { hasText: '설정' }).click();
   const labels = await page.$$eval('.set-row span', (s) => s.map((x) => x.textContent));
-  check('설정 메뉴: 전체·BGM·효과음·환경음·음소거', ['전체 음량', '배경음악', '효과음', '환경음 (교실·복도 소리)', '전체 음소거'].every((l) => labels.includes(l)), labels);
+  check('설정 메뉴: 전체·BGM·효과음·음소거', ['전체 음량', '배경음악', '효과음', '전체 음소거'].every((l) => labels.includes(l)), labels);
   const setRange = (label, v) => page.evaluate(([l, val]) => {
     const row = [...document.querySelectorAll('.set-row')].find((r) => r.querySelector('span')?.textContent === l);
     const inp = row.querySelector('input');

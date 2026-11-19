@@ -1035,7 +1035,7 @@ export class Morning implements StoryHooks {
     this.set('bagOnDesk');
     this.syncProps();
     if (quiet) return;
-    this.g.sfx.play('bag', {}, () => this.g.sfx.place());
+    this.g.sfx.place(); // 가방 걸기 파일 소리는 어색하다는 평가로 예전 짧은 소리로
     this.toast('가방을 벗어 책상 옆 고리에 걸었다.', 'good');
     if (first) this.bark('seoa', '안녕! 오늘 일찍 왔네?');
   }
