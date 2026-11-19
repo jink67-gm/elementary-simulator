@@ -480,7 +480,7 @@ export class Morning implements StoryHooks {
       obj: m.objs.locker17,
       radius: 1.6,
       promptY: 0.2,
-      prompt: () => (this.period === 'arrival' && !this.f('tookBook') ? '17번 사물함 열기' : this.f('lockerJoke') ? null : '사물함 열어 보기'),
+      prompt: () => (this.period === 'arrival' && !this.f('tookBook') ? '내 사물함 열기' : this.f('lockerJoke') ? null : '사물함 열어 보기'),
       onInteract: () => this.openLocker(),
     });
     add({
@@ -1172,7 +1172,7 @@ export class Morning implements StoryHooks {
     if (takenOver()) return;
     this.phase = 'book';
     if (!this.f('tookBook')) {
-      g.setObjective('뒤쪽 17번 사물함에서 국어책 꺼내기 (E)', this.inter.locker);
+      g.setObjective('뒤쪽 내 사물함(살짝 빛나는 칸)에서 국어책 꺼내기 (E)', this.inter.locker);
       this.bark('seoa', '오늘 국어책 필요하대!');
       await this.until(() => this.f('tookBook') || takenOver());
     }

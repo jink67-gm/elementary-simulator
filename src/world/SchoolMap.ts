@@ -833,9 +833,16 @@ export class SchoolMap {
   toggleCleanCabinet() {
     this.cleanOpen = !this.cleanOpen;
   }
-  /** 사물함 번호표 보이기/숨기기 (기본 모델에는 번호가 없다) */
+  /** 내 사물함 살짝 빛내기 (번호표 대신). 사물함을 찾아야 할 때만 켠다 */
+  private lockerGlow = false;
   setLockerNumbers(v: boolean) {
-    this.objs.lockerNumbers.visible = v;
+    this.lockerGlow = v;
+  }
+  private updateLockerGlow() {
+    const m = (this.objs.locker17 as THREE.Mesh).material as THREE.MeshStandardMaterial;
+    if (!m.emissive) return;
+    const k = this.lockerGlow ? 0.16 + Math.sin(performance.now() / 320) * 0.08 : 0;
+    m.emissive.setRGB(k, k * 0.82, k * 0.35);
   }
 
   /** 6-1 미닫이 문: 나무 틀 + 유리 + 레일. 문짝 두 장이 벽 앞(복도 쪽)에서 좌우로 밀린다 */
@@ -880,8 +887,14 @@ export class SchoolMap {
     frame(0.03, 2.1, 0.09, 0, z1 + 0.045);
     frame(0.13, 0.1, w * 2 + 0.2, 2.1, zc, oak, 7.265); // 위 레일 덮개 (문이 밀려 들어가는 길이까지)
     frame(0.1, 0.008, w * 2 + 0.1, 0.002, zc, paint(0x9aa0a6, 0.35, 0.8), 7.26); // 바닥 레일
-    // 닫힌 문은 막는다 (NPC는 스스로 열고 지나가므로 길 찾기에서는 빼는 태그)
-    const collider = { ...aabb(7.1, zc, 0.2, w, 'classDoor'), level: 1 as const };
+    // 한 짝은 고정문 (창 칸이 없는 쪽: 앞문 -z, 뒷문 +z), 다른 한 짝만 그 위로 밀려 열린다
+    const dirF = zc < 0 ? -1 : 1;
+    const fixedZ = zc + (dirF * w) / 4, moveZ = zc - (dirF * w) / 4;
+    // 고정문: 늘 막힘. 길 찾기에도 바깥쪽 절반을 넣어 NPC가 열린 짝 쪽으로 다니게 한다
+    this.colliders.push({ ...aabb(7.1, fixedZ, 0.2, w / 2, 'classDoor'), level: 1 as const });
+    this.colliders.push({ ...aabb(7.1, zc + dirF * (w / 2 - 0.25), 0.2, 0.5, 'classFixedNav'), level: 1 as const });
+    // 움직이는 짝: 닫혔을 때만 막는다 (NPC는 스스로 열고 지나가므로 길 찾기에서는 빼는 태그)
+    const collider = { ...aabb(7.1, moveZ, 0.2, w / 2, 'classDoor'), level: 1 as const };
     // 수업 중 교실 밖으로 못 나가게 하는 문턱 (플레이어만, 필요할 때만 켬)
     const block = { ...aabb(6.85, zc, 0.3, w, 'classBlock'), level: 1 as const, enabled: false };
     this.colliders.push(collider, block);
@@ -900,16 +913,17 @@ export class SchoolMap {
       if (d.open !== target || !d.placed) {
         d.placed = true; // 처음 한 번은 지금 상태(아침엔 열림) 자리에 놓는다
         d.open = Math.max(0, Math.min(1, d.open + Math.sign(target - d.open) * dt * 2.4));
-        // 두 짝 모두 창 칸이 없는 쪽 벽 앞으로 밀린다 (앞문은 -z, 뒷문은 +z). 먼 쪽 짝은 바깥 레일
+        // 고정문(창 칸 없는 쪽 짝)은 그대로, 다른 짝만 바깥 레일로 나와 고정문 위로 겹쳐 밀린다
         const k = d.open * d.open * (3 - 2 * d.open);
         const dir = d.zc < 0 ? -1 : 1;
-        const near = dir < 0 ? d.leaves[0] : d.leaves[1], far = dir < 0 ? d.leaves[1] : d.leaves[0];
-        near.position.z = d.zc + (dir * d.w) / 2 + dir * k * (d.w - 0.1);
-        far.position.z = d.zc - (dir * d.w) / 2 + dir * k * (2 * d.w - 0.1);
-        far.position.x = 7.25 + 0.045 * Math.min(1, k * 4);
+        const fixed = dir < 0 ? d.leaves[0] : d.leaves[1], move = dir < 0 ? d.leaves[1] : d.leaves[0];
+        fixed.position.z = d.zc + (dir * d.w) / 2;
+        move.position.z = d.zc - (dir * d.w) / 2 + dir * k * (d.w - 0.04);
+        move.position.x = 7.25 + 0.045 * Math.min(1, k * 4);
       }
       d.collider.enabled = d.open < 0.6;
     }
+    this.updateLockerGlow();
     const ct = this.cleanOpen ? 1.75 : 0;
     this.cleanDoors.forEach((h, i) => {
       const target = i === 0 ? -ct : ct;
@@ -2019,13 +2033,13 @@ export class SchoolMap {
       return mm;
     };
     // 아래 벽(창 아래·창과 문 사이)은 페인트 벽 그대로. 창 위~채광창 밑 띠만 나무
-    const open: [number, number][] = [...bays, ...doors].sort((p, q) => p[0] - q[0]);
+    void doors; // 문 위에는 채광창을 두지 않는다
     for (const [a, c] of bays) b(0.02, T - HEAD, c - a, wood, F + 0.01, HEAD, (a + c) / 2);
     // 위 채광창 줄 (천장까지): 위·아래 틀 + 세로 살 + 유리(뒤에 밝은 안쪽 면)
     // 위 채광창: 창·문 바로 위에만, 아래와 같은 너비로 (가운데 살 하나 = 두 칸). 그 사이는 페인트 벽
     void pillars, void z0, void z1; // (벽 전체 구간·기둥은 이제 쓰지 않는다: 창·문 위에만 짓는다)
     const inner = paint(0xdfe6ea, 0.4);
-    for (const [ra, rb] of open) {
+    for (const [ra, rb] of bays) { // 창 위에만 (문 위에는 채광창 없음)
       const len = rb - ra, zc = (ra + rb) / 2, gh = TOP - T - 0.11;
       b(0.07, 0.06, len, woodD, F + 0.035, T, zc);
       b(0.07, 0.05, len, woodD, F + 0.035, TOP - 0.05, zc);
@@ -2044,19 +2058,18 @@ export class SchoolMap {
       b(0.07, HEAD - SILL, 0.06, woodD, F + 0.035, SILL, c - 0.03);
       b(0.07, 0.06, w, woodD, F + 0.035, HEAD - 0.06, cz);
       // 미닫이 두 장: 틀 + 아래 불투명 필름 + 위 맑은 유리 (뒤: 6-1은 교실, 다른 반은 커튼)
-      const sw = (w - 0.06) / 2, fh = (HEAD - SILL - 0.1) * 0.5;
+      const sw = (w - 0.06) / 2, fh = (HEAD - SILL - 0.1) * 0.67; // 불투명 필름: 창 아래쪽 2/3 (가운데 가로살 없음)
       for (const sx of [-1, 1]) {
         const pz = cz + (sx * sw) / 2, px = F + (sx > 0 ? 0.05 : 0.025);
         b(0.03, HEAD - SILL - 0.06, 0.04, woodD, px, SILL, pz - sw / 2 + 0.02);
         b(0.03, HEAD - SILL - 0.06, 0.04, woodD, px, SILL, pz + sw / 2 - 0.02);
         b(0.03, 0.04, sw, woodD, px, SILL, pz);
-        b(0.03, 0.035, sw, woodD, px, SILL + fh + 0.04, pz); // 필름 위 가로살
         b(0.03, 0.04, sw, woodD, px, HEAD - 0.1, pz);
         const fp = this.plane(sw - 0.06, fh, film, px + 0.017, SILL + 0.04 + fh / 2, pz, Math.PI / 2);
         fp.renderOrder = 3;
-        const gh = HEAD - 0.1 - (SILL + fh + 0.075);
-        if (!seeThrough) this.plane(sw - 0.06, gh, this.blindMaterial(), F + 0.003, SILL + fh + 0.075 + gh / 2, pz, Math.PI / 2);
-        const gp = this.plane(sw - 0.06, gh, this.clearGlass(), px + 0.017, SILL + fh + 0.075 + gh / 2, pz, Math.PI / 2);
+        const gh = HEAD - 0.1 - (SILL + fh + 0.04);
+        if (!seeThrough) this.plane(sw - 0.06, gh, this.blindMaterial(), F + 0.003, SILL + fh + 0.04 + gh / 2, pz, Math.PI / 2);
+        const gp = this.plane(sw - 0.06, gh, this.clearGlass(), px + 0.017, SILL + fh + 0.04 + gh / 2, pz, Math.PI / 2);
         gp.renderOrder = 2;
         this.box(0.02, 0.1, 0.02, 0xc9ced3, px + 0.03, SILL + 0.5, pz + sx * -(sw / 2 - 0.08), { shadow: false }).material = paint(0xc9ced3, 0.3, 0.8);
       }
