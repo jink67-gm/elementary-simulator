@@ -22,7 +22,9 @@ async function open(ctxOpts = {}, route) {
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   if (route) await page.route('**/audio/**', (r) => r.abort());
-  await page.addInitScript(() => localStorage.setItem('elementary-simulator.settings.v1', JSON.stringify({ quality: 'low', autoRes: false })));
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('elementary-simulator.settings.v1')) localStorage.setItem('elementary-simulator.settings.v1', JSON.stringify({ quality: 'low', autoRes: false }));
+  });
   await page.goto(URL);
   await page.waitForFunction(() => !!window.__sim, null, { timeout: 120000 });
   await page.evaluate(() => localStorage.removeItem('elementary-simulator.save.v1'));
@@ -31,6 +33,12 @@ async function open(ctxOpts = {}, route) {
 const A = (page) => page.evaluate(() => window.__sim.audio());
 const since = async (page, t0, id) => (await A(page)).log.filter((l) => l.t >= t0 && l.id.startsWith(id)).length;
 const now = (page) => page.evaluate(() => Math.round(performance.now()));
+/** 효과음 기록이 n개 이상 나올 때까지 (느린 화면에서도) 기다린 뒤 개수 */
+const waitLog = async (page, t0, id, n = 1, ms = 8000) => {
+  await page.waitForFunction(([t, i, k]) => window.__sim.audio().log.filter((l) => l.t >= t && l.id.startsWith(i)).length >= k, [t0, id, n], { timeout: ms }).catch(() => {});
+  await page.waitForTimeout(300);
+  return since(page, t0, id);
+};
 const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dialogue.skipEverything(); });
 
 // ───────── PC ─────────
@@ -97,7 +105,7 @@ const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dial
   await page.waitForFunction(() => window.__sim.state().flags.bagOnDesk, null, { timeout: 10000 });
   await page.waitForTimeout(500);
   check('4. 가방 걸기 소리 1번', (await since(page, t0, 'bag')) === 1);
-  check('새 할 일(사물함) → 퀘스트 시작음 1번', (await since(page, t0, 'questStart')) === 1);
+  check('새 할 일(사물함) → 퀘스트 시작음 1번', (await waitLog(page, t0, 'questStart')) === 1);
   // 사물함 → 국어책 → 책상에 올리면 교과서 펼치기
   await page.evaluate(() => window.__sim.goto('locker', 0.7));
   await page.waitForTimeout(700);
@@ -141,7 +149,7 @@ const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dial
   a = await A(page);
   check('2. 수업 시작 → BGM 02 (크로스페이드, 이전 곡 멈춤)', a.bgmNow === 'class' && a.tracks.class.playing && a.tracks.class.gain > 0.5 && !a.tracks.explore.playing, a.tracks);
 
-  const period = async (p, want, wait = 2200) => {
+  const period = async (p, want, wait = 3000) => {
     await page.evaluate((x) => window.__sim.skipTo(x), p);
     await page.waitForFunction((x) => window.__sim.state().period === x, p, { timeout: 30000 });
     await page.waitForTimeout(wait);
@@ -163,7 +171,7 @@ const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dial
   t0 = await now(page);
   await period('cutlet', 'cutlet');
   t0 = await now(page);
-  await period('robot', 'robot', 1500);
+  await period('robot', 'robot', 3000);
   await page.evaluate(() => window.__sim.game.dialogue.skipEverything());
   await page.waitForTimeout(1500);
   await page.evaluate(() => window.__sim.game.dialogue.skipEverything());
@@ -177,8 +185,7 @@ const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dial
   await page.evaluate(() => window.__sim.game.dialogue.skipEverything());
   t0 = await now(page);
   await page.evaluate(() => { const g = window.__sim.game; g.player.teleport(9, 15.4, 0, 0); });
-  await page.waitForTimeout(600);
-  check('29. 무한 복도 순간이동 소리', (await since(page, t0, 'teleport')) === 1);
+  check('29. 무한 복도 순간이동 소리', (await waitLog(page, t0, 'teleport')) === 1);
   await period('final', 'hallway');
 
   // 일시정지
@@ -216,7 +223,7 @@ const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dial
   await page.waitForTimeout(1600);
   a = await A(page);
   check('처음 화면: 음악 끔', a.bgm === null && !Object.values(a.tracks).some((t) => t.playing && t.gain > 0.05), a.tracks);
-  await page.getByText('설정', { exact: true }).click();
+  await page.locator('.title-screen button', { hasText: '설정' }).click();
   const labels = await page.$$eval('.set-row span', (s) => s.map((x) => x.textContent));
   check('설정 메뉴: 전체·BGM·효과음·환경음·음소거', ['전체 음량', '배경음악', '효과음', '환경음 (교실·복도 소리)', '전체 음소거'].every((l) => labels.includes(l)), labels);
   const setRange = (label, v) => page.evaluate(([l, val]) => {
