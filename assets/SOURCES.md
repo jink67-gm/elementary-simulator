@@ -62,3 +62,7 @@
 - Quaternius: QAL v1.0 (2026-08-28) — CC0가 아님. 게임 안 사용은 가능하나 원본 묶음 재배포 금지.
 - Mixamo: Adobe 계정 필요, 원본 파일 재배포 제한.
 - Sketchfab·Poly Pizza 등 개별 모델은 모델마다 라이선스 확인 전 사용 금지.
+
+## 학생 작품 그림 (public/textures/kidart/)
+- concert, dream, playground, sports, library, science, picnic, art, mural61 (.webp)
+- 출처: 프로젝트 사용자가 직접 제공한 크레파스풍 그림 (2026-11). 게임 안 6-1 뒤 게시판 작품으로만 사용. 게임용으로 크기만 줄여 WEBP로 변환.

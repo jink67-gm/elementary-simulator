@@ -17,7 +17,7 @@ import { SCHEDULE, clockMinutes, formatClock, nextPeriod } from './schedule';
 import { itemHalfHeight, makeItemMesh } from '../world/itemMesh';
 import { buildBackpack } from '../world/props/backpack';
 import { buildBook, buildPencilCase, buildPoster, buildTablet, setMiniPosterArt } from '../world/props/items';
-import { drawClassArt } from '../world/props/posterArt';
+import { KID_ART, KID_ART_MINE_OLD, kidArtTexture } from '../world/props/posterArt';
 import { openTextbookClue, openTextbookFind } from '../minigames/Textbook';
 import { openTablet, WISH_LABELS } from '../minigames/Tablet';
 import { pickQuestions } from '../minigames/quizLogic';
@@ -268,8 +268,13 @@ export class Morning implements StoryHooks {
       slotsG.add(tag);
     });
     this.g.scene.add(slotsG);
-    // 내 칸: 오늘 만든 작품 (전시하면 보인다)
+    // 내 칸: 지난번 작품(그림)이 붙어 있다가, 오늘 작품을 전시하면 그 위에 붙인다
     const mine = EXHIBIT_SLOTS[0];
+    {
+      const old = new THREE.Group();
+      old.add(new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.45).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: kidArtTexture(THREE, KID_ART_MINE_OLD), roughness: 0.85 })));
+      add('exhibitOld', wallPaper(old, 0.36, 0.45), mine.x - 0.08, mine.y + 0.03, 6.903 + BACK_DZ, Math.PI);
+    }
     add('exhibitPlane', makeItemMesh('paperPlane'), mine.x, mine.y + 0.02, 6.86 + BACK_DZ, Math.PI).scale.setScalar(1.5);
     const exPoster = buildPoster(null, 0.36, 0.46, 2);
     add('exhibitPoster', wallPaper(exPoster, 0.36, 0.46), mine.x - 0.08, mine.y + 0.03, 6.905 + BACK_DZ, Math.PI);
@@ -277,12 +282,7 @@ export class Morning implements StoryHooks {
     // 친구 7명 칸의 작품
     EXHIBIT_SLOTS.slice(1).forEach((sl, i) => {
       const art = new THREE.Group();
-      const lt = new THREE.CanvasTexture(document.createElement('canvas'));
-      const cv = lt.image as HTMLCanvasElement;
-      cv.width = 200;
-      cv.height = 250;
-      drawClassArt(cv.getContext('2d')!, 200, 250, i);
-      lt.colorSpace = THREE.SRGBColorSpace;
+      const lt = kidArtTexture(THREE, KID_ART[i % KID_ART.length]); // 친구들 크레파스 그림
       const sheet = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.45).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ map: lt, roughness: 0.85 }));
       art.add(sheet);
       add('classArt' + i, wallPaper(art, 0.36, 0.45), sl.x - 0.08 + ((i * 37) % 5) * 0.01, sl.y + 0.03, 6.905 + BACK_DZ, Math.PI).rotation.z = ((i % 3) - 1) * 0.03;
@@ -354,7 +354,8 @@ export class Morning implements StoryHooks {
     }
     this.show('exhibitPlane', this.f('exhibited') && this.f('artPlane'));
     this.show('exhibitPoster', this.f('exhibited') && this.f('artPoster'));
-    for (let i = 0; i < 7; i++) this.show('classArt' + i, after('lunch') || (p === 'art' && this.phase === 'cleanup'));
+    this.show('exhibitOld', !this.f('exhibited'));
+    for (let i = 0; i < 7; i++) this.show('classArt' + i, true); // 이미 붙어 있는 친구들 그림 (하루 내내)
     if (this.f('groupDone') && after('art')) this.applyGroupPoster();
     else this.g.map.objs.groupPoster.visible = false;
     this.g.map.objs.bigMural.visible = !this.g.map.objs.groupPoster.visible;

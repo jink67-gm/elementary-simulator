@@ -15,7 +15,7 @@ import { ENTRANCE_DZ, FirstFloorBuilder, GATE_Z, LOBBY, NURSE, OFFICE } from './
 import { EntranceBuilder } from './EntranceHQ';
 import { buildTabletCart } from './props/tabletCart';
 import { buildCutleryBin, buildTray } from './props/items';
-import { drawKidPoster } from './props/posterArt';
+import { KID_ART_MURAL, drawKidPoster, kidArtTexture } from './props/posterArt';
 import { TILE_EXT, brickMat, concreteMat, plinthMat, stuccoMat } from './exteriorTex';
 import { makeTree } from './landscape';
 import { BACK_DZ, ROOM, TEACHER_DESK, TEACHER_SHELF, ART_CAB, BOOKSHELF, CLASS_DOORS, CHAIR, CLASS_SEATING, BACK_BOARD, CLEAN_CABINET, CLOCK_POS, DESK, EAST_PILLAR, WEST_PILLAR, GROUP_TABLE, HALL_WINDOWS, HALL_WIN_Y, LOCKERS, LOCKER_COLS, LOCKER_COUNT, LOCKER_DOOR, LOCKER_FRONT_Z, MY_LOCKER, BIG_EXHIBIT, RECYCLE, TABLET_CART, TRASH, WINDOW_CAB, deskBoxes, lockerCell, seatOf, type DeskLayout } from './classroomLayout';
@@ -790,9 +790,8 @@ export class SchoolMap {
     poster.scale.setScalar(0.82);
     poster.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.07, 6.9 + BACK_DZ);
     // 큰 작품 칸의 기본 작품: 학급 협동화 (모둠 포스터를 붙이면 그 자리를 내준다)
-    const muralTex = new CanvasTex(640, 400);
-    muralTex.draw((c, w, h) => drawKidPoster(c, w, h, { theme: 'friends', slogan: '사이좋은 6학년 1반', bg: '#e7f5ff', stickers: [], footer: '6-1 학급 협동화' }, 2));
-    const mural = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.92), new THREE.MeshStandardMaterial({ map: muralTex.tex, roughness: 0.85 }));
+    // 학급 협동화 그림 (「사이좋은 6학년 1반」, 4:3)
+    const mural = new THREE.Mesh(new THREE.PlaneGeometry(1.48, 1.11), new THREE.MeshStandardMaterial({ map: kidArtTexture(THREE, KID_ART_MURAL), roughness: 0.85 }));
     mural.position.set(BIG_EXHIBIT.x, BIG_EXHIBIT.y - 0.07, 6.905 + BACK_DZ);
     mural.rotation.y = Math.PI;
     this.root.add(mural);

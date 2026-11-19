@@ -273,3 +273,20 @@ export function drawClassArt(c: CanvasRenderingContext2D, w: number, h: number, 
   c.textAlign = 'right';
   c.fillText(['김○○', '이○○', '박○○', '최○○', '정○○'][i % 5], w - 12 * u, h - 10 * u);
 }
+
+/** 학생 작품 그림 (public/textures/kidart, 크레파스 그림). 친구 7칸 + 내 칸의 지난 작품, 큰 칸 = 학급 협동화 */
+export const KID_ART = ['concert', 'dream', 'playground', 'sports', 'library', 'science', 'picnic'] as const;
+export const KID_ART_MINE_OLD = 'art';
+export const KID_ART_MURAL = 'mural61';
+const kidTexCache = new Map<string, import('three').Texture>();
+/** 학생 작품 텍스처 (불러오기 전에는 흰 종이, 다 불러오면 그림) */
+export function kidArtTexture(THREE: typeof import('three'), id: string) {
+  let t = kidTexCache.get(id);
+  if (!t) {
+    t = new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}textures/kidart/${id}.webp`);
+    t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = 4;
+    kidTexCache.set(id, t);
+  }
+  return t;
+}
