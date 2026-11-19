@@ -49,8 +49,16 @@ export class Menus {
     if (node) this.g.layer.append(node);
   }
 
+  /** 게임 밖 화면(처음 화면 등): 음악·환경음·발소리 끄기 */
+  private quiet() {
+    this.g.sfx.setBgm(null);
+    this.g.sfx.setAmbience(null);
+    this.g.sfx.stopSteps();
+  }
+
   title() {
     this.g.hud.show(false);
+    this.quiet();
     const saved = this.g.saves.read();
     const box = el('div', { class: 'title-box' });
     box.append(
@@ -263,6 +271,12 @@ export class Menus {
       s.shake = shake.checked;
       g.applySettings();
     });
+    const mute = el('input', { type: 'checkbox' });
+    mute.checked = s.muted;
+    mute.addEventListener('change', () => {
+      s.muted = mute.checked;
+      g.applySettings();
+    });
     const autoRes = el('input', { type: 'checkbox' });
     autoRes.checked = s.autoRes;
     autoRes.addEventListener('change', () => {
@@ -273,7 +287,11 @@ export class Menus {
       row('조작 방식', select<'auto' | 'touch' | 'keyboard'>([['auto', '자동 (만지면 터치, 키보드 쓰면 키보드)'], ['touch', '터치 버튼 (태블릿)'], ['keyboard', '키보드·마우스 (노트북·PC)']], s.controls, (v) => (s.controls = v))),
       row('둘러보기 감도', range(0.3, 2, 0.1, s.sensitivity, (v) => (s.sensitivity = v))),
       row('터치 버튼 크기', range(0.8, 1.4, 0.1, s.touchScale, (v) => (s.touchScale = v))),
-      row('소리 크기', range(0, 1, 0.05, s.volume, (v) => (s.volume = v))),
+      row('전체 음량', range(0, 1, 0.05, s.volume, (v) => (s.volume = v))),
+      row('배경음악', range(0, 1, 0.05, s.bgmVolume, (v) => (s.bgmVolume = v))),
+      row('효과음', range(0, 1, 0.05, s.sfxVolume, (v) => (s.sfxVolume = v))),
+      row('환경음 (교실·복도 소리)', range(0, 1, 0.05, s.ambVolume, (v) => (s.ambVolume = v))),
+      row('전체 음소거', mute),
       row('그래픽 품질', select<'low' | 'mid' | 'high'>([['low', '낮음 (느린 컴퓨터)'], ['mid', '보통'], ['high', '높음']], s.quality, (v) => (s.quality = v))),
       row('대사 속도', select<'slow' | 'normal' | 'fast'>([['slow', '천천히'], ['normal', '보통'], ['fast', '빠르게']], s.textSpeed, (v) => (s.textSpeed = v))),
       row('퀴즈 학년', select<4 | 5 | 6>([[4, '4학년'], [5, '5학년'], [6, '6학년']], s.grade, (v) => (s.grade = v))),
@@ -291,7 +309,7 @@ export class Menus {
         el('div', { class: 'info-line' }, '3D 엔진: three.js (MIT License)'),
         el('div', { class: 'info-line' }, '빌드: Vite · TypeScript (MIT / Apache-2.0)'),
         el('div', { class: 'info-line' }, '3D 모델: 이 게임에서 기본 도형으로 직접 만든 임시 모델 (외부 에셋 없음)'),
-        el('div', { class: 'info-line' }, '효과음: 브라우저 WebAudio로 직접 합성 (외부 소리 파일 없음)'),
+        el('div', { class: 'info-line' }, '배경음악 8곡 · 효과음 30종: 이 게임을 위해 제작해 제공받은 음원 (OGG). 일부 짧은 알림음은 브라우저 WebAudio로 직접 합성'),
         el('div', { class: 'info-line' }, '글꼴: 컴퓨터에 설치된 기본 한글 글꼴 사용'),
         el('div', { class: 'info-line' }, '자세한 목록: 저장소의 assets/SOURCES.md'),
       ),
@@ -306,6 +324,10 @@ export class Menus {
     g.hud.show(false);
     g.input.releaseLock();
     const [title, sub] = ENDING_TITLES[ending];
+    // 하교 엔딩곡 (한 번만 재생; 이미 틀고 있으면 그대로 이어서)
+    g.sfx.setAmbience(null);
+    g.sfx.stopSteps();
+    g.sfx.setBgm('ending');
     const box = el('div', { class: 'title-box chapter' });
     const epiBox = el('div', { class: 'ending-epilogue' });
     epi.forEach((l) => epiBox.append(el('div', {}, l)));
@@ -330,6 +352,7 @@ export class Menus {
 
   chapterEnd(save: SaveData, recap: string[]) {
     const g = this.g;
+    this.quiet();
     g.running = false;
     g.cutscene = false;
     g.hud.show(false);

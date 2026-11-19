@@ -59,7 +59,7 @@ export class FinalEvent implements StoryEvent {
   private get g() {
     return this.m.g;
   }
-  private get active() {
+  get active() {
     return this.m.period === 'final' && !this.st.resolved;
   }
 
@@ -341,7 +341,7 @@ export class FinalEvent implements StoryEvent {
     this.st.resolved = true;
     g.save.results.ending = e;
     m.set('ending' + e);
-    g.sfx.success();
+    g.sfx.questDone();
     this.drawConsole(e === 'A' ? 0 : 100, e === 'A' ? '초기화 완료' : '개선 기준 적용 완료!');
     g.setSkyTint(null);
     g.cutscene = true;

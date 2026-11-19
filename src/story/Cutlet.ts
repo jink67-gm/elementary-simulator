@@ -103,7 +103,7 @@ export class CutletEvent implements StoryEvent {
   private get g() {
     return this.m.g;
   }
-  private get active() {
+  get active() {
     return this.m.period === 'cutlet' && !this.st.resolved;
   }
   private npcOf(d: DinerId): Npc {
@@ -557,7 +557,7 @@ export class CutletEvent implements StoryEvent {
     piece.scale.set(k, 0.25, k * 0.6);
     piece.position.set((this.trayMeshes[i].children.length - 1) * 0.08 - 0.04, 0.03, 0);
     this.trayMeshes[i].add(piece);
-    g.sfx.place();
+    g.sfx.play('tray', {}, () => g.sfx.place());
     if (r.verdict === 'small') {
       g.bark(npc, ['에게… 한 조각 더 주면 안 될까?', '이건 맛보기 크기네ㅋㅋ 하나만 더!'][i % 2]);
       return;
@@ -587,7 +587,7 @@ export class CutletEvent implements StoryEvent {
       this.st.trays[i] = 0;
       this.trayMeshes[i].visible = true;
     }
-    g.sfx.place();
+    g.sfx.play('tray', {}, () => g.sfx.place());
     if (this.st.traysOnTable.every(Boolean)) g.take('trayStack');
     this.g.bark(this.npcOf(DINER_OF[ti * 3 + 1]), ti ? '식판 왔다! 이제 돈가스만 오면 돼~' : '오, 식판! 고마워~');
     this.updateObjective();
@@ -647,7 +647,7 @@ export class CutletEvent implements StoryEvent {
       await this.m.sleep(0.03);
     }
     cut.visible = false;
-    g.sfx.chime();
+    g.sfx.play('restored', {}, () => g.sfx.chime());
     g.tpc.override = null;
     g.cutscene = false;
   }
@@ -778,7 +778,7 @@ export class CutletEvent implements StoryEvent {
     await m.sleep(1.2);
     g.cutscene = true;
     g.tpc.override = { pos: cafe(9, 16.6, 2.6), look: cafe(9, 20.5, 0.8) };
-    g.sfx.success();
+    g.sfx.play('restored', {}, () => g.sfx.success());
     const ends: Record<Solution, [MainNpcId | 'ai' | 'narr', string][]> = {
       cut_and_share: [
         ['cook', m.f('sharedFairly') ? '여섯 명 다 공평하게! 너 배식 당번 해도 되겠다.' : '조금씩 크기는 달라도, 다들 먹었으니 됐다!'],

@@ -166,7 +166,7 @@ export class Morning implements StoryHooks {
     return [this.n('minjae'), this.n('seoa'), this.n('junho'), this.n('harin')];
   }
   achievement(text: string) {
-    this.g.sfx.success();
+    this.g.sfx.questDone();
     this.toast('★ ' + text, 'good');
   }
 
@@ -410,8 +410,7 @@ export class Morning implements StoryHooks {
           promptY: 0.6,
           prompt: () => (d.want ? `${i === 0 ? '앞문' : '뒷문'} 닫기` : `${i === 0 ? '앞문' : '뒷문'} 열기`),
           onInteract: () => {
-            m.setClassDoor(i, !d.want);
-            g.sfx.place();
+            m.setClassDoor(i, !d.want); // 문 소리는 문이 실제로 움직일 때 (SchoolMap.onClassDoorMove)
           },
         },
         false,
@@ -566,7 +565,7 @@ export class Morning implements StoryHooks {
       usePrompt: (item) => (item === 'scraps' ? '「종이」 분리수거함에 버리기' : null),
       onUse: () => {
         g.take('scraps');
-        g.sfx.place();
+        g.sfx.play('paper', {}, () => g.sfx.place());
         this.set('recycled');
         this.bark('seoa', '분리수거 완벽!');
       },
@@ -583,7 +582,8 @@ export class Morning implements StoryHooks {
         if (!item) return;
         g.take(item);
         this.set('exhibited');
-        g.sfx.success();
+        g.sfx.play('paper');
+        g.sfx.questDone();
         this.syncProps();
         this.bark('harin', item === 'paperPlane' ? '오 비행기 전시! 멋있다' : '포스터 예쁘다! 색 잘 골랐네');
       },
@@ -780,6 +780,11 @@ export class Morning implements StoryHooks {
     this.ev()?.hint(this.t);
     this.ev()?.update?.(dt);
     if (this.period === 'break') this.g.hud.setTimer(Math.max(0, SCHEDULE.break.softLimitSec - this.t));
+  }
+
+  /** 배경음악용 지금 상태 (Game이 매 프레임 묻는다) */
+  musicState() {
+    return { period: this.period, phase: this.phase, eventActive: this.ev()?.active ?? false };
   }
 
   requiredItems(): ItemId[] {
@@ -1030,7 +1035,7 @@ export class Morning implements StoryHooks {
     this.set('bagOnDesk');
     this.syncProps();
     if (quiet) return;
-    this.g.sfx.place();
+    this.g.sfx.play('bag', {}, () => this.g.sfx.place());
     this.toast('가방을 벗어 책상 옆 고리에 걸었다.', 'good');
     if (first) this.bark('seoa', '안녕! 오늘 일찍 왔네?');
   }
@@ -1043,7 +1048,7 @@ export class Morning implements StoryHooks {
 
   private sitDown() {
     this.g.player.sitAt(this.g.map.seats.player);
-    this.g.sfx.place();
+    this.g.sfx.play('chair', {}, () => this.g.sfx.place());
   }
 
   // ───────────────────────── 등굣길 (횡단보도 → 교문 → 현관) ─────────────────────────
@@ -1183,6 +1188,7 @@ export class Morning implements StoryHooks {
     }
     if (takenOver()) return;
     this.phase = 'free';
+    g.sfx.questDone();
     g.setObjective('준비 끝! 종 칠 때까지 자유롭게 (급식표 보기·친구와 이야기)', null);
     await this.sleep(Math.max(12, 70 - this.t));
     await this.teacherArrives();
@@ -1303,6 +1309,7 @@ export class Morning implements StoryHooks {
   private async bookAction() {
     if (this.period !== 'korean') return;
     if (!this.seated) this.sitDown();
+    if ((this.phase === 'find' && !this.f('found86')) || (this.phase === 'question' && !this.f('foundClue'))) this.g.sfx.play('bookOpen', {}, () => this.g.sfx.page());
     if (this.phase === 'find' && !this.f('found86')) {
       const ok = await this.guard(openTextbookFind(this.g.ui, 12 + Math.floor(Math.random() * 30) * 2));
       if (ok) {
@@ -1596,7 +1603,8 @@ export class Morning implements StoryHooks {
     await this.until(() => this.f('groupDone'));
     await this.say([this.L('teacher', '1모둠 포스터 멋지다! 뒤 게시판에 붙여 둘게요.')]);
     this.applyGroupPoster();
-    g.sfx.success();
+    g.sfx.play('paper');
+    g.sfx.questDone();
     await this.sleep(2);
     await this.switchDesks('pairs', '모둠 활동 잘했어요! 이제 책상을 원래대로 돌려놓고 앞을 봅시다.');
     await this.endPeriod();
@@ -1834,15 +1842,16 @@ export class Morning implements StoryHooks {
     g.setObjective('…?', null);
     g.player.teleport(9, 12.6, 0, F1);
     g.tpc.override = { pos: cafe(10.6, 11.2, 2.4), look: cafe(9, 16.5, 1.2) };
-    g.sfx.chime();
     await this.say([this.L('ai', '딩동댕동~ 안녕하세요, AI 학교생활 개선 도우미입니다.'), this.L('ai', '접수된 소원 「돈가스 왕 크게」를 적용했습니다.')]);
     // 문이 열린다
+    g.soundAt('slideDoor', CAFE.door.x, F1, CAFE.door.z);
     for (let i = 0; i <= 30; i++) {
       g.map.setCafeteriaDoor(i / 30);
       await this.sleep(0.03);
     }
     g.tpc.override = { pos: cafe(9, 14.4, 1.75), look: cafe(9, 19.6, 1.05) };
-    g.sfx.rumble();
+    this.phase = 'reveal'; // 배경음악: 돈가스 대소동
+    g.sfx.play('cutletReveal', {}, () => g.sfx.rumble());
     g.tpc.shake(0.1, 2.5);
     await this.say([this.L('ai', '돈가스 크기 1,000% 증가 완료. 맛있게 드세요.')]);
     this.students.forEach((n) => n.char.lookAt(cafe(9, 19.6, 1)));
@@ -1907,7 +1916,7 @@ export class Morning implements StoryHooks {
     } else if (item === 'koreanBook') {
       g.take('koreanBook');
       this.set('bookOnDesk');
-      g.sfx.place();
+      g.sfx.play('bookOpen', {}, () => g.sfx.place());
     } else if (item === 'tablet') {
       g.take('tablet');
       this.set('tabletOnDesk');

@@ -71,7 +71,7 @@ export class HallwayEvent implements StoryEvent {
   private get g() {
     return this.m.g;
   }
-  private get active() {
+  get active() {
     return this.m.period === 'hallway' && !this.st.resolved;
   }
 
@@ -217,10 +217,8 @@ export class HallwayEvent implements StoryEvent {
 
   private async intro(fromLoad: boolean) {
     const m = this.m;
-    const g = this.g;
     if (fromLoad) m.toast('사건 4는 처음부터 다시 시작해요.');
     await m.sleep(0.4);
-    g.sfx.chime();
     await m.say([
       m.L('ai', m.save.playerWish === 'break' ? `접수된 소원 「쉬는 시간 100분」(신청: ${m.me})을 적용합니다.` : '접수된 소원 「쉬는 시간 100분!」을 적용합니다.'),
       m.L('ai', '학교 시간을 일시 정지하고 시설을 확장합니다. 즐거운 쉬는 시간 되세요.'),
@@ -280,6 +278,7 @@ export class HallwayEvent implements StoryEvent {
     g.sfx.oops();
     g.tpc.shake(0.08, 0.8);
     await m.say([m.L('ai', `시간표 불일치. 시간이… 살짝… 되감깁니다… (${r.right}/6 일치)`)]);
+    g.sfx.play('teleport');
     g.player.teleport(...START);
     g.tpc.behind(g.player.yaw);
     g.bark(m.n('harin'), ['어? 우리 다시 복도 처음이야ㅋㅋ', '괜찮아! 카드는 그대로 있어.'][this.st.tries % 2]);
@@ -293,6 +292,7 @@ export class HallwayEvent implements StoryEvent {
     const p = g.player.pos;
     if (p.x > 7.1 && p.x < 11.1 && (p.z > 15.2 || p.z < -15.3)) {
       g.player.teleport(p.x, p.z > 0 ? -14.9 : 14.8, g.player.yaw);
+      g.sfx.play('teleport', { vol: 0.6 });
       this.st.loops++;
       g.save.stats.hallwayLoops = this.st.loops;
       if (this.st.loops === 1) this.m.toast('어…? 복도 끝으로 갔는데 반대쪽 끝이다!', 'warn');
@@ -310,6 +310,7 @@ export class HallwayEvent implements StoryEvent {
     if (adults) m.set('adultsHelpedTime');
     g.save.stats.timetableTries = this.st.tries;
     g.sfx.bell();
+    g.sfx.play('restored');
     g.setSkyTint(null);
     for (const f of g.fillers) f.char.setPose('stand');
     g.cutscene = true;

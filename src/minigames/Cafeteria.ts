@@ -118,7 +118,7 @@ export function openCutter(ctx: UiCtx, lowSpec = false): Promise<CutResult | nul
       }
       busy = true;
       if (gauge.hit()) {
-        ctx.sfx.kick();
+        ctx.sfx.play('cutletCut', {}, () => ctx.sfx.kick());
         if (guideH) {
           halved = true;
           guideH = false;
@@ -185,7 +185,7 @@ export function openSplit(ctx: UiCtx, area: number, lowSpec = false): Promise<bo
       if (ok) return;
       if (gauge.hit()) {
         ok = true;
-        ctx.sfx.kick();
+        ctx.sfx.play('cutletCut', {}, () => ctx.sfx.kick());
         msg.textContent = '반으로 쏙! 이제 식판에 들어가겠다.';
         await wait(900);
         p.close();

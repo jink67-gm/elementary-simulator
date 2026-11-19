@@ -4,6 +4,8 @@ import type { ItemId } from '../data/items';
 import type { Npc } from '../npc/Npc';
 
 export interface StoryEvent {
+  /** 사건이 아직 진행 중인가 (해결되면 false) */
+  readonly active: boolean;
   begin(fromLoad: boolean): void;
   /** 주요 인물 대화. 처리했으면 true */
   talk(id: MainNpcId): boolean;

@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { Input } from './Input';
 import { Sfx } from './Audio';
+import { ambienceFor, bgmFor, placeAt, woodFloor, type MusicState } from './musicRules';
 import { SaveManager } from './SaveManager';
 import { cloneSave, type SaveData } from './SaveData';
 import { loadSettings, storeSettings, type Settings } from './Settings';
@@ -43,6 +44,8 @@ export interface StoryHooks {
   helpReturnToSeat(): void;
   /** 들고 있던 물건을 바닥에 내려놓았을 때 (key = 새 월드 아이템 키) */
   onDropped?(id: ItemId, key: string): void;
+  /** 배경음악을 고를 때 쓰는 지금 상태 (교시·단계·사건 진행 중인지) */
+  musicState?(): MusicState;
 }
 
 interface WorldItem {
@@ -105,6 +108,10 @@ export class Game {
   private planeCharge = -1;
   private chargeBar: HTMLElement;
   private dropCount = 0;
+  private lastObjective = '';
+  /** 발소리: 마지막 걸음 뒤 걸은 거리 (m) */
+  private stepDist = 0;
+  private stepping = false;
   private lastPlayerPos = new THREE.Vector3();
   private playerVel = new THREE.Vector3();
   onPauseRequest: () => void = () => {};
@@ -138,6 +145,15 @@ export class Game {
     this.hud = new Hud(this.layer);
     this.dialogue = new Dialogue(this.layer);
     this.dialogue.onType = () => this.sfx.talk();
+    // AI 방송 대사가 뜨면 내용에 맞는 AI 효과음 (호출·소원 실행·오류·복구)
+    this.dialogue.onLine = (l) => {
+      if (l.who === 'AI 방송') this.sfx.aiLine(l.text);
+    };
+    // 버튼(메뉴·미니게임) 누를 때 「선택」 소리
+    this.layer.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement | null)?.closest?.('button');
+      if (b && !(b as HTMLButtonElement).disabled) this.sfx.blip();
+    }, true);
     this.touch = new TouchControls(this.layer, this.input, () => {
       this.input.virtualPress('Escape');
       this.input.virtualRelease('Escape');
@@ -205,6 +221,11 @@ export class Game {
     this.plane.onLand = (d, w) => this.story.onPlaneLanded(d, w);
     this.ball = new Ball(this.scene);
     this.ball.onKick = () => this.sfx.kick();
+    this.ball.onBounce = (sp) => this.sfx.play('ballHit', { vol: Math.min(1, sp / 5) * 0.6 });
+    // 6-1 문이 실제로 움직이기 시작할 때 미닫이문 소리 (가까울수록 크게)
+    this.map.onClassDoorMove = (x, z) => this.soundAt('slideDoor', x, 0, z);
+    // NPC가 걸어와 의자에 앉을 때 의자 끄는 소리 (가까이 있을 때만, 겹치지 않게)
+    Npc.onSitDown = (n) => this.soundAt('chair', n.pos.x, n.pos.y, n.pos.z, 7);
 
     this.inventory.onChange = () => {
       this.hud.setInventory(this.inventory.slots, this.inventory.selected);
@@ -260,7 +281,7 @@ export class Game {
     const s = this.settings;
     this.tpc.sensitivity = s.sensitivity;
     this.tpc.shakeEnabled = s.shake;
-    this.sfx.setVolume(s.volume);
+    this.sfx.setLevels({ master: s.volume, bgm: s.bgmVolume, sfx: s.sfxVolume, amb: s.ambVolume, muted: s.muted });
     this.dialogue.speed = s.textSpeed === 'slow' ? 0.7 : s.textSpeed === 'fast' ? 1.6 : 1;
     if (!s.autoRes) this.resScale = 1;
     this.applyPixelRatio();
@@ -508,6 +529,7 @@ export class Game {
     }
 
     this.story.update(real);
+    this.updateAudio(dt);
     // 놓인 물건의 작은 움직임 (고를 수 있는 카드가 둥실)
     const now = performance.now() / 1000;
     for (const it of this.items.values()) (it.obj.userData.anim as ((t: number) => void) | undefined)?.(now);
@@ -588,9 +610,51 @@ export class Game {
     });
   }
 
+  /** 소리: 교시·사건에 맞는 BGM, 장소 환경음, 발소리, 대사 중 BGM 낮추기 */
+  private updateAudio(dt: number) {
+    const sfx = this.sfx;
+    const ms = this.story.musicState?.();
+    if (ms) sfx.setBgm(bgmFor(ms));
+    sfx.setTalking(this.dialogue.active);
+    const p = this.player.pos;
+    const place = placeAt(p.x, p.y, p.z);
+    sfx.setAmbience(ms ? ambienceFor(place, ms.period, ms.eventActive) : null);
+    // 발소리: 실제로 움직인 거리만큼 (벽에 막혀 제자리걸음이면 소리 없음). 한 걸음 ≈ 1m (걷기 애니메이션 보폭)
+    const hv = Math.hypot(this.playerVel.x, this.playerVel.z);
+    const onGround = p.y - this.map.groundY(p.x, p.z, p.y) < 0.06;
+    const walking = !this.player.seat && !this.player.frozen && !this.remote && onGround && hv > 0.6 && this.player.speed > 0.3;
+    if (walking) {
+      if (!this.stepping) this.stepDist = 0.75; // 출발하자마자 첫 걸음
+      this.stepping = true;
+      this.stepDist += hv * dt;
+      if (this.stepDist >= 1.0) {
+        this.stepDist = 0;
+        sfx.step(woodFloor(place), hv > 3.8, place === 'out');
+      }
+    } else if (this.stepping) {
+      this.stepping = false;
+      sfx.stopSteps();
+    }
+  }
+
+  /** 위치가 있는 효과음: 같은 층에서 range m 안일 때만, 멀수록 작게 */
+  soundAt(id: Parameters<Sfx['play']>[0], x: number, y: number, z: number, range = 12) {
+    if (!this.player || !this.running) return;
+    const p = this.player.pos;
+    if (Math.abs(y - p.y) > 2) return;
+    const d = Math.hypot(x - p.x, z - p.z);
+    if (d > range) return;
+    this.sfx.play(id, { vol: Math.max(0.25, 1 - d / range) });
+  }
+
   // ───────── 이야기에서 쓰는 도구들 ─────────
 
   setObjective(text: string, target: THREE.Vector3 | Interactable | Npc | (() => THREE.Vector3) | null = null) {
+    // 할 일이 실제로 새로 바뀔 때만 「퀘스트 시작」 (같은 글을 다시 써도, 안내만 바뀌어도 울리지 않게)
+    if (text !== this.lastObjective) {
+      this.lastObjective = text;
+      if (this.running && (target || /\b[EF]\)/.test(text)) && !text.startsWith('…')) this.sfx.questStart();
+    }
     this.hud.setObjective(text);
     if (!target) this.markerTarget = null;
     else if (target instanceof THREE.Vector3) this.markerTarget = () => target;
@@ -730,6 +794,7 @@ export class Game {
 
   setPaused(p: boolean) {
     this.paused = p;
+    this.sfx.setPaused(p);
     if (p) {
       this.unlockIntended = true;
       this.input.releaseLock();

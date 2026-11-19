@@ -17,7 +17,7 @@
 | 3D 모델 | 내빈용 슬리퍼 (`src/world/slipper.ts`) | 이 저장소 코드에서 직접 만든 모델 (밑창 Extrude + 발등 덮개) | CC0 (이 프로젝트가 공개) | CC0 슬리퍼 모델을 찾아봤으나(2026-11-13) Poly Haven에는 고무장화뿐, Quaternius·ambientCG에는 없음, Sketchfab·Kenney·Poly Pizza는 작업 환경에서 접속 불가 → 직접 제작 |
 | 그림(텍스처) | 정문 외벽(크림 뿜칠)·벽돌·화강석·보도블록·잔디·흙·타일 기둥·점자블록·시트지 그림 | 코드에서 캔버스로 직접 그림 (`exteriorTex.ts`, `EntranceHQ.ts`) | 이 프로젝트 | 외부 그림 파일 없음 |
 | 그림(텍스처) | 칠판·급식표·게시판·시계·바닥 무늬·돈가스 빵가루 | 코드에서 캔버스로 직접 그림 (`canvasTex.ts`) | 이 프로젝트 | 외부 그림 파일 없음 |
-| 효과음 | 종소리·줍기·성공·페이지 넘김 등 | WebAudio로 직접 합성 (`src/core/Audio.ts`) | 이 프로젝트 | 외부 소리 파일 없음 |
+| 효과음 (대신 소리) | 음원 파일을 못 열 때 대신 내는 소리, 대사 글자음·알림음 등 | WebAudio로 직접 합성 (`src/core/Audio.ts`) | 이 프로젝트 | 외부 소리 파일 없음 |
 | 글꼴 | 컴퓨터에 설치된 한글 글꼴 (맑은 고딕 등) | 운영체제 | 각 OS 라이선스 | 글꼴 파일을 배포하지 않음 |
 
 게임에 필요한 파일은 모두 이 저장소 안에 있다. 학교 컴퓨터에서 추가 다운로드·로그인·구독 없이 바로 실행된다.
@@ -66,3 +66,9 @@
 ## 학생 작품 그림 (public/textures/kidart/)
 - concert, dream, playground, sports, library, science, picnic, art, mural61 (.webp)
 - 출처: 프로젝트 사용자가 직접 제공한 크레파스풍 그림 (2026-11). 게임 안 6-1 뒤 게시판 작품으로만 사용. 게임용으로 크기만 줄여 WEBP로 변환.
+
+## 배경음악·효과음 (public/audio/)
+- BGM 8곡 `public/audio/bgm/bgm01~08_*.ogg` (학교 탐험 · 수업 · 쉬는 시간 · 모둠 활동 · 거대 돈가스 · 청소 로봇 · 끝나지 않는 복도 · 하교 엔딩)
+- 효과음 30종 `public/audio/sfx/01~30_*.ogg` + `sfx_manifest.json` (번호 ↔ 파일)
+- 출처: 프로젝트 사용자가 이 게임용으로 제작해 제공한 음원 (2026-11-19, ZIP 2개). 받은 파일 그대로 사용 (변환 없음).
+- 쓰는 곳: `src/core/Audio.ts`(소리 관리자), `src/core/musicRules.ts`(교시·사건 → BGM, 장소 → 환경음·발소리).

@@ -78,6 +78,7 @@ async function boot() {
         results: game.save?.results,
         fps: game.fps,
       }),
+      audio: () => game.sfx.debug(),
       /** 상호작용 대상 앞으로 순간이동 (실제 E/F 입력은 키보드로) */
       goto: (id: string, dist = 0.7, from?: [number, number]) => {
         const it = game.interactions.get(id);

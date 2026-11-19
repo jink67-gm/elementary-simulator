@@ -98,7 +98,7 @@ export class RobotEvent implements StoryEvent {
   private get robot() {
     return this.m.g.robot;
   }
-  private get active() {
+  get active() {
     return this.m.period === 'robot' && !this.st.resolved;
   }
   private ownerNpc(o: Owner): Npc | null {
@@ -223,7 +223,6 @@ export class RobotEvent implements StoryEvent {
     const g = this.g;
     if (fromLoad) m.toast('사건 2는 처음부터 다시 시작해요.');
     await m.sleep(0.5);
-    g.sfx.chime();
     await m.say([
       m.L('teacher', '자, 점심 맛있게 먹었죠? 청소 시간이에요. 각자 자리 주변만 정리!'),
       m.L('ai', m.save.playerWish === 'clean' ? `접수된 소원 「청소 자동」(신청: ${m.me})을 적용합니다.` : '접수된 소원 「청소는 로봇이 다 해 주면 좋겠다」를 적용합니다.'),
@@ -246,6 +245,7 @@ export class RobotEvent implements StoryEvent {
     this.updateObjective();
     // 15초 뒤부터 로봇이 다른 물건도 치우러 다닌다
     this.robot.setMode('auto');
+    g.sfx.play('robot');
     void this.autoLoop(++this.st.autoToken);
   }
 
@@ -259,6 +259,7 @@ export class RobotEvent implements StoryEvent {
       if (!alive()) return;
       if (this.st.zonesPlaced.has(z)) continue;
       this.g.bark(this.m.n('teacher'), `어? 로봇이 ${ZONE_NAMES[z]} 쪽으로 간다!`, 2600);
+      this.g.soundAt('robot', r.pos.x, r.pos.y, r.pos.z, 14);
       const [x, zz] = ZONE_SPOT[z];
       if (!(await r.goTo(x + 0.5, zz - 0.4)) || !alive()) return;
       if (this.st.zonesPlaced.has(z)) {
@@ -560,7 +561,7 @@ export class RobotEvent implements StoryEvent {
     await m.sleep(1);
     g.cutscene = true;
     g.tpc.override = { pos: new THREE.Vector3(3.5, 2.6, 1.0), look: new THREE.Vector3(5.3, 0.4, 3.8) };
-    g.sfx.success();
+    g.sfx.play('restored', {}, () => g.sfx.success());
     const ends: Record<RobotSolution, [MainNpcId | 'ai' | 'narr', string][]> = {
       remote: [['junho', '로봇 운전 진짜 잘한다! 나중에 피구공도 그렇게 몰아 줘ㅋㅋ'], ['ai', '수동 조종 기록을 학습했습니다. 다음부터 분류 칸을 확인하겠습니다.']],
       zones: [['seoa', '「여기는 치우지 마」를 알려 주니까 바로 알아듣네.'], ['ai', '청소 금지 구역 3곳 저장 완료. 학생 물건은 보호 대상입니다.']],

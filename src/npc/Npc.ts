@@ -27,6 +27,8 @@ export class Npc {
 
   /** 바닥 높이 (계단 경사 포함). Game이 지도와 연결한다 */
   static ground: ((x: number, z: number, y: number) => number) | null = null;
+  /** 걸어와서 의자에 앉았을 때 (의자 소리). Game이 연결한다 */
+  static onSitDown: ((n: Npc) => void) | null = null;
 
   constructor(public def: NpcDef, private nav: LevelNav) {
     this.char = createAvatar(def.look);
@@ -88,7 +90,10 @@ export class Npc {
 
   async walkToSeat(seat: Seat, speed = 2.2) {
     const dx = seat.x - seat.deskX, dz = seat.z - seat.deskZ, l = Math.hypot(dx, dz) || 1;
-    if (await this.walkTo(seat.x + (dx / l) * 0.05, seat.z + (dz / l) * 0.05, seat.yaw, speed, seat.y ?? 0)) this.sitAt(seat);
+    if (await this.walkTo(seat.x + (dx / l) * 0.05, seat.z + (dz / l) * 0.05, seat.yaw, speed, seat.y ?? 0)) {
+      this.sitAt(seat);
+      Npc.onSitDown?.(this);
+    }
   }
 
   faceTo(x: number, z: number) {

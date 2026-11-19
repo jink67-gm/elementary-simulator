@@ -70,7 +70,7 @@ export function openPoster(ctx: UiCtx, title: string, minStickers = 3): Promise<
     const place = (kind: string, x?: number, y?: number) => {
       if (stickers.length >= 12) stickers.shift();
       stickers.push({ kind, x: x ?? 0.15 + Math.random() * 0.7, y: y ?? 0.3 + Math.random() * 0.55 });
-      ctx.sfx.place();
+      ctx.sfx.play('pencil', {}, () => ctx.sfx.place());
       render();
     };
     const finish = () => {

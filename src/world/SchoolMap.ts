@@ -846,7 +846,9 @@ export class SchoolMap {
 
   /** 6-1 미닫이 문: 나무 틀 + 유리 + 레일. 문짝 두 장이 벽 앞(복도 쪽)에서 좌우로 밀린다 */
   /** 6-1 미닫이 두 개 (앞문·뒷문). want = 플레이어가 열어 둔 상태, open = 지금 열린 정도 0~1 */
-  classDoors: { leaves: THREE.Group[]; zc: number; w: number; open: number; want: boolean; collider: Aabb; block: Aabb; placed?: boolean }[] = [];
+  classDoors: { leaves: THREE.Group[]; zc: number; w: number; open: number; want: boolean; collider: Aabb; block: Aabb; placed?: boolean; moving?: number }[] = [];
+  /** 6-1 문이 움직이기 시작할 때 (문 가운데 x, z) — 소리용. Game이 연결한다 */
+  onClassDoorMove: (x: number, z: number) => void = () => {};
   private buildSlidingDoor(i: number, z0: number, z1: number) {
     const oak = pbr('oak', { roughness: 0.65 });
     const w = z1 - z0, zc = (z0 + z1) / 2, lw = w / 2 + 0.02, H = 2.08, x = 7.25;
@@ -909,6 +911,9 @@ export class SchoolMap {
     for (const d of this.classDoors) {
       const npcNear = npcPts.some((p) => Math.abs(p.y) < 1 && Math.abs(p.x - 7.1) < 1.5 && Math.abs(p.z - d.zc) < 1.3);
       const target = d.want || npcNear ? 1 : 0;
+      // 문이 실제로 움직이기 시작하는 순간 (처음 자리 잡을 때는 소리 없음)
+      if (d.placed && d.open !== target && d.moving !== target) this.onClassDoorMove(7.1, d.zc);
+      d.moving = d.open !== target ? target : -1;
       if (d.open !== target || !d.placed) {
         d.placed = true; // 처음 한 번은 지금 상태(아침엔 열림) 자리에 놓는다
         d.open = Math.max(0, Math.min(1, d.open + Math.sign(target - d.open) * dt * 2.4));

@@ -63,6 +63,8 @@ export class Ball {
   vel = new THREE.Vector3();
   r = 0.22;
   onKick: () => void = () => {};
+  /** 벽·물건에 부딪혀 튕길 때 (속도 m/s) */
+  onBounce: (speed: number) => void = () => {};
   private cooldown = 0;
 
   constructor(scene: THREE.Scene) {
@@ -110,6 +112,7 @@ export class Ball {
     if (hit.hit) {
       const dot = this.vel.x * hit.nx + this.vel.z * hit.nz;
       if (dot < 0) {
+        if (dot < -1.2) this.onBounce(-dot);
         this.vel.x -= 1.7 * dot * hit.nx;
         this.vel.z -= 1.7 * dot * hit.nz;
       }

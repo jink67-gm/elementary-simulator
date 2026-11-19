@@ -2,7 +2,16 @@ import { looksLowSpec } from './Device';
 
 export interface Settings {
   sensitivity: number; // 0.3 ~ 2
-  volume: number; // 0 ~ 1
+  /** 전체 음량 0 ~ 1 */
+  volume: number;
+  /** 배경음악 음량 0 ~ 1 */
+  bgmVolume: number;
+  /** 효과음 음량 0 ~ 1 */
+  sfxVolume: number;
+  /** 환경음(교실·복도 웅성거림) 음량 0 ~ 1 */
+  ambVolume: number;
+  /** 전체 음소거 */
+  muted: boolean;
   quality: 'low' | 'mid' | 'high';
   shake: boolean;
   grade: 4 | 5 | 6;
@@ -19,7 +28,11 @@ const KEY = 'elementary-simulator.settings.v1';
 
 export const DEFAULT_SETTINGS: Settings = {
   sensitivity: 1,
-  volume: 0.7,
+  volume: 1,
+  bgmVolume: 0.35,
+  sfxVolume: 0.7,
+  ambVolume: 0.18,
+  muted: false,
   quality: 'mid',
   shake: true,
   grade: 6,

@@ -91,7 +91,7 @@ export class DodgeEvent implements StoryEvent {
   private get g() {
     return this.m.g;
   }
-  private get active() {
+  get active() {
     return this.m.period === 'dodgeball' && !this.st.resolved;
   }
 
@@ -200,7 +200,6 @@ export class DodgeEvent implements StoryEvent {
     const g = this.g;
     if (fromLoad) m.toast('사건 3은 처음부터 다시 시작해요.');
     await m.sleep(0.5);
-    g.sfx.chime();
     g.tpc.shake(0.06, 1.2);
     await m.say([
       m.L('teacher', '5교시 체육! 오늘은 피구… 를… 하려고 했는데요.'),
@@ -254,6 +253,7 @@ export class DodgeEvent implements StoryEvent {
     const r = simulateLaunch(set.angle, set.power);
     this.st.rolling = { path: r.path, i: 0, result: r.result };
     g.sfx.kick();
+    g.sfx.play('ballFly');
     g.tpc.shake(0.05, 0.5);
     await m.until(() => !this.st.rolling);
     if (r.result === 'stored') {
@@ -341,7 +341,7 @@ export class DodgeEvent implements StoryEvent {
         if (st.rolling.result === 'stored') {
           this.ball.x = -0.6;
           this.syncBall(0);
-        }
+        } else g.soundAt('ballHit', this.ball.x, 0, this.ball.z, 25);
         st.rolling = null;
       }
       return;
@@ -429,7 +429,7 @@ export class DodgeEvent implements StoryEvent {
     await m.sleep(1);
     g.cutscene = true;
     g.tpc.override = { pos: new THREE.Vector3(9, 5, -15.5), look: new THREE.Vector3(8, 0.5, -24) };
-    g.sfx.success();
+    g.sfx.play('restored', {}, () => g.sfx.success());
     const ends: Record<DodgeSolution, [MainNpcId | 'ai', string][]> = {
       physics: [['seoa', `${this.st.launches}번 만에 성공! 각도랑 힘을 바꿔 가면서 실험한 거잖아.`], ['teacher', '과학 시간에 발표해도 되겠어요!']],
       shrink: [['minjae', '돈가스 기계 고친 게 여기서 쓰일 줄이야…'], ['ai', '크기 100% 복원. 분실 방지는 이름표로 대신하겠습니다.']],

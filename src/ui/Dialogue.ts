@@ -18,6 +18,8 @@ export class Dialogue {
   private current: { line: Line; done: () => void; shown: number; t: number; hold: number } | null = null;
   speed = 1; // 글자 속도 배율
   onType: () => void = () => {};
+  /** 새 대사 한 줄이 화면에 뜰 때 (효과음 등) */
+  onLine: (line: Line) => void = () => {};
   skipAll = false;
 
   constructor(parent: HTMLElement) {
@@ -77,6 +79,7 @@ export class Dialogue {
     }
     this.current = { ...n, shown: 0, t: 0, hold: 0 };
     n.line.act?.();
+    this.onLine(n.line);
     this.box.classList.remove('hidden');
     this.nameEl.textContent = n.line.who;
     this.nameEl.classList.toggle('narr', n.line.who === '');
