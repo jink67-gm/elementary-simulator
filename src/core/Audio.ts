@@ -69,6 +69,12 @@ const SFX: Record<SfxId, { file: string; gain: number; cd: number; max: number; 
   restored: { file: '30_system_restored.ogg', gain: 0.95, cd: 6, max: 1, duck: 2 },
 };
 
+/**
+ * 끈 소리 (사용자 평가 2026-11-19: 「효과음이 어색하다」 → 사건·UI 소리만 남기고 생활 소리는 끔).
+ * 이름만 빼면 다시 켜진다. 끈 소리는 대신 소리도 내지 않는다.
+ */
+const OFF = new Set<SfxId>(['stepTile', 'stepWood', 'slideDoor', 'glassDoor', 'bag', 'chair', 'bookOpen', 'page', 'pencil', 'paper']);
+
 /** 한 번에 하나만 울리는 결과음 묶음 */
 const RESULT: SfxId[] = ['correct', 'wrong', 'questDone'];
 
@@ -247,7 +253,7 @@ export class Sfx {
    */
   play(id: SfxId, opt: { vol?: number; rate?: number; offset?: number; dur?: number } = {}, fallback?: () => void): boolean {
     const ctx = this.ctx;
-    if (!ctx || this.silent || this.hidden) return false;
+    if (!ctx || this.silent || this.hidden || OFF.has(id)) return false;
     const def = SFX[id];
     const now = ctx.currentTime;
     const last = this.lastPlay.get(id);

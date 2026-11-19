@@ -74,11 +74,11 @@ const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dial
   t0 = await now(page);
   await page.keyboard.press('KeyE');
   await page.waitForTimeout(1200);
-  check('4. 문 닫힐 때 미닫이문 소리 1번', (await since(page, t0, 'slideDoor')) === 1);
+  check('문 소리 꺼짐 (닫기)', (await since(page, t0, 'slideDoor')) === 0);
   t0 = await now(page);
   await page.keyboard.press('KeyE');
   await page.waitForTimeout(1200);
-  check('4. 문 열릴 때 미닫이문 소리 1번', (await since(page, t0, 'slideDoor')) === 1);
+  check('문 소리 꺼짐 (열기)', (await since(page, t0, 'slideDoor')) === 0);
 
   // 가방 걸기 → 가방 소리 + 퀘스트 시작
   await page.evaluate(() => window.__sim.goto('seat', 0.7));
@@ -105,7 +105,7 @@ const skip = (page) => page.evaluate(() => { const g = window.__sim.game; g.dial
   await page.waitForFunction(() => window.__sim.state().phase === 'free', null, { timeout: 10000 }).catch(() => {});
   await page.waitForTimeout(600);
   console.log('   (log)', (await A(page)).log.filter((l) => l.t >= t0).map((l) => l.id).join(','), (await page.evaluate(() => window.__sim.state().phase)));
-  check('4. 교과서 펼치기 소리', (await since(page, t0, 'bookOpen')) === 1);
+  check('교과서 소리 꺼짐', (await since(page, t0, 'bookOpen')) === 0 && (await since(page, t0, 'page')) === 0);
   check('15. 준비 끝 → 퀘스트 완료음 1번', (await since(page, t0, 'questDone')) === 1);
 
   // 대사 중 BGM 낮추기
