@@ -34,8 +34,21 @@ function clipsFor(key: string, ratio: number): THREE.AnimationClip[] {
   return c;
 }
 
+/**
+ * 앉을 때 모델을 들어 올리는 높이 (m). 앉기 동작의 엉덩이 아래면(약 0.32m)이 교실 의자 좌판 윗면(0.40m)에
+ * 맞도록 (scripts/player-model-check.mjs에서 잼). 들어 올리지 않으면 엉덩이가 좌판 속으로 8cm 묻힌다.
+ */
+const SIT_LIFT = 0.075;
+/** 앉았을 때 무릎을 내리는 높이 (m): 허벅지 앞쪽이 좌판 두께 안에 숨는 정도까지만 */
+const KNEE_DROP = 0.035;
+
 const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
+const _dir = new THREE.Vector3();
+const _hip = new THREE.Vector3();
+const _knee = new THREE.Vector3();
+const _foot = new THREE.Vector3();
+const _qFoot = new THREE.Quaternion();
 const _q1 = new THREE.Quaternion();
 const _q2 = new THREE.Quaternion();
 const _q3 = new THREE.Quaternion();
@@ -71,6 +84,12 @@ export class HumanCharacter {
   private headPitch = 0;
   private bones: Record<string, THREE.Object3D | undefined> = {};
   private raiseW = 0;
+  private sitW = 0;
+  /**
+   * 다리 뼈의 「동작이 만든」 회전. three.js 믹서는 값이 바뀔 때만 뼈에 다시 쓰므로(가만히 앉은 자세는 안 씀),
+   * 앉기 보정을 덧붙이기 전에 저장했다가 다음 프레임 믹서 전에 되돌려 보정이 쌓이지 않게 한다
+   */
+  private legAnim: [THREE.Object3D, THREE.Quaternion][] = [];
   private cheerW = 0;
   private t = 0;
 
@@ -84,9 +103,13 @@ export class HumanCharacter {
         m.frustumCulled = false;
       }
     });
-    for (const n of ['Head', 'pelvis', 'upperarm_l', 'lowerarm_l', 'hand_l', 'upperarm_r', 'lowerarm_r', 'hand_r'])
+    for (const n of ['Head', 'pelvis', 'upperarm_l', 'lowerarm_l', 'hand_l', 'upperarm_r', 'lowerarm_r', 'hand_r', 'thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r'])
       this.bones[n] = this.model.getObjectByName(n) ?? undefined;
     this.head = this.bones.Head ?? null;
+    for (const n of ['thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r']) {
+      const b = this.bones[n];
+      if (b) this.legAnim.push([b, b.quaternion.clone()]);
+    }
     if (this.bones.hand_r) {
       this.bones.hand_r.add(this.hand);
       this.hand.position.set(0, 0.08, 0.02);
@@ -152,8 +175,37 @@ export class HumanCharacter {
     this.t += dt;
     if (this.current && (this.pose === 'walk' || this.pose === 'run')) this.current.timeScale = 0.7 + speed01 * 0.45;
     else if (this.current) this.current.timeScale = 1;
+    for (const [b, q] of this.legAnim) b.quaternion.copy(q);
     this.mixer.update(dt);
+    for (const [b, q] of this.legAnim) q.copy(b.quaternion);
+    // 앉으면 엉덩이를 좌판 높이에 맞춘다 (동작이 넘어가는 동안 함께 부드럽게)
+    this.sitW += ((this.seated ? 1 : 0) - this.sitW) * (1 - Math.exp(-dt * 10));
+    this.model.position.y = this.sitW * SIT_LIFT;
     this.model.updateMatrixWorld(true);
+    // 다리: 무릎을 조금만 내려(KNEE_DROP) 발을 바닥 쪽으로. 허벅지 앞쪽이 좌판 두께(4cm) 안에 숨는 만큼만 숙이고,
+    // 발 방향은 그대로 둔다 (종아리를 돌리면 발끝이 바닥 속으로 들어간다). 의자가 높아 발은 바닥에서 조금 떠 있다
+    if (this.sitW > 0.01) {
+      const drop = this.sitW * KNEE_DROP;
+      for (const s of ['l', 'r']) {
+        const thigh = this.bones['thigh_' + s], calf = this.bones['calf_' + s], foot = this.bones['foot_' + s];
+        if (!thigh || !calf || !foot) continue;
+        foot.getWorldPosition(_foot);
+        foot.getWorldQuaternion(_qFoot);
+        _foot.y -= drop;
+        thigh.getWorldPosition(_hip);
+        calf.getWorldPosition(_knee);
+        _knee.y -= drop;
+        _dir.copy(_knee).sub(_hip).normalize(); // aimBone이 _v1·_v2를 다시 쓰므로 따로 담는다
+        aimBone(thigh, calf, _dir, 1);
+        calf.getWorldPosition(_knee);
+        _dir.copy(_foot).sub(_knee).normalize();
+        aimBone(calf, foot, _dir, 1);
+        // 발은 원래 방향으로
+        calf.getWorldQuaternion(_q2).invert();
+        foot.quaternion.copy(_q2.multiply(_qFoot));
+        foot.updateMatrixWorld(true);
+      }
+    }
 
     // 손들기·환호: 팔을 위로
     const k = 1 - Math.exp(-dt * 8);

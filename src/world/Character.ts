@@ -19,7 +19,7 @@ export interface Look {
 }
 
 export const PLAYER_LOOKS: Look[] = [
-  { skin: 0xf0cbaa, hair: 0x1b1714, shirt: 0x8a8d91, pants: 0x34507e, hairStyle: 'short', height: 1, model: 'boy' },
+  { skin: 0xf0cbaa, hair: 0x1b1714, shirt: 0x8a8d91, pants: 0x34507e, hairStyle: 'short', height: 1, model: 'student_gray' }, // 회색 맨투맨 남학생 3D 모델 (public/models/characters/student_gray.glb)
   { skin: 0xf0cbaa, hair: 0x1b1714, shirt: 0xa8e0cf, pants: 0x26324f, hairStyle: 'long', height: 1, model: 'girl' },
   { skin: 0xf0cbaa, hair: 0x1b1714, shirt: 0x52b788, pants: 0x34495e, hairStyle: 'buzz', height: 1, model: 'kid_m' },
   { skin: 0xf0cbaa, hair: 0x1b1714, shirt: 0xf28ab2, pants: 0x2d3142, hairStyle: 'pony', height: 1, model: 'kid_f' },

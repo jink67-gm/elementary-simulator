@@ -9,8 +9,8 @@ import { preloadProps, propErrors } from './world/props';
 import { preloadPbr, pbrErrors } from './world/pbr';
 
 /** 게임에서 쓰는 3D 캐릭터 모델 (public/models/characters/*.glb) */
-// 3D 인물 모델은 쓰지 않는다(사용자 결정: 블록 캐릭터로 게임 플레이 우선). 다시 쓰려면 id 목록을 넣는다.
-const CHARACTER_MODELS: string[] = [];
+// 첫 번째 플레이어 외형만 3D 모델 (회색 맨투맨 남학생). 반 친구들은 블록 캐릭터 그대로.
+const CHARACTER_MODELS: string[] = ['student_gray'];
 
 function fail(msg: string) {
   const l = document.getElementById('loading');

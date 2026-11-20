@@ -72,3 +72,15 @@
 - 효과음 30종 `public/audio/sfx/01~30_*.ogg` + `sfx_manifest.json` (번호 ↔ 파일)
 - 출처: 프로젝트 사용자가 이 게임용으로 제작해 제공한 음원 (2026-11-19, ZIP 2개). 받은 파일 그대로 사용 (변환 없음).
 - 쓰는 곳: `src/core/Audio.ts`(소리 관리자), `src/core/musicRules.ts`(교시·사건 → BGM, 장소 → 환경음·발소리).
+
+## 플레이어 3D 캐릭터: 회색 맨투맨 남학생 (public/models/)
+- `public/models/characters/student_gray.glb` (스킨 메시 1개·재질 1개·텍스처 내장, 키 1.35m, 뼈 19개)
+- `public/models/anims/school_anims.glb` (게임 동작 5개: Idle_Loop · Walk_Loop · Jog_Fwd_Loop · Sitting_Idle_Loop · Idle_Talking_Loop + 기준 뼈대)
+- 받은 곳: 사용자가 제공한 `elementary-student-character.zip` (2026-11-20). Blender 원본(`source/student.blend`)과 미리보기(`preview.png`)는 웹 배포 폴더에 넣지 않음.
+- 출처와 이용 조건 (ZIP README 기준)
+  - 정면 디자인·정면 색상: 사용자가 이 프로젝트에 제공한 이미지. 원본 제작자·별도 라이선스 문서는 제공되지 않았고, 원본에 적용되는 권리를 그대로 따른다.
+  - 후면: 첨부 이미지로부터 ChatGPT 이미지 생성으로 보완. 입력 이용 권한은 사용자에게 있어야 하며, 출력물 권리는 관련 법이 허용하는 범위에서 사용자에게 귀속 (OpenAI 이용약관 https://openai.com/policies/terms-of-use/).
+  - 3D 메시·UV·뼈대·가중치·동작: 이 캐릭터용으로 제작 (Blender 4.3.2). Blender의 GPL은 Blender로 만든 모델의 게임 이용을 제한하지 않음 (https://www.blender.org/about/license/).
+  - 미리보기 글꼴(갈무리 11, SIL OFL 1.1)은 PNG 안에만 쓰였고 게임에는 들어오지 않음.
+- 게임 적용: 첫 번째 플레이어 외형(`PLAYER_LOOKS[0].model = 'student_gray'`)만. 반 친구들은 블록 캐릭터 그대로.
+  - 앉기 보정 (`src/world/HumanCharacter.ts`): 교실 의자 좌판(0.40m)에 맞게 앉을 때 모델을 7.5cm 올리고, 무릎을 3.5cm 내려 발이 바닥에 닿게 함.
