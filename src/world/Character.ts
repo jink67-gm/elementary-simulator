@@ -250,7 +250,8 @@ export interface Avatar {
   pose: Pose;
   readonly scale: number;
   setPose(p: Pose): void;
-  update(dt: number, speed01?: number): void;
+  /** speedMs: 실제 이동 속도(m/s) — GLB 캐릭터가 걸음 재생 속도를 맞출 때 쓴다 */
+  update(dt: number, speed01?: number, speedMs?: number): void;
   lookAt(target: THREE.Vector3 | null): void;
   setHidden(h: boolean): void;
   /** 작은 동작 (블록 캐릭터). GLB 캐릭터는 나중에 본 애니메이션으로 */

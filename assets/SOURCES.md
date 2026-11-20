@@ -74,7 +74,7 @@
 - 쓰는 곳: `src/core/Audio.ts`(소리 관리자), `src/core/musicRules.ts`(교시·사건 → BGM, 장소 → 환경음·발소리).
 
 ## 플레이어 3D 캐릭터: 회색 맨투맨 남학생 (public/models/)
-- `public/models/characters/student_gray.glb` (스킨 메시 1개·재질 1개·텍스처 내장, 키 1.35m, 뼈 19개)
+- `public/models/characters/student_gray.glb` (키 1.35m, 뼈 19개). 2026-11-20 손 수정본으로 교체: 스킨 메시 2개(몸·손)·재질 2개, 뼈대·휴식 자세는 이전과 같음(뼈 위치·회전 차이 0 확인), 동작 파일은 그대로
 - `public/models/anims/school_anims.glb` (게임 동작 5개: Idle_Loop · Walk_Loop · Jog_Fwd_Loop · Sitting_Idle_Loop · Idle_Talking_Loop + 기준 뼈대)
 - 받은 곳: 사용자가 제공한 `elementary-student-character.zip` (2026-11-20). Blender 원본(`source/student.blend`)과 미리보기(`preview.png`)는 웹 배포 폴더에 넣지 않음.
 - 출처와 이용 조건 (ZIP README 기준)
@@ -83,4 +83,11 @@
   - 3D 메시·UV·뼈대·가중치·동작: 이 캐릭터용으로 제작 (Blender 4.3.2). Blender의 GPL은 Blender로 만든 모델의 게임 이용을 제한하지 않음 (https://www.blender.org/about/license/).
   - 미리보기 글꼴(갈무리 11, SIL OFL 1.1)은 PNG 안에만 쓰였고 게임에는 들어오지 않음.
 - 게임 적용: 첫 번째 플레이어 외형(`PLAYER_LOOKS[0].model = 'student_gray'`)만. 반 친구들은 블록 캐릭터 그대로.
-  - 앉기 보정 (`src/world/HumanCharacter.ts`): 교실 의자 좌판(0.40m)에 맞게 앉을 때 모델을 7.5cm 올리고, 무릎을 3.5cm 내려 발이 바닥에 닿게 함.
+  - 게임 속 크기 1.25배 (키 약 1.66m). 앉기 보정: 교실 의자 좌판(0.40m)에 맞게 앉을 때 10cm 올리고 무릎을 5cm 내림.
+  - 걷기·뛰기·계단: 다리는 발 디디기(디딘 발 고정 + 다리 IK, 계단은 디딤판 높이)로 움직이고, 팔·몸통만 받은 동작을 걸음 박자에 맞춰 씀.
+
+## 책가방 3D 모델: 등굣길 책가방 (school_daypack)
+- `public/models/props/school_daypack.glb` (삼각형 9,168개·재질 2개·텍스처 내장), 로더 `src/world/schoolDaypack.ts`
+- 받은 곳: 사용자가 제공한 `school-daypack.zip` (2026-11-20). 동봉된 `player-daypack.patch`를 그대로 적용. Blender 원본·미리보기는 웹 배포 폴더에 넣지 않음.
+- 출처와 이용 조건 (ZIP README 기준): 새로 만든 모델·직물 무늬·해와 산 패치. 외부 가방 모델·브랜드 로고·상용 재질 없음. Blender(GPL)로 제작·내보내기 — 제작물의 게임 이용 허용.
+- 쓰는 곳: 회색 맨투맨 남학생(`student_gray`)이 메는 가방만. 다른 외형과 책상 고리에 건 가방은 기존 가방. 캐릭터를 1.25배로 키운 만큼 가방도 같이 키움.

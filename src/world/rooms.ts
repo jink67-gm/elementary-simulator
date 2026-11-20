@@ -51,6 +51,23 @@ export function stairY(x: number, z: number): number | null {
   return z < S.zMid ? half + half * t /* 1단: 복도 쪽이 1층 */ : half - half * t /* 2단: 복도 쪽이 2층 */;
 }
 
+/**
+ * 계단 디딤판 윗면 높이 (발 놓을 자리). stairY는 걷기용 비탈이라 디딤판보다 최대 한 단 낮다.
+ * SchoolMap.buildStairs와 같은 칸 나눔: 1단(남쪽)은 복도 쪽 x xEdge에서 i번째 칸 = FLOOR1_Y + rise·(i+1), 2단(북쪽)은 층계참 쪽에서
+ */
+export function stairStepY(x: number, z: number): number | null {
+  const S = STAIR;
+  if (x < S.xBack || x > S.xEdge || z < S.zS0 || z > S.zN1) return null;
+  if (x <= S.xTurn) return LANDING_Y;
+  const tread = (S.xEdge - S.xTurn) / S.steps, half = -FLOOR1_Y / 2, rise = half / S.steps;
+  if (z < S.zMid) {
+    const i = Math.max(0, Math.min(S.steps - 1, Math.floor((S.xEdge - x) / tread)));
+    return FLOOR1_Y + rise * (i + 1);
+  }
+  const i = Math.max(0, Math.min(S.steps - 1, Math.floor((x - S.xTurn) / tread)));
+  return FLOOR1_Y + half + rise * (i + 1);
+}
+
 // ───────── 1층 급식실 동 (복도 북쪽 끝 너머) ─────────
 // 식사 공간 ─(벽: 배식창·식판 반납창·조리실 문·창고 문)─ 조리실 / 식재료·조리 도구 창고
 export const CAFE = {

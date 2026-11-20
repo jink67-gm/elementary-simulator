@@ -38,9 +38,30 @@ function clipsFor(key: string, ratio: number): THREE.AnimationClip[] {
  * 앉을 때 모델을 들어 올리는 높이 (m). 앉기 동작의 엉덩이 아래면(약 0.32m)이 교실 의자 좌판 윗면(0.40m)에
  * 맞도록 (scripts/player-model-check.mjs에서 잼). 들어 올리지 않으면 엉덩이가 좌판 속으로 8cm 묻힌다.
  */
-const SIT_LIFT = 0.075;
+const SIT_LIFT = 0.1;
 /** 앉았을 때 무릎을 내리는 높이 (m): 허벅지 앞쪽이 좌판 두께 안에 숨는 정도까지만 */
-const KNEE_DROP = 0.035;
+const KNEE_DROP = 0.05;
+
+/** 모델 크기 배율 (GLB 기본 키 1.35m → 게임 속 반 친구들 옆에 서도 작아 보이지 않게) */
+const MODEL_SCALE: Record<string, number> = { student_gray: 1.25 };
+/**
+ * 다리는 동작 대신 발 디디기로 움직인다 (받은 걷기 동작은 보폭이 한 걸음 0.3m 정도로 아주 작아,
+ * 게임 이동 속도 초당 3m에 맞추면 발이 바닥 위를 미끄러졌다).
+ * 발은 디딘 자리에 고정돼 있다가, 몸이 반 걸음 이상 앞서가면 들어서 다음 자리(계단이면 그 단 위)로 옮긴다.
+ * 팔·몸통은 걷기·뛰기 동작을 그대로 쓰고, 재생 속도를 걸음 박자에 맞춘다.
+ */
+/** 몸을 가장 많이 내리는 높이 (m, 음수): 걸을 때 / 뛸 때 */
+const PELVIS_MIN_WALK = -0.06;
+const PELVIS_MIN_RUN = -0.16;
+/** 계단에서 한 단 아래 발에 닿도록 더 내릴 수 있는 높이 */
+const PELVIS_MIN_STAIRS = -0.16;
+/** 걸음 길이: 빠를수록 길게, 다만 몸을 PELVIS_MIN 이상 내리지 않아도 다리가 닿는 길이까지 */
+function stepLength(v: number, legLen: number, run: boolean): number {
+  const r = legLen * 0.97, drop = -PELVIS_MIN_WALK;
+  // 뛸 때는 두 발이 다 떠 있는 순간이 있어 다리 길이로 막지 않는다
+  const max = run ? 1.0 : 2 * Math.sqrt(Math.max(0, r * r - (r - drop) * (r - drop)));
+  return Math.min(max, Math.max(0.25, 0.18 + 0.16 * v));
+}
 
 const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
@@ -49,6 +70,13 @@ const _hip = new THREE.Vector3();
 const _knee = new THREE.Vector3();
 const _foot = new THREE.Vector3();
 const _qFoot = new THREE.Quaternion();
+const _ik = new THREE.Vector3();
+const _pole = new THREE.Vector3();
+const _root = new THREE.Vector3();
+const _q4 = new THREE.Quaternion();
+const _fwd = new THREE.Vector3();
+const _d = new THREE.Vector3();
+const _rest = [new THREE.Vector3(), new THREE.Vector3()];
 const _q1 = new THREE.Quaternion();
 const _q2 = new THREE.Quaternion();
 const _q3 = new THREE.Quaternion();
@@ -73,7 +101,27 @@ export class HumanCharacter {
   hand = new THREE.Group();
   head: THREE.Object3D | null = null;
   pose: Pose = 'stand';
-  readonly scale = 1;
+  readonly scale: number;
+  /** 발 놓을 바닥 높이 (계단은 디딤판 윗면). Game이 지도와 연결한다 */
+  static footGround: ((x: number, z: number, y: number) => number) | null = null;
+  /** 서 있을 때 발목 자리 (몸 기준) · 발 방향 */
+  private footRest: THREE.Vector3[] = [];
+  private footRestQ: THREE.Quaternion[] = [];
+  /** 디딘 발목의 높이 (바닥에서) */
+  private ankleH = 0.1;
+  /** 다리 길이 (허벅지 + 종아리) */
+  private legLen = 0.6;
+  /** 계단·보폭에 맞춰 몸을 내리고 올리는 높이 (부드럽게) */
+  private pelvisOff = 0;
+  /** 두 발: 지금 발목 자리(월드), 걸음 중이면 출발·도착 자리와 진행도 */
+  private feet = [0, 1].map(() => ({ pos: new THREE.Vector3(), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 0, dur: 0.3, arc: 0.06, swing: false }));
+  private feetInit = false;
+  /** 마지막으로 든 발 (0 왼발, 1 오른발)과 그 뒤 흐른 시간 — 걸을 때 두 발을 번갈아, 반 박자마다 든다 */
+  private lastStep = 1;
+  private sinceStep = 0;
+  private lastRoot = new THREE.Vector3();
+  /** 자동 확인용 기록: 디딘 발이 움직인 거리(m/프레임), 걸음 수 */
+  gaitLog: { planted: number[]; steps: number; forced: number } | null = null;
   private model: THREE.Object3D;
   private mixer: THREE.AnimationMixer;
   private actions = new Map<string, THREE.AnimationAction>();
@@ -87,7 +135,7 @@ export class HumanCharacter {
   private sitW = 0;
   /**
    * 다리 뼈의 「동작이 만든」 회전. three.js 믹서는 값이 바뀔 때만 뼈에 다시 쓰므로(가만히 앉은 자세는 안 씀),
-   * 앉기 보정을 덧붙이기 전에 저장했다가 다음 프레임 믹서 전에 되돌려 보정이 쌓이지 않게 한다
+   * 다리 보정(앉기·발 디디기)을 덧붙이기 전에 저장했다가 다음 프레임 믹서 전에 되돌려 보정이 쌓이지 않게 한다
    */
   private legAnim: [THREE.Object3D, THREE.Quaternion][] = [];
   private cheerW = 0;
@@ -95,6 +143,9 @@ export class HumanCharacter {
 
   constructor(gltf: GLTF, id: string) {
     this.model = cloneSkinned(gltf.scene);
+    const S = (this.scale = MODEL_SCALE[id] ?? 1);
+    this.model.scale.setScalar(S);
+    this.hand.scale.setScalar(1 / S); // 손에 든 물건·등 가방은 원래 크기로
     this.root.add(this.model);
     this.model.traverse((o) => {
       const m = o as THREE.Mesh;
@@ -120,8 +171,59 @@ export class HumanCharacter {
     this.mixer = new THREE.AnimationMixer(this.model);
     for (const clip of clipsFor(id, ratio)) this.actions.set(clip.name, this.mixer.clipAction(clip));
     this.root.traverse((o) => (o.userData.character = this));
+    this.measureRest();
     this.play(CLIP.stand, 0);
     this.mixer.update(Math.random() * 2); // 반 친구들이 똑같이 움직이지 않게
+  }
+
+  /** 서 있는 자세에서 발목 자리·발 방향·다리 길이를 잰다 (몸 기준) */
+  private measureRest() {
+    const b = this.bones;
+    const legs = [[b.thigh_l, b.calf_l, b.foot_l], [b.thigh_r, b.calf_r, b.foot_r]];
+    if (legs.some((l) => l.some((x) => !x))) return;
+    const act = this.actions.get(CLIP.stand);
+    act?.reset().play();
+    this.mixer.setTime(0);
+    this.root.updateMatrixWorld(true);
+    const rq = this.root.getWorldQuaternion(new THREE.Quaternion()).invert();
+    let ankle = 0;
+    for (const [thigh, calf, foot] of legs) {
+      const f = foot!.getWorldPosition(new THREE.Vector3());
+      this.footRest.push(this.root.worldToLocal(f.clone()));
+      this.footRestQ.push(rq.clone().multiply(foot!.getWorldQuaternion(new THREE.Quaternion())));
+      ankle += this.footRest[this.footRest.length - 1].y / 2;
+      this.legLen = thigh!.getWorldPosition(_v1).distanceTo(calf!.getWorldPosition(_v2)) + _v2.distanceTo(f);
+    }
+    this.ankleH = ankle;
+    act?.stop();
+    for (const [bn, q] of this.legAnim) bn.quaternion.copy(q);
+  }
+
+  /** 다리 두 뼈 IK: 발목을 target(월드)으로. 무릎은 원래 굽은 쪽으로, 발 방향은 그대로 */
+  private legIK(thigh: THREE.Object3D, calf: THREE.Object3D, foot: THREE.Object3D, target: THREE.Vector3) {
+    thigh.getWorldPosition(_hip);
+    calf.getWorldPosition(_knee);
+    foot.getWorldPosition(_foot);
+    foot.getWorldQuaternion(_qFoot);
+    const a = _hip.distanceTo(_knee), b = _knee.distanceTo(_foot);
+    _ik.copy(target).sub(_hip);
+    const c = Math.max(Math.abs(a - b) + 1e-3, Math.min(a + b - 1e-3, _ik.length()));
+    _ik.normalize();
+    // 무릎이 굽는 쪽: 지금 무릎 방향 (다리가 곧게 펴져 있으면 몸 앞쪽)
+    _pole.set(0, 0, 1).applyQuaternion(this.root.getWorldQuaternion(_q2)).multiplyScalar(0.02);
+    _pole.add(_knee).sub(_hip);
+    _pole.addScaledVector(_ik, -_pole.dot(_ik));
+    if (_pole.lengthSq() < 1e-10) return;
+    _pole.normalize();
+    const cosA = Math.max(-1, Math.min(1, (a * a + c * c - b * b) / (2 * a * c)));
+    _dir.copy(_ik).multiplyScalar(a * cosA).addScaledVector(_pole, a * Math.sqrt(1 - cosA * cosA)).normalize();
+    aimBone(thigh, calf, _dir, 1);
+    calf.getWorldPosition(_knee);
+    _dir.copy(target).sub(_knee).normalize();
+    aimBone(calf, foot, _dir, 1);
+    calf.getWorldQuaternion(_q2).invert();
+    foot.quaternion.copy(_q2.multiply(_qFoot));
+    foot.updateMatrixWorld(true);
   }
 
   private play(name: string, fade = 0.25) {
@@ -156,12 +258,140 @@ export class HumanCharacter {
     this.root.traverse((o) => {
       if (!spine && (o as THREE.Bone).isBone && /spine2|spine1|chest|spine/i.test(o.name)) spine = o;
     });
-    if (spine) (spine as THREE.Object3D).add(g);
-    else {
+    if (spine) {
+      (spine as THREE.Object3D).add(g);
+      g.scale.setScalar(1 / this.scale); // 가방은 원래 크기로
+    } else {
       g.position.set(0, 1.0, -0.12);
       this.root.add(g);
     }
     return (this._back = g);
+  }
+
+  /** 발 디디기 + 다리 IK (서기·걷기·뛰기). 앉았거나 공중이면 동작 그대로 */
+  private stepFeet(dt: number, v: number) {
+    const G = HumanCharacter.footGround;
+    const b = this.bones;
+    const legs = [[b.thigh_l, b.calf_l, b.foot_l], [b.thigh_r, b.calf_r, b.foot_r]] as const;
+    this.root.getWorldPosition(_root);
+    const ok = G && this.footRest.length === 2 && legs.every((l) => l.every(Boolean));
+    const airborne = !ok || _root.y - G!(_root.x, _root.z, _root.y) > 0.06;
+    if (airborne || this.sitW >= 0.05) {
+      this.feetInit = false;
+      this.pelvisOff += (0 - this.pelvisOff) * (1 - Math.exp(-dt * 12));
+      this.model.position.y = this.sitW * SIT_LIFT + this.pelvisOff;
+      return;
+    }
+    const ground = (p: THREE.Vector3) => G!(p.x, p.z, _root.y) + this.ankleH;
+    const rq = this.root.getWorldQuaternion(_q4);
+    const fwd = _fwd.set(0, 0, 1).applyQuaternion(rq).setY(0).normalize();
+    const moving = (this.pose === 'walk' || this.pose === 'run') && v > 0.3;
+    const run = this.pose === 'run';
+    const L = stepLength(v, this.legLen, run);
+    const onStairs = Math.abs(G!(_root.x, _root.z, _root.y) - _root.y) > 0.01;
+    const pmin = run ? PELVIS_MIN_RUN : onStairs ? PELVIS_MIN_STAIRS : PELVIS_MIN_WALK;
+    const rest = [0, 1].map((i) => {
+      const r = this.root.localToWorld(_rest[i].copy(this.footRest[i]));
+      r.y = ground(r);
+      return r;
+    });
+    // 처음이거나 순간이동했으면 두 발을 제자리에
+    if (!this.feetInit || this.lastRoot.distanceTo(_root) > 1.2) {
+      this.feet.forEach((f, i) => {
+        f.pos.copy(rest[i]);
+        f.swing = false;
+      });
+      this.feetInit = true;
+    }
+    this.lastRoot.copy(_root);
+    // 걸음 중인 발: 들어 올려 반원을 그리며 다음 자리로
+    for (const f of this.feet) {
+      if (!f.swing) {
+        if (this.gaitLog) this.gaitLog.planted.push(0);
+        continue;
+      }
+      f.t += dt / f.dur;
+      const k = Math.min(1, f.t), s = k * k * (3 - 2 * k);
+      f.to.y = ground(f.to);
+      f.pos.lerpVectors(f.from, f.to, s);
+      f.pos.y += f.arc * Math.sin(Math.PI * k);
+      // 지나가는 자리 바닥(계단 모서리)보다 아래로 가지 않게
+      // 발끝(앞 9cm)도 보고 넘는다
+      _d.copy(f.pos).addScaledVector(fwd, 0.09 * this.scale);
+      f.pos.y = Math.max(f.pos.y, ground(f.pos) + 0.01 * Math.sin(Math.PI * k), ground(_d) + 0.02 * Math.sin(Math.PI * k));
+      if (k >= 1) {
+        f.pos.copy(f.to);
+        f.swing = false;
+      }
+    }
+    // 다음 걸음. 걸을 때: 두 발을 번갈아, 반 박자(걸음 길이 ÷ 속도)마다 — 몸보다 뒤처진 정도만 보면 두 발이 잇달아 들려
+    // 둘 다 앞·둘 다 뒤에 있는 엇박이 된다. 서 있을 때: 제자리에서 벗어난 발을 옮긴다.
+    // 다리가 닿지 않는 발은 언제든 든다
+    this.sinceStep += dt;
+    {
+      const busy = this.feet.some((f) => f.swing);
+      let best = -1, bestV = -Infinity;
+      this.feet.forEach((f, i) => {
+        if (f.swing) return;
+        _d.copy(f.pos).sub(rest[i]).setY(0);
+        const behind = moving ? -_d.dot(fwd) : _d.length();
+        const far = _d.length();
+        const turn = i !== this.lastStep && this.sinceStep >= (L / Math.max(v, 0.3)) * 0.97;
+        // 걷기: 발이 반 걸음 앞에 디뎌 반 걸음 뒤까지 / 뛰기: 몸 가까이(0.35걸음 앞)에 디뎌 금방 차고 나간다
+        const need = moving
+          ? run
+            ? (turn && behind >= L * 0.25) || behind >= L * 0.5
+            : (turn && behind > 0) || behind >= L * 0.75 || far > L * 0.85
+          : far > 0.1 * this.scale;
+        // 다리가 닿는지: 몸을 가장 많이 내렸을 때(PELVIS_MIN) 엉덩이에서도 발이 멀면 들어 옮긴다
+        legs[i][0]!.getWorldPosition(_hip);
+        _hip.y += pmin - this.pelvisOff;
+        const reach = _hip.distanceTo(f.pos) > this.legLen * 0.99;
+        // 뛸 때는 앞발이 반쯤 나아가면 뒷발도 든다 (두 발이 다 떠 있는 순간)
+        const free = !busy || run;
+        if (((need && free) || reach) && behind + (reach ? 9 : 0) > bestV) {
+          bestV = behind + (reach ? 9 : 0);
+          best = i;
+          if (reach && !need && this.gaitLog) this.gaitLog.forced++;
+        }
+      });
+      if (best >= 0) {
+        const f = this.feet[best];
+        f.dur = moving ? (L / v) * (run ? 1.3 : 0.84) : 0.22;
+        f.from.copy(f.pos);
+        f.to.copy(rest[best]);
+        if (moving) f.to.addScaledVector(fwd, v * f.dur + L * (run ? 0.35 : 0.5));
+        f.to.y = ground(f.to);
+        f.arc = (moving ? (run ? 0.13 : 0.075) : 0.04) * (this.scale / 1.25);
+        f.t = 0;
+        f.swing = true;
+        this.lastStep = best;
+        this.sinceStep = 0;
+        if (this.gaitLog) this.gaitLog.steps++;
+      }
+    }
+    // 몸 높이: 두 다리가 거의 곧게 펴질 때까지 (무릎을 너무 굽히지 않게) — 계단에서는 저절로 오르내린다
+    let want = Infinity;
+    legs.forEach(([thigh], i) => {
+      thigh!.getWorldPosition(_hip);
+      const hipY = _hip.y - this.pelvisOff;
+      const p = this.feet[i].pos;
+      const h = Math.hypot(p.x - _hip.x, p.z - _hip.z), r = this.legLen * 0.97;
+      const maxHip = p.y + Math.sqrt(Math.max(0, r * r - h * h));
+      want = Math.min(want, maxHip - hipY);
+    });
+    want = Math.max(pmin, Math.min(0.3, want));
+    // 내려야 할 때는 바로 (늦으면 디딘 발에 다리가 닿지 않아 발이 끌린다), 올릴 때는 부드럽게
+    this.pelvisOff = want < this.pelvisOff ? want : this.pelvisOff + (want - this.pelvisOff) * (1 - Math.exp(-dt * 12));
+    this.model.position.y = this.sitW * SIT_LIFT + this.pelvisOff;
+    this.model.updateMatrixWorld(true);
+    // 다리를 발 자리로 (발은 몸 방향으로 평평하게)
+    legs.forEach(([thigh, calf, foot], i) => {
+      this.legIK(thigh!, calf!, foot!, this.feet[i].pos);
+      calf!.getWorldQuaternion(_q2).invert();
+      foot!.quaternion.copy(_q2.multiply(_qFoot.copy(rq).multiply(this.footRestQ[i])));
+      foot!.updateMatrixWorld(true);
+    });
   }
 
   /** 작은 동작: GLB 캐릭터가 들어오면 본(팔·척추) 애니메이션으로 바꿀 자리. 지금은 무시 */
@@ -171,20 +401,27 @@ export class HumanCharacter {
     this.model.visible = !h;
   }
 
-  update(dt: number, speed01 = 0) {
+  /** speedMs: 실제 이동 속도(m/s). 주면 걷기·뛰기 재생 속도를 보폭에 맞춰 발이 미끄러지지 않게 한다 */
+  update(dt: number, speed01 = 0, speedMs?: number) {
     this.t += dt;
-    if (this.current && (this.pose === 'walk' || this.pose === 'run')) this.current.timeScale = 0.7 + speed01 * 0.45;
-    else if (this.current) this.current.timeScale = 1;
+    const gait = this.pose === 'walk' || this.pose === 'run';
+    if (this.current && gait) {
+      // 팔·몸통 동작 박자를 걸음 박자에 맞춘다 (동작 한 바퀴 = 두 걸음)
+      const v = speedMs ?? speed01 * 3;
+      const L = stepLength(v, this.legLen, this.pose === 'run');
+      this.current.timeScale = v > 0.3 ? Math.max(0.5, Math.min(2.5, (this.current.getClip().duration * v) / (2 * L))) : 1;
+    } else if (this.current) this.current.timeScale = 1;
     for (const [b, q] of this.legAnim) b.quaternion.copy(q);
     this.mixer.update(dt);
     for (const [b, q] of this.legAnim) q.copy(b.quaternion);
     // 앉으면 엉덩이를 좌판 높이에 맞춘다 (동작이 넘어가는 동안 함께 부드럽게)
     this.sitW += ((this.seated ? 1 : 0) - this.sitW) * (1 - Math.exp(-dt * 10));
-    this.model.position.y = this.sitW * SIT_LIFT;
+    this.model.position.y = this.sitW * SIT_LIFT + this.pelvisOff;
     this.model.updateMatrixWorld(true);
+    this.stepFeet(dt, gait ? (speedMs ?? speed01 * 3) : 0);
     // 다리: 무릎을 조금만 내려(KNEE_DROP) 발을 바닥 쪽으로. 허벅지 앞쪽이 좌판 두께(4cm) 안에 숨는 만큼만 숙이고,
     // 발 방향은 그대로 둔다 (종아리를 돌리면 발끝이 바닥 속으로 들어간다). 의자가 높아 발은 바닥에서 조금 떠 있다
-    if (this.sitW > 0.01) {
+    if (KNEE_DROP > 0 && this.sitW > 0.01) {
       const drop = this.sitW * KNEE_DROP;
       for (const s of ['l', 'r']) {
         const thigh = this.bones['thigh_' + s], calf = this.bones['calf_' + s], foot = this.bones['foot_' + s];

@@ -8,7 +8,8 @@ import { cloneSave, type SaveData } from './SaveData';
 import { loadSettings, storeSettings, type Settings } from './Settings';
 import { SchoolMap } from '../world/SchoolMap';
 import { LevelNav } from '../world/NavGrid';
-import { STAIR_ENDS, floorY } from '../world/rooms';
+import { STAIR_ENDS, floorY, stairStepY } from '../world/rooms';
+import { HumanCharacter } from '../world/HumanCharacter';
 import { Player } from '../player/Player';
 import { ThirdPersonCamera } from '../player/ThirdPersonCamera';
 import { Inventory } from '../player/Inventory';
@@ -324,6 +325,12 @@ export class Game {
     this.scene.add(this.player.object);
     this.player.groundAt = (x, z, y) => this.map.groundY(x, z, y);
     Npc.ground = (x, z, y) => this.map.groundY(x, z, y);
+    // 3D 캐릭터가 발을 놓을 높이: 계단은 디딤판 윗면 (걷는 높이는 비탈이라 발이 계단 속에 묻힌다)
+    // 계단실 가장자리 밖은 층 판정이 애매해(층계참 높이 = 두 층 가운데) 몸 높이와 0.5m 넘게 다르면 몸 높이를 쓴다
+    HumanCharacter.footGround = (x, z, y) => {
+      const s = stairStepY(x, z) ?? this.map.groundY(x, z, y);
+      return Math.abs(s - y) > 0.5 ? y : s;
+    };
     for (const k of [...this.items.keys()]) this.removeItem(k);
     this.inventory.load(save.inventory);
     this.running = true;

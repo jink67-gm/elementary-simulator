@@ -1,3 +1,4 @@
+import { makeSchoolDaypack } from '../world/schoolDaypack';
 import { makeBackpack } from '../world/backpack';
 import * as THREE from 'three';
 import { createAvatar, type Avatar, type Look } from '../world/Character';
@@ -8,6 +9,9 @@ import { makeItemMesh } from '../world/itemMesh';
 import type { ItemId } from '../data/items';
 
 export const PLAYER_RADIUS = 0.3;
+
+/** 걷는 속도 (m/s). 3D 캐릭터의 다리 길이로 자연스럽게 걸을 수 있는 빠르기 (예전 3.0은 걸음이 미끄러져 보였다) */
+const WALK_SPEED = 2.0;
 
 export class Player {
   char: Avatar;
@@ -22,7 +26,10 @@ export class Player {
   /** 스페이스를 '점프' 대신 다른 동작(종이비행기 등)에 쓰는 중 */
   spaceBusy = false;
 
+  private readonly usesSchoolDaypack: boolean;
+
   constructor(look: Look) {
+    this.usesSchoolDaypack = look.model === 'student_gray';
     this.char = createAvatar(look);
   }
 
@@ -33,7 +40,9 @@ export class Player {
   }
   setBackpack(on: boolean) {
     if (on && !this.backpack) {
-      this.backpack = makeBackpack();
+      this.backpack = this.usesSchoolDaypack ? makeSchoolDaypack() : makeBackpack();
+      // 새 책가방은 원래 크기(1.35m) 캐릭터 등에 맞춰 만들어졌다: 게임에서 키운 만큼 같이 키운다 (등 부착점은 1/배율로 줄여 둠)
+      if (this.usesSchoolDaypack) this.backpack.scale.setScalar(this.char.scale);
       this.char.backSocket.add(this.backpack);
     } else if (!on && this.backpack) {
       this.backpack.removeFromParent();
@@ -121,7 +130,7 @@ export class Player {
       }
     }
     // 조이스틱을 살짝 밀면 천천히 걷는다
-    const target = mx || mz ? (run ? 4.6 : 3.0 * Math.max(0.45, Math.min(1, mag * 1.15))) : 0;
+    const target = mx || mz ? (run ? 4.6 : WALK_SPEED * Math.max(0.45, Math.min(1, mag * 1.15))) : 0;
     this.speed += (target - this.speed) * (1 - Math.exp(-dt * 12));
     if (mx || mz) {
       const want = Math.atan2(mx, mz);
@@ -152,7 +161,8 @@ export class Player {
     this.pos.z = c.z;
 
     this.char.setPose(this.speed > 0.3 ? (run ? 'run' : 'walk') : this.char.pose === 'raise' || this.char.pose === 'cheer' ? this.char.pose : 'stand');
-    this.char.update(dt, Math.min(1, this.speed / 3));
+    this.sync(); // 몸 위치를 먼저 옮긴 뒤 동작을 갱신한다 (발 디디기가 이번 프레임 바닥 높이를 쓰도록)
+    this.char.update(dt, Math.min(1, this.speed / 3), this.speed);
     this.sync();
     return { moved: this.speed > 0.3 };
   }

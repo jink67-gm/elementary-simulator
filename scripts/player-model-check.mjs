@@ -66,6 +66,18 @@ await page.evaluate(() => {
       });
       return best;
     },
+    maxY() {
+      const g = s.game, ch = g.player.char;
+      ch.root.updateMatrixWorld(true);
+      let best = -Infinity;
+      const v = new g.player.pos.constructor();
+      ch.model.traverse((o) => {
+        if (!o.isSkinnedMesh) return;
+        const pos = o.geometry.attributes.position;
+        for (let i = 0; i < pos.count; i += 3) { o.getVertexPosition(i, v); o.applyBoneTransform(i, v); v.applyMatrix4(o.matrixWorld); if (v.y > best) best = v.y; }
+      });
+      return best - g.player.pos.y;
+    },
     ground() {
       const p = s.game.player.pos;
       return s.game.map.groundY(p.x, p.z, p.y);
@@ -125,6 +137,44 @@ check('걷는 동안 발이 바닥 아래로 꺼지지 않고(≥-3cm) 바닥에
 const run = await gait(true);
 check('달리기 동작 Jog_Fwd_Loop', run.clip === 'Jog_Fwd_Loop', run);
 check('달리는 동안 발이 바닥 아래로 꺼지지 않음 (≥-3cm)', run.min > -0.03, run);
+
+// 발 미끄러짐·계단 디디기: 게임을 멈추고 1/60초씩 정확히 움직이며 잰다 (느린 화면과 상관없이)
+const sim = (args) => page.evaluate(([pose, speed, x0, z0, y0, yaw, secs]) => {
+  const g = window.__sim.game, p = g.player, ch = p.char, V = p.pos.constructor;
+  g.paused = true;
+  p.teleport(x0, z0, yaw, y0);
+  ch.setPose(pose);
+  ch.gaitLog = { planted: [], steps: 0, forced: 0 };
+  const bones = ['foot_l', 'foot_r'].map((n) => ch.model.getObjectByName(n));
+  const G = ch.constructor.footGround;
+  const dt = 1 / 60, fx = Math.sin(yaw), fz = Math.cos(yaw);
+  let pen = 0, slip = 0;
+  const prev = [null, null];
+  for (let i = 0; i < secs * 60; i++) {
+    p.pos.x += fx * speed * dt; p.pos.z += fz * speed * dt;
+    p.pos.y = g.map.groundY(p.pos.x, p.pos.z, p.pos.y);
+    p.speed = speed; p.sync();
+    ch.update(dt, Math.min(1, speed / 3), speed);
+    if (i < 15) continue; // 서 있다가 출발하는 첫 0.25초는 빼고
+    bones.forEach((b, k) => {
+      const f = b.getWorldPosition(new V());
+      if (f.y < G(f.x, f.z, p.pos.y) + ch.ankleH - 0.03) pen++;
+      const sw = ch.feet[k].swing;
+      if (!sw && prev[k] && !prev[k].sw) slip = Math.max(slip, Math.hypot(f.x - prev[k].v.x, f.z - prev[k].v.z) / dt);
+      prev[k] = { v: f, sw };
+    });
+  }
+  const gl = ch.gaitLog; ch.gaitLog = null; g.paused = false;
+  return { steps: gl.steps, perSec: +(gl.steps / secs).toFixed(1), slipMax: +slip.toFixed(2), pen };
+}, args);
+for (const [name, args] of [['걷기 (복도)', ['walk', 2.0, 9, -14, 0, 0, 4]], ['뛰기 (복도)', ['run', 4.6, 9, -14, 0, 0, 3]], ['계단 오르기', ['walk', 2.0, 7.4, -10.4, -3.6, -Math.PI / 2, 1.5]], ['계단 내려가기', ['walk', 2.0, 6.85, -7.9, 0, -Math.PI / 2, 1.4]]]) {
+  const r = await sim(args);
+  check(`${name}: 디딘 발이 바닥에서 미끄러지지 않음(초당 0.3m 미만) · 바닥·계단 속으로 3cm 넘게 묻히지 않음 · 두 발 번갈아`, r.slipMax < 0.3 && r.pen === 0 && r.steps >= 4, r);
+}
+await page.evaluate(() => { const g = window.__sim.game; g.player.teleport(1.0, 2.8, Math.PI, 0); g.tpc.behind(g.player.yaw); });
+await page.waitForTimeout(800);
+const height = await page.evaluate(() => window.__pm.maxY());
+check('키: 1.25배로 키움 (약 1.55~1.65m)', height > 1.5 && height < 1.7, +height.toFixed(2));
 
 // 앉기: 의자 좌판 높이 재고 엉덩이 높이와 비교
 await page.evaluate(() => { window.__sim.game.tpc.override = null; window.__sim.game.player.teleport(1.0, 2.8, Math.PI, 0); });
