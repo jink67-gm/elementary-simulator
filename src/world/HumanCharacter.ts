@@ -52,7 +52,7 @@ const MODEL_SCALE: Record<string, number> = { student_gray: 1.25 };
  */
 /** 몸을 가장 많이 내리는 높이 (m, 음수): 걸을 때 / 뛸 때 */
 const PELVIS_MIN_WALK = -0.06;
-const PELVIS_MIN_RUN = -0.16;
+const PELVIS_MIN_RUN = -0.1;
 /** 계단에서 한 단 아래 발에 닿도록 더 내릴 수 있는 높이 */
 const PELVIS_MIN_STAIRS = -0.16;
 /** 걸음 길이: 빠를수록 길게, 다만 몸을 PELVIS_MIN 이상 내리지 않아도 다리가 닿는 길이까지 */
@@ -80,6 +80,48 @@ const _rest = [new THREE.Vector3(), new THREE.Vector3()];
 const _q1 = new THREE.Quaternion();
 const _q2 = new THREE.Quaternion();
 const _q3 = new THREE.Quaternion();
+
+const _qR = new THREE.Quaternion();
+const _qW = new THREE.Quaternion();
+const _side = new THREE.Vector3();
+const _up = new THREE.Vector3();
+const _fwd2 = new THREE.Vector3();
+const _ra = new THREE.Vector3();
+const _mA = new THREE.Matrix4();
+const _mB = new THREE.Matrix4();
+const _qAlign = new THREE.Quaternion();
+const _sa = new THREE.Vector3();
+const _sb = new THREE.Vector3();
+const _ta = new THREE.Vector3();
+const _tb = new THREE.Vector3();
+
+/** 뼈 방향 a를 b로 돌리되, 옆 축 side는 최대한 그대로 두는 회전 (비틀림 없음) */
+function alignFrame(a: THREE.Vector3, side: THREE.Vector3, b: THREE.Vector3): THREE.Quaternion {
+  _sa.copy(side).addScaledVector(a, -side.dot(a)).normalize();
+  _ta.crossVectors(_sa, a);
+  _sb.copy(side).addScaledVector(b, -side.dot(b)).normalize();
+  _tb.crossVectors(_sb, b);
+  _mA.makeBasis(_sa, a, _ta);
+  _mB.makeBasis(_sb, b, _tb);
+  _mB.multiply(_mA.transpose());
+  return _qAlign.setFromRotationMatrix(_mB);
+}
+
+/** 뼈의 월드 회전을 q로 */
+function setWorldQuat(bone: THREE.Object3D, q: THREE.Quaternion) {
+  if (!bone.parent) return;
+  bone.parent.getWorldQuaternion(_q2).invert();
+  bone.quaternion.copy(_q2.multiply(q));
+  bone.updateMatrixWorld(true);
+}
+
+/** 뼈를 월드 축 axis로 angle만큼 더 돌린다 */
+function rotateWorld(bone: THREE.Object3D, axis: THREE.Vector3, angle: number) {
+  if (Math.abs(angle) < 1e-5) return;
+  bone.getWorldQuaternion(_qW);
+  _qW.premultiply(_q1.setFromAxisAngle(axis, angle));
+  setWorldQuat(bone, _qW);
+}
 
 /** bone을 child 쪽 방향이 dir(월드)을 향하게 w만큼 돌린다 */
 function aimBone(bone: THREE.Object3D, child: THREE.Object3D, dir: THREE.Vector3, w: number) {
@@ -116,6 +158,12 @@ export class HumanCharacter {
   /** 두 발: 지금 발목 자리(월드), 걸음 중이면 출발·도착 자리와 진행도 */
   private feet = [0, 1].map(() => ({ pos: new THREE.Vector3(), from: new THREE.Vector3(), to: new THREE.Vector3(), t: 0, dur: 0.3, arc: 0.06, swing: false }));
   private feetInit = false;
+  /** 서 있는 자세의 다리 뼈 (몸 기준 회전·뼈 방향·길이): 다리를 움직일 때 이 자세에서 무릎 축을 그대로 두고 돌린다 (비틀림 없이) */
+  private legRest: { qT: THREE.Quaternion; qC: THREE.Quaternion; dT: THREE.Vector3; dC: THREE.Vector3; lT: number; lC: number }[] = [];
+  /** 걷기·뛰기 정도 (0 서기 ~ 1), 뛰기 정도 — 팔 흔들기·몸 숙이기를 부드럽게 */
+  private gaitW = 0;
+  private runW = 0;
+  private lastL = 0.5;
   /** 마지막으로 든 발 (0 왼발, 1 오른발)과 그 뒤 흐른 시간 — 걸을 때 두 발을 번갈아, 반 박자마다 든다 */
   private lastStep = 1;
   private sinceStep = 0;
@@ -154,10 +202,11 @@ export class HumanCharacter {
         m.frustumCulled = false;
       }
     });
-    for (const n of ['Head', 'pelvis', 'upperarm_l', 'lowerarm_l', 'hand_l', 'upperarm_r', 'lowerarm_r', 'hand_r', 'thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r'])
+    for (const n of ['Head', 'pelvis', 'upperarm_l', 'lowerarm_l', 'hand_l', 'upperarm_r', 'lowerarm_r', 'hand_r', 'thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r', 'spine'])
       this.bones[n] = this.model.getObjectByName(n) ?? undefined;
     this.head = this.bones.Head ?? null;
-    for (const n of ['thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r']) {
+    // 다리·팔·척추: 걸음·팔 흔들기를 덧붙이는 뼈 (믹서가 안 쓴 프레임에 쌓이지 않게 되돌릴 대상)
+    for (const n of ['thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r', 'spine', 'upperarm_l', 'lowerarm_l', 'upperarm_r', 'lowerarm_r']) {
       const b = this.bones[n];
       if (b) this.legAnim.push([b, b.quaternion.clone()]);
     }
@@ -192,38 +241,82 @@ export class HumanCharacter {
       this.footRest.push(this.root.worldToLocal(f.clone()));
       this.footRestQ.push(rq.clone().multiply(foot!.getWorldQuaternion(new THREE.Quaternion())));
       ankle += this.footRest[this.footRest.length - 1].y / 2;
-      this.legLen = thigh!.getWorldPosition(_v1).distanceTo(calf!.getWorldPosition(_v2)) + _v2.distanceTo(f);
+      const h = thigh!.getWorldPosition(new THREE.Vector3()), k = calf!.getWorldPosition(new THREE.Vector3());
+      this.legRest.push({
+        qT: rq.clone().multiply(thigh!.getWorldQuaternion(new THREE.Quaternion())),
+        qC: rq.clone().multiply(calf!.getWorldQuaternion(new THREE.Quaternion())),
+        dT: k.clone().sub(h).normalize(),
+        dC: f.clone().sub(k).normalize(),
+        lT: h.distanceTo(k),
+        lC: k.distanceTo(f),
+      });
+      this.legLen = h.distanceTo(k) + k.distanceTo(f);
     }
     this.ankleH = ankle;
     act?.stop();
     for (const [bn, q] of this.legAnim) bn.quaternion.copy(q);
   }
 
-  /** 다리 두 뼈 IK: 발목을 target(월드)으로. 무릎은 원래 굽은 쪽으로, 발 방향은 그대로 */
-  private legIK(thigh: THREE.Object3D, calf: THREE.Object3D, foot: THREE.Object3D, target: THREE.Vector3) {
+  /**
+   * 다리 두 뼈 IK: 발목을 target(월드)으로. 무릎은 늘 몸 앞쪽으로 굽고(경첩), 뼈는 서 있는 자세에서
+   * 무릎 축(몸 옆 방향)을 그대로 둔 채 돌린다 — 매 프레임 가장 짧게 돌리면 다리가 비틀려 흐느적거렸다
+   */
+  private legIK(i: number, thigh: THREE.Object3D, calf: THREE.Object3D, target: THREE.Vector3) {
+    const r = this.legRest[i];
+    if (!r) return;
+    const rq = this.root.getWorldQuaternion(_qR);
+    const side = _side.set(1, 0, 0).applyQuaternion(rq);
+    const fwd = _fwd2.set(0, 0, 1).applyQuaternion(rq);
     thigh.getWorldPosition(_hip);
-    calf.getWorldPosition(_knee);
-    foot.getWorldPosition(_foot);
-    foot.getWorldQuaternion(_qFoot);
-    const a = _hip.distanceTo(_knee), b = _knee.distanceTo(_foot);
+    const a = r.lT, b = r.lC;
     _ik.copy(target).sub(_hip);
     const c = Math.max(Math.abs(a - b) + 1e-3, Math.min(a + b - 1e-3, _ik.length()));
     _ik.normalize();
-    // 무릎이 굽는 쪽: 지금 무릎 방향 (다리가 곧게 펴져 있으면 몸 앞쪽)
-    _pole.set(0, 0, 1).applyQuaternion(this.root.getWorldQuaternion(_q2)).multiplyScalar(0.02);
-    _pole.add(_knee).sub(_hip);
-    _pole.addScaledVector(_ik, -_pole.dot(_ik));
-    if (_pole.lengthSq() < 1e-10) return;
+    _pole.copy(fwd).addScaledVector(_ik, -fwd.dot(_ik));
+    if (_pole.lengthSq() < 1e-8) _pole.set(0, 1, 0).addScaledVector(_ik, -_ik.y);
     _pole.normalize();
     const cosA = Math.max(-1, Math.min(1, (a * a + c * c - b * b) / (2 * a * c)));
-    _dir.copy(_ik).multiplyScalar(a * cosA).addScaledVector(_pole, a * Math.sqrt(1 - cosA * cosA)).normalize();
-    aimBone(thigh, calf, _dir, 1);
-    calf.getWorldPosition(_knee);
-    _dir.copy(target).sub(_knee).normalize();
-    aimBone(calf, foot, _dir, 1);
-    calf.getWorldQuaternion(_q2).invert();
-    foot.quaternion.copy(_q2.multiply(_qFoot));
-    foot.updateMatrixWorld(true);
+    const d1 = _dir.copy(_ik).multiplyScalar(cosA).addScaledVector(_pole, Math.sqrt(1 - cosA * cosA)).normalize();
+    _knee.copy(_hip).addScaledVector(d1, a);
+    setWorldQuat(thigh, alignFrame(_ra.copy(r.dT).applyQuaternion(rq), side, d1).multiply(_qW.copy(rq).multiply(r.qT)));
+    const d2 = _dir.copy(target).sub(_knee).normalize();
+    setWorldQuat(calf, alignFrame(_ra.copy(r.dC).applyQuaternion(rq), side, d2).multiply(_qW.copy(rq).multiply(r.qC)));
+  }
+
+  /**
+   * 팔 흔들기·몸통: 걷기·뛰기 동작의 팔을 빠르게 돌리면 허둥대 보여서, 서 있는 자세 위에 걸음에 맞춘 팔 흔들기를 얹는다.
+   * 왼팔은 오른발과, 오른팔은 왼발과 함께 앞으로. 뛸 때는 팔꿈치를 굽히고 몸을 조금 숙인다
+   */
+  private swingArms(dt: number, moving: boolean, run: boolean) {
+    const k = 1 - Math.exp(-dt * 8);
+    this.gaitW += ((moving ? 1 : 0) - this.gaitW) * k;
+    this.runW += ((moving && run ? 1 : 0) - this.runW) * k;
+    if (this.gaitW < 0.01 || this.footRest.length !== 2) return;
+    const b = this.bones;
+    const rq = this.root.getWorldQuaternion(_qR);
+    const side = _side.set(1, 0, 0).applyQuaternion(rq);
+    const up = _up.set(0, 1, 0).applyQuaternion(rq);
+    const fwd = _fwd2.set(0, 0, 1).applyQuaternion(rq);
+    this.root.getWorldPosition(_root);
+    // 발이 몸보다 얼마나 앞에 있나 (-1 뒤 ~ 1 앞)
+    const ahead = this.feet.map((f) => Math.max(-1, Math.min(1, (_d.copy(f.pos).sub(_root).dot(fwd) / (this.lastL * 0.5 || 1)))));
+    const amp = (0.3 + 0.22 * this.runW) * this.gaitW;
+    const bend = (0.3 + 0.95 * this.runW) * this.gaitW;
+    // 뛸 때는 팔을 조금 뒤로 당긴 채 흔든다 (앞으로 뻗지 않게)
+    const back = 0.18 * this.runW;
+    // 몸통: 앞으로 조금 숙이고(뛸 때), 다리와 반대로 살짝 비튼다
+    const spine = b.spine;
+    if (spine) {
+      rotateWorld(spine, side, 0.16 * this.runW);
+      rotateWorld(spine, up, 0.09 * this.gaitW * (ahead[0] - ahead[1]) * 0.5);
+    }
+    const arms = [[b.upperarm_l, b.lowerarm_l, ahead[1]], [b.upperarm_r, b.lowerarm_r, ahead[0]]] as const;
+    for (const [upper, lower, s] of arms) {
+      if (!upper || !lower) continue;
+      // 앞으로 흔들기 = 몸 옆 축으로 음의 방향 회전 (아래로 늘어진 팔이 앞(+z)으로)
+      rotateWorld(upper, side, -amp * s + back);
+      rotateWorld(lower, side, -(bend + 0.18 * Math.max(0, s) * this.gaitW));
+    }
   }
 
   private play(name: string, fade = 0.25) {
@@ -242,7 +335,9 @@ export class HumanCharacter {
       this.play(this.seated ? CLIP.sit : CLIP.stand, 0.3);
       return;
     }
-    this.play(CLIP[p] ?? CLIP.stand, p === 'sit' ? 0.35 : 0.2);
+    // 발 디디기를 쓰는 캐릭터는 걸을 때도 서 있는 동작 위에 다리·팔을 얹는다
+    const procedural = this.legRest.length === 2 && (p === 'walk' || p === 'run');
+    this.play(procedural ? CLIP.stand : CLIP[p] ?? CLIP.stand, p === 'sit' ? 0.35 : 0.2);
   }
 
   lookAt(target: THREE.Vector3 | null) {
@@ -340,7 +435,7 @@ export class HumanCharacter {
         // 걷기: 발이 반 걸음 앞에 디뎌 반 걸음 뒤까지 / 뛰기: 몸 가까이(0.35걸음 앞)에 디뎌 금방 차고 나간다
         const need = moving
           ? run
-            ? (turn && behind >= L * 0.25) || behind >= L * 0.5
+            ? turn || behind >= L * 0.5
             : (turn && behind > 0) || behind >= L * 0.75 || far > L * 0.85
           : far > 0.1 * this.scale;
         // 다리가 닿는지: 몸을 가장 많이 내렸을 때(PELVIS_MIN) 엉덩이에서도 발이 멀면 들어 옮긴다
@@ -371,27 +466,35 @@ export class HumanCharacter {
       }
     }
     // 몸 높이: 두 다리가 거의 곧게 펴질 때까지 (무릎을 너무 굽히지 않게) — 계단에서는 저절로 오르내린다
+    // 디딘 발(걸음 중인 발 말고)에 맞춘다: 걸을 때는 디딘 다리가 거의 펴지게(무릎 약 15°) — 들고 있는 발까지 맞추면
+    // 몸이 늘 낮아져 무릎을 굽힌 채 엉거주춤 걸었다. 서 있을 때는 서기 동작 높이 그대로(올리지 않음)
+    const planted = this.feet.some((f) => !f.swing);
     let want = Infinity;
     legs.forEach(([thigh], i) => {
+      if (planted && this.feet[i].swing) return;
       thigh!.getWorldPosition(_hip);
       const hipY = _hip.y - this.pelvisOff;
       const p = this.feet[i].pos;
-      const h = Math.hypot(p.x - _hip.x, p.z - _hip.z), r = this.legLen * 0.97;
+      const h = Math.hypot(p.x - _hip.x, p.z - _hip.z), r = this.legLen * (moving && !run ? 0.99 : 0.97);
       const maxHip = p.y + Math.sqrt(Math.max(0, r * r - h * h));
       want = Math.min(want, maxHip - hipY);
     });
+    if (!moving) want = Math.min(want, onStairs ? 0.3 : 0);
     want = Math.max(pmin, Math.min(0.3, want));
     // 내려야 할 때는 바로 (늦으면 디딘 발에 다리가 닿지 않아 발이 끌린다), 올릴 때는 부드럽게
-    this.pelvisOff = want < this.pelvisOff ? want : this.pelvisOff + (want - this.pelvisOff) * (1 - Math.exp(-dt * 12));
+    this.pelvisOff = want < this.pelvisOff ? want : this.pelvisOff + (want - this.pelvisOff) * (1 - Math.exp(-dt * (moving ? 30 : 12)));
     this.model.position.y = this.sitW * SIT_LIFT + this.pelvisOff;
     this.model.updateMatrixWorld(true);
     // 다리를 발 자리로 (발은 몸 방향으로 평평하게)
     legs.forEach(([thigh, calf, foot], i) => {
-      this.legIK(thigh!, calf!, foot!, this.feet[i].pos);
-      calf!.getWorldQuaternion(_q2).invert();
-      foot!.quaternion.copy(_q2.multiply(_qFoot.copy(rq).multiply(this.footRestQ[i])));
-      foot!.updateMatrixWorld(true);
+      this.legIK(i, thigh!, calf!, this.feet[i].pos);
+      // 발: 디딘 발은 평평하게, 걸음 중에는 발끝을 살짝 든다
+      const f = this.feet[i];
+      _qFoot.copy(rq).multiply(this.footRestQ[i]);
+      if (f.swing) _qFoot.premultiply(_q3.setFromAxisAngle(_side.set(1, 0, 0).applyQuaternion(rq), -0.35 * Math.sin(Math.PI * Math.min(1, f.t))));
+      setWorldQuat(foot!, _qFoot);
     });
+    this.lastL = L;
   }
 
   /** 작은 동작: GLB 캐릭터가 들어오면 본(팔·척추) 애니메이션으로 바꿀 자리. 지금은 무시 */
@@ -405,7 +508,7 @@ export class HumanCharacter {
   update(dt: number, speed01 = 0, speedMs?: number) {
     this.t += dt;
     const gait = this.pose === 'walk' || this.pose === 'run';
-    if (this.current && gait) {
+    if (this.current && gait && this.legRest.length !== 2) {
       // 팔·몸통 동작 박자를 걸음 박자에 맞춘다 (동작 한 바퀴 = 두 걸음)
       const v = speedMs ?? speed01 * 3;
       const L = stepLength(v, this.legLen, this.pose === 'run');
@@ -418,7 +521,9 @@ export class HumanCharacter {
     this.sitW += ((this.seated ? 1 : 0) - this.sitW) * (1 - Math.exp(-dt * 10));
     this.model.position.y = this.sitW * SIT_LIFT + this.pelvisOff;
     this.model.updateMatrixWorld(true);
-    this.stepFeet(dt, gait ? (speedMs ?? speed01 * 3) : 0);
+    const vNow = gait ? (speedMs ?? speed01 * 3) : 0;
+    this.stepFeet(dt, vNow);
+    this.swingArms(dt, gait && vNow > 0.3 && this.sitW < 0.05, this.pose === 'run');
     // 다리: 무릎을 조금만 내려(KNEE_DROP) 발을 바닥 쪽으로. 허벅지 앞쪽이 좌판 두께(4cm) 안에 숨는 만큼만 숙이고,
     // 발 방향은 그대로 둔다 (종아리를 돌리면 발끝이 바닥 속으로 들어간다). 의자가 높아 발은 바닥에서 조금 떠 있다
     if (KNEE_DROP > 0 && this.sitW > 0.01) {

@@ -117,11 +117,11 @@ const gait = async (run) => {
   await page.keyboard.down('KeyS');
   await page.waitForTimeout(900);
   const samples = [];
-  let clip = '';
+  let clip = '', gaitW = 0, runW = 0;
   for (let i = 0; i < 14; i++) {
-    const r = await page.evaluate(() => ({ d: window.__pm.minY() - window.__pm.ground(), clip: window.__pm.info().clip, sp: window.__sim.game.player.speed }));
+    const r = await page.evaluate(() => ({ d: window.__pm.minY() - window.__pm.ground(), clip: window.__pm.info().clip, sp: window.__sim.game.player.speed, gaitW: window.__sim.game.player.char.gaitW, runW: window.__sim.game.player.char.runW }));
     samples.push(r.d);
-    clip = r.clip;
+    clip = r.clip; gaitW = r.gaitW; runW = r.runW;
     await page.waitForTimeout(120);
   }
   await cam([11.0, 1.4, (await page.evaluate(() => window.__sim.game.player.pos.z)) + 1.5], await page.evaluate(() => { const p = window.__sim.game.player.pos; return [p.x, 0.6, p.z]; }));
@@ -129,13 +129,13 @@ const gait = async (run) => {
   await page.keyboard.up('KeyS');
   if (run) await page.keyboard.up('ShiftLeft');
   const min = Math.min(...samples), max = Math.max(...samples);
-  return { clip, min: +min.toFixed(3), max: +max.toFixed(3) };
+  return { clip, gaitW: +gaitW.toFixed(2), runW: +runW.toFixed(2), min: +min.toFixed(3), max: +max.toFixed(3) };
 };
 const walk = await gait(false);
-check('걷기 동작 Walk_Loop', walk.clip === 'Walk_Loop', walk);
+check('걷기: 서기 동작 위에 발 디디기·팔 흔들기', walk.clip === 'Idle_Loop' && walk.gaitW > 0.5, walk);
 check('걷는 동안 발이 바닥 아래로 꺼지지 않고(≥-3cm) 바닥에 닿음(최저 ≤3cm)', walk.min > -0.03 && walk.min < 0.03, walk);
 const run = await gait(true);
-check('달리기 동작 Jog_Fwd_Loop', run.clip === 'Jog_Fwd_Loop', run);
+check('달리기: 서기 동작 위에 발 디디기·팔 흔들기 (팔꿈치 굽힘)', run.clip === 'Idle_Loop' && run.gaitW > 0.5 && run.runW > 0.5, run);
 check('달리는 동안 발이 바닥 아래로 꺼지지 않음 (≥-3cm)', run.min > -0.03, run);
 
 // 발 미끄러짐·계단 디디기: 게임을 멈추고 1/60초씩 정확히 움직이며 잰다 (느린 화면과 상관없이)
