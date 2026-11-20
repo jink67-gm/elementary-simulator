@@ -139,7 +139,7 @@ try {
 
   await step('타이틀_캐릭터_알람', async () => {
     await page.getByText('새로 시작').click();
-    await page.locator('.look-card').nth(2).click();
+    await page.locator('.look-card').nth(Number(process.env.E2E_LOOK ?? 2)).click(); // E2E_LOOK=0: 첫 번째 외형(3D 모델)
     await page.getByText('콩떡', { exact: true }).click();
     await page.getByText('학교 갈 준비 완료!').click();
     await page.keyboard.press('Space'); // 5분만 더
