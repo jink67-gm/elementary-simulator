@@ -7,6 +7,7 @@ import { PERIODS, type PeriodId } from './core/SaveData';
 import { preloadCharacterModels, modelErrors } from './world/models';
 import { preloadProps, propErrors } from './world/props';
 import { preloadPbr, pbrErrors } from './world/pbr';
+import { preloadSchoolDaypack } from './world/schoolDaypack';
 
 /** 게임에서 쓰는 3D 캐릭터 모델 (public/models/characters/*.glb) */
 // 첫 번째 플레이어 외형만 3D 모델 (회색 맨투맨 남학생). 반 친구들은 블록 캐릭터 그대로.
@@ -37,6 +38,7 @@ async function boot() {
     preloadProps(),
     preloadPbr(),
     preloadFonts(),
+    preloadSchoolDaypack(),
   ]);
   let game: Game;
   try {

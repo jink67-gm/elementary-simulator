@@ -21,6 +21,11 @@ function loadDaypack(): Promise<Group> {
   return loading;
 }
 
+/** 게임 시작 전에 미리 받아 둔다 (가방이 등에 늦게 나타나지 않게). 실패해도 게임은 계속 */
+export function preloadSchoolDaypack(): Promise<void> {
+  return loadDaypack().then(() => undefined, () => undefined);
+}
+
 // Player owns this group. Completing a pending load never re-equips a removed bag.
 export function makeSchoolDaypack(): Group {
   const mount = new Group();

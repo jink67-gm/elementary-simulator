@@ -51,11 +51,17 @@ const MODEL_SCALE: Record<string, number> = { student_gray: 1.25 };
  * 팔·몸통은 걷기·뛰기 동작을 그대로 쓰고, 재생 속도를 걸음 박자에 맞춘다.
  */
 /** 몸을 가장 많이 내리는 높이 (m, 음수): 걸을 때 / 뛸 때 */
-const PELVIS_MIN_WALK = -0.06;
+const PELVIS_MIN_WALK = -0.08;
 const PELVIS_MIN_RUN = -0.1;
 /** 계단에서 한 단 아래 발에 닿도록 더 내릴 수 있는 높이 */
 const PELVIS_MIN_STAIRS = -0.16;
 /** 걸음 길이: 빠를수록 길게, 다만 몸을 PELVIS_MIN 이상 내리지 않아도 다리가 닿는 길이까지 */
+/** 걸음 시간(초)과 디딜 자리(몸보다 앞, m): 디딘 발이 몸 앞 X에서 몸 뒤 X까지 고르게 지나가도록 X = L - v·d/2 */
+function swingPlan(L: number, v: number, run: boolean): { d: number; ahead: number } {
+  const d = Math.min((L / Math.max(v, 0.3)) * (run ? 1.3 : 0.8), run ? 0.3 : 0.36);
+  return { d, ahead: Math.max(0.05, L - (v * d) / 2) };
+}
+
 function stepLength(v: number, legLen: number, run: boolean): number {
   const r = legLen * 0.97, drop = -PELVIS_MIN_WALK;
   // 뛸 때는 두 발이 다 떠 있는 순간이 있어 다리 길이로 막지 않는다
@@ -382,9 +388,17 @@ export class HumanCharacter {
     const fwd = _fwd.set(0, 0, 1).applyQuaternion(rq).setY(0).normalize();
     const moving = (this.pose === 'walk' || this.pose === 'run') && v > 0.3;
     const run = this.pose === 'run';
-    const L = stepLength(v, this.legLen, run);
     const onStairs = Math.abs(G!(_root.x, _root.z, _root.y) - _root.y) > 0.01;
     const pmin = run ? PELVIS_MIN_RUN : onStairs ? PELVIS_MIN_STAIRS : PELVIS_MIN_WALK;
+    // 걸음 길이: 디딜 자리(몸 앞 X)가 다리가 넉넉히 닿는 곳(몸을 가장 낮췄을 때 닿는 거리의 85%) 안에 들도록
+    let L = stepLength(v, this.legLen, run);
+    {
+      legs[0][0]!.getWorldPosition(_hip);
+      const h = _hip.y - this.pelvisOff + pmin - (G!(_root.x, _root.z, _root.y) + this.ankleH);
+      const r = this.legLen * 0.97;
+      const xMax = 0.85 * Math.sqrt(Math.max(0.0001, r * r - h * h));
+      L = Math.max(0.2, Math.min(L, xMax / (run ? 0.35 : 0.6)));
+    }
     const rest = [0, 1].map((i) => {
       const r = this.root.localToWorld(_rest[i].copy(this.footRest[i]));
       r.y = ground(r);
@@ -407,6 +421,10 @@ export class HumanCharacter {
       }
       f.t += dt / f.dur;
       const k = Math.min(1, f.t), s = k * k * (3 - 2 * k);
+      // 걸음 중에도 몸이 돌거나 빨라지면 디딜 자리를 다시 잡는다 (발이 몸을 따라가게)
+      const fi = this.feet.indexOf(f);
+      f.to.copy(rest[fi]);
+      if (moving) f.to.addScaledVector(fwd, v * f.dur * (1 - k) + swingPlan(L, v, run).ahead);
       f.to.y = ground(f.to);
       f.pos.lerpVectors(f.from, f.to, s);
       f.pos.y += f.arc * Math.sin(Math.PI * k);
@@ -425,37 +443,45 @@ export class HumanCharacter {
     this.sinceStep += dt;
     {
       const busy = this.feet.some((f) => f.swing);
-      let best = -1, bestV = -Infinity;
+      let best = -1, bestV = -Infinity, bestUrgent = false;
       this.feet.forEach((f, i) => {
         if (f.swing) return;
         _d.copy(f.pos).sub(rest[i]).setY(0);
         const behind = moving ? -_d.dot(fwd) : _d.length();
         const far = _d.length();
+        // 옆으로 벗어난 정도 (몸이 돌았을 때)
+        const lat = Math.abs(_d.dot(_side.set(1, 0, 0).applyQuaternion(rq)));
+        // 급히 돌거나 빨라져 발이 많이 뒤처지면: 다른 발이 걷는 중이어도 바로, 빠르게 옮긴다
+        const urgent = moving ? far > L * 0.9 || lat > 0.16 * this.scale : far > 0.3 * this.scale;
         const turn = i !== this.lastStep && this.sinceStep >= (L / Math.max(v, 0.3)) * 0.97;
         // 걷기: 발이 반 걸음 앞에 디뎌 반 걸음 뒤까지 / 뛰기: 몸 가까이(0.35걸음 앞)에 디뎌 금방 차고 나간다
         const need = moving
           ? run
             ? turn || behind >= L * 0.5
-            : (turn && behind > 0) || behind >= L * 0.75 || far > L * 0.85
-          : far > 0.1 * this.scale;
+            : (turn && behind > 0) || behind >= L * 0.75 || far > L * 0.85 || lat > 0.08 * this.scale
+          : far > 0.07 * this.scale;
         // 다리가 닿는지: 몸을 가장 많이 내렸을 때(PELVIS_MIN) 엉덩이에서도 발이 멀면 들어 옮긴다
         legs[i][0]!.getWorldPosition(_hip);
         _hip.y += pmin - this.pelvisOff;
         const reach = _hip.distanceTo(f.pos) > this.legLen * 0.99;
         // 뛸 때는 앞발이 반쯤 나아가면 뒷발도 든다 (두 발이 다 떠 있는 순간)
-        const free = !busy || run;
-        if (((need && free) || reach) && behind + (reach ? 9 : 0) > bestV) {
-          bestV = behind + (reach ? 9 : 0);
+        const free = !busy || run || urgent;
+        const score = (moving ? behind : far) + lat + (reach || urgent ? 9 : 0);
+        if (((need && free) || reach || urgent) && score > bestV) {
+          bestV = score;
           best = i;
+          bestUrgent = urgent || reach;
           if (reach && !need && this.gaitLog) this.gaitLog.forced++;
         }
       });
       if (best >= 0) {
         const f = this.feet[best];
-        f.dur = moving ? (L / v) * (run ? 1.3 : 0.84) : 0.22;
+        // 걸음 시간: 박자에 맞추되 너무 길지 않게 (천천히 출발하다 빨라질 때 발이 뒤처지지 않게), 급할 때는 더 짧게
+        f.dur = moving ? swingPlan(L, v, run).d : 0.2;
+        if (bestUrgent) f.dur = Math.min(f.dur, 0.18);
         f.from.copy(f.pos);
         f.to.copy(rest[best]);
-        if (moving) f.to.addScaledVector(fwd, v * f.dur + L * (run ? 0.35 : 0.5));
+        if (moving) f.to.addScaledVector(fwd, v * f.dur + swingPlan(L, v, run).ahead);
         f.to.y = ground(f.to);
         f.arc = (moving ? (run ? 0.13 : 0.075) : 0.04) * (this.scale / 1.25);
         f.t = 0;

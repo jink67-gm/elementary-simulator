@@ -171,6 +171,32 @@ for (const [name, args] of [['걷기 (복도)', ['walk', 2.0, 9, -14, 0, 0, 4]],
   const r = await sim(args);
   check(`${name}: 디딘 발이 바닥에서 미끄러지지 않음(초당 0.3m 미만) · 바닥·계단 속으로 3cm 넘게 묻히지 않음 · 두 발 번갈아`, r.slipMax < 0.3 && r.pen === 0 && r.steps >= 4, r);
 }
+// 급히 돌기·급출발: 두 발 가운데가 몸에서 멀어지지 않는지(하체가 상체를 따라오는지), 다리가 발에 닿는지
+const turnLag = (plan) => page.evaluate((plan) => {
+  const g = window.__sim.game, p = g.player, ch = p.char, V = p.pos.constructor;
+  g.paused = true; p.teleport(9, -14, 0, 0); ch.setPose('stand');
+  const dt = 1 / 60; const lags = []; let ik = 0;
+  for (let i = 0; i < 30; i++) { p.sync(); ch.update(dt, 0, 0); }
+  for (const [yaw, speed] of plan) {
+    p.yaw = yaw; p.pos.x += Math.sin(yaw) * speed * dt; p.pos.z += Math.cos(yaw) * speed * dt;
+    p.speed = speed; ch.setPose(speed > 3 ? 'run' : speed > 0.3 ? 'walk' : 'stand'); p.sync(); ch.update(dt, Math.min(1, speed / 3), speed);
+    const c = ch.feet[0].pos.clone().add(ch.feet[1].pos).multiplyScalar(0.5);
+    lags.push(Math.hypot(c.x - p.pos.x, c.z - p.pos.z));
+    ch.feet.forEach((f, k) => { ik = Math.max(ik, ch.model.getObjectByName(k ? 'foot_r' : 'foot_l').getWorldPosition(new V()).distanceTo(f.pos)); });
+  }
+  g.paused = false;
+  lags.sort((a, b) => a - b);
+  return { lagP95: +lags[Math.floor(lags.length * 0.95)].toFixed(2), ikErr: +ik.toFixed(3) };
+}, plan);
+{
+  const uturn = []; for (let i = 0; i < 60; i++) uturn.push([0, 2]); for (let i = 0; i < 18; i++) uturn.push([Math.PI * (i + 1) / 18, 2]); for (let i = 0; i < 60; i++) uturn.push([Math.PI, 2]);
+  const run90 = []; for (let i = 0; i < 60; i++) run90.push([0, 4.6]); for (let i = 0; i < 10; i++) run90.push([Math.PI / 2 * (i + 1) / 10, 4.6]); for (let i = 0; i < 60; i++) run90.push([Math.PI / 2, 4.6]);
+  const dash = []; for (let i = 0; i < 90; i++) dash.push([0, Math.min(4.6, i * 0.25)]); for (let i = 0; i < 60; i++) dash.push([0, 0]);
+  for (const [name, plan, lim, ikLim] of [['걷다가 0.3초 만에 뒤로 돌기', uturn, 0.18, 0.05], ['뛰다가 90° 꺾기', run90, 0.3, 0.05], ['서 있다 바로 뛰고 멈추기 (뛰는 중 두 발이 뜬 순간 포함)', dash, 0.3, 0.06]]) {
+    const r = await turnLag(plan);
+    check(`${name}: 두 발이 몸을 따라옴(발 가운데가 몸에서 ${lim}m 안) · 다리가 발에 닿음(${ikLim * 100}cm 안)`, r.lagP95 <= lim && r.ikErr < ikLim, r);
+  }
+}
 await page.evaluate(() => { const g = window.__sim.game; g.player.teleport(1.0, 2.8, Math.PI, 0); g.tpc.behind(g.player.yaw); });
 await page.waitForTimeout(800);
 const height = await page.evaluate(() => window.__pm.maxY());
