@@ -212,7 +212,7 @@ export class HumanCharacter {
       this.bones[n] = this.model.getObjectByName(n) ?? undefined;
     this.head = this.bones.Head ?? null;
     // 다리·팔·척추: 걸음·팔 흔들기를 덧붙이는 뼈 (믹서가 안 쓴 프레임에 쌓이지 않게 되돌릴 대상)
-    for (const n of ['thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r', 'spine', 'upperarm_l', 'lowerarm_l', 'upperarm_r', 'lowerarm_r']) {
+    for (const n of ['thigh_l', 'calf_l', 'foot_l', 'thigh_r', 'calf_r', 'foot_r', 'spine', 'upperarm_l', 'lowerarm_l', 'upperarm_r', 'lowerarm_r', 'hand_l', 'hand_r']) {
       const b = this.bones[n];
       if (b) this.legAnim.push([b, b.quaternion.clone()]);
     }
@@ -523,6 +523,27 @@ export class HumanCharacter {
     this.lastL = L;
   }
 
+  /**
+   * 손목 돌리기: 받은 동작은 팔을 내리면 손등이 앞을 본다. 팔뚝 축으로 손을 돌려 손바닥이 허벅지 쪽(안쪽)을 보게 한다.
+   * 손을 들 때(손들기·환호)는 손바닥이 앞을 보는 게 자연스러워 그만큼 덜 돌린다
+   */
+  private twistHands() {
+    const b = this.bones;
+    for (const [s, sign] of [['l', 1], ['r', -1]] as const) {
+      const lower = b['lowerarm_' + s], hand = b['hand_' + s];
+      if (!lower || !hand) continue;
+      const up = s === 'r' ? Math.max(this.raiseW, this.cheerW) : this.cheerW;
+      const a = HumanCharacter.handTwist * sign * (1 - up);
+      if (Math.abs(a) < 1e-3) continue;
+      lower.getWorldPosition(_v1);
+      hand.getWorldPosition(_v2);
+      rotateWorld(hand, _ra.copy(_v2).sub(_v1).normalize(), a);
+    }
+  }
+
+  /** 손목을 돌리는 각도 (라디안, 왼손 기준 · 오른손은 반대). -1.4 ≈ 엄지가 앞, 손바닥이 허벅지 쪽 (화면으로 비교해 정함) */
+  static handTwist = -1.4;
+
   /** 작은 동작: GLB 캐릭터가 들어오면 본(팔·척추) 애니메이션으로 바꿀 자리. 지금은 무시 */
   gesture(_g: string, _dur?: number) {}
 
@@ -550,6 +571,7 @@ export class HumanCharacter {
     const vNow = gait ? (speedMs ?? speed01 * 3) : 0;
     this.stepFeet(dt, vNow);
     this.swingArms(dt, gait && vNow > 0.3 && this.sitW < 0.05, this.pose === 'run');
+    this.twistHands();
     // 다리: 무릎을 조금만 내려(KNEE_DROP) 발을 바닥 쪽으로. 허벅지 앞쪽이 좌판 두께(4cm) 안에 숨는 만큼만 숙이고,
     // 발 방향은 그대로 둔다 (종아리를 돌리면 발끝이 바닥 속으로 들어간다). 의자가 높아 발은 바닥에서 조금 떠 있다
     if (KNEE_DROP > 0 && this.sitW > 0.01) {
